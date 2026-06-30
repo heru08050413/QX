@@ -1241,9 +1241,10 @@ rules:
   - domain_suffix:
       match: e.qq.com
       policy: REJECT-DROP
-  - domain_suffix:
-      match: egernlicense.com
-      policy: REJECT-DROP
+  # v6.5.1 [可用性] 移除 egernlicense.com 的 REJECT-DROP.
+  #   该域是 Egern 自身的授权/License 服务器, 静默丢包它有触发授权异常/
+  #   掉授权的风险, 而拦截它的收益不明确. 不属于"高频重试广告源", 不应留
+  #   在熔断段. 如确认它纯为遥测且不影响授权, 可再单独加回.
 
   # ── 3. 广告/隐私拦截 → REJECT ──
   #   不引入 Privacy.list(含微博埋点会破坏微博); 不拦 gdt.qq.com(微博走
