@@ -1156,16 +1156,16 @@ DOMAIN-SUFFIX,weibomingzi.com,REJECT
 # 通用广告规则集 (域名级,无 MITM 压力)
 # 上游: blackmatrix7/ios_rule_script @ master
 # 推荐回滚 hash: 见配置末尾 PINNED COMMITS 段
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Advertising/Advertising.list,REJECT
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Advertising/Advertising.list,REJECT
 
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Advertising/Advertising_Domain.list,REJECT
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Advertising/Advertising_Domain.list,REJECT
 
 # v2.6.5 新增: Privacy 隐私拦截 (在微博保护区之后, 不会误伤微博埋点)
 # bm7 新版 Privacy.list 已与 Advertising 解耦, 不再含 weibo gdt
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Privacy/Privacy.list,REJECT
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Privacy/Privacy.list,REJECT
 
 # 运营商/网络劫持拦截
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Hijacking/Hijacking.list,REJECT
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Hijacking/Hijacking.list,REJECT
 
 # ---------- 全球追踪/数据分析 SDK ----------
 DOMAIN-SUFFIX,adjust.com,REJECT
@@ -1342,7 +1342,7 @@ DOMAIN,generativeai-pa.googleapis.com,Gemini
 DOMAIN,labs.google,Gemini
 DOMAIN,proactivebackend-pa.googleapis.com,Gemini
 
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/OpenAI/OpenAI.list,AI
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/OpenAI/OpenAI.list,AI
 
 # ---------------------------------------------------------------------
 # 6. 流媒体
@@ -1352,10 +1352,10 @@ RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/r
 #     用户手动把 YouTube 组选成哪个节点, UDP 都会先被拦截走 TCP,
 #     浮窗/后台播放脚本才能生效.
 
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/YouTube/YouTube.list,YouTube
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Netflix/Netflix.list,Netflix
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Spotify/Spotify.list,Spotify
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/TikTok/TikTok.list,TikTok
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/YouTube/YouTube.list,YouTube
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Netflix/Netflix.list,Netflix
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Spotify/Spotify.list,Spotify
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/TikTok/TikTok.list,TikTok
 
 # Disney+ / Max / Twitch
 DOMAIN-SUFFIX,disneyplus.com,Netflix
@@ -1373,7 +1373,7 @@ DOMAIN-SUFFIX,abema.tv,Proxy
 # ---------------------------------------------------------------------
 # 7. 通讯 / 社交
 # ---------------------------------------------------------------------
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Telegram/Telegram.list,Telegram
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Telegram/Telegram.list,Telegram
 
 # Twitter / X (v2.6.2: 走 Twitter 专用稳定组, 防节点抖动)
 DOMAIN-SUFFIX,twitter.com,Twitter
@@ -1468,8 +1468,8 @@ DOMAIN-SUFFIX,arxiv.org,Proxy
 # ---------------------------------------------------------------------
 # 10. 大厂 (Google / Microsoft)
 # ---------------------------------------------------------------------
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Google/Google.list,谷歌服务
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,谷歌服务
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
 
 # Apple News / Apple TV+
 DOMAIN-SUFFIX,apple.news,Proxy
@@ -1485,7 +1485,7 @@ DOMAIN-SUFFIX,news-edge.apple.com,Proxy
 # ---------------------------------------------------------------------
 
 # B站 (规则集 + 顶级域名兜底)
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/BiliBili/BiliBili.list,哔哩哔哩
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/BiliBili/BiliBili.list,哔哩哔哩
 DOMAIN-SUFFIX,bilibili.com,哔哩哔哩
 DOMAIN-SUFFIX,biliapi.net,哔哩哔哩
 DOMAIN-SUFFIX,bilivideo.com,哔哩哔哩
@@ -1691,12 +1691,15 @@ DOMAIN-SUFFIX,doubanio.com,DIRECT
 # 作为更广泛的覆盖。即使 ChinaMax 加载失败,核心 App 已经直连。
 
 # 国内域名广覆盖兜底
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/ChinaMax/ChinaMax.list,DIRECT
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax.list,DIRECT
 
 # v2.6.1 新增: 国内主流 ISP IP 段直连兜底 (降低对 GEOIP 数据库依赖)
-# 这些段覆盖电信/联通/移动的主要骨干 IP, 在 GEOIP 数据库未更新时
-# 仍能正确路由。完整段见 ChinaMax_IP.list。
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/ChinaMax/ChinaMax_IP.list,DIRECT
+# 这些段覆盖电信/联通/移动的主要骨干 IP, 在 GEOIP 数据库未更新时仍能正确路由。
+# v2.6.12 [修复死链] 原 URL 指向 ChinaMax/ChinaMax_IP.list, 该路径在 bm7
+#   仓库 master 与 release 上均 404 (经核验) —— 即此条 IP 段兜底自 v2.6.1
+#   起从未真正加载. 更正为 bm7 实际提供的 ChinaIPs/ChinaIPs.list (国内
+#   IP-CIDR 清单, 与 QX 配置同源), 恢复设计预期的 CIDR 兜底.
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaIPs/ChinaIPs.list,DIRECT
 
 # GeoIP 最终兜底
 GEOIP,CN,DIRECT,no-resolve
