@@ -52,9 +52,9 @@
 
 - ❌ **不得在任何配置文件写入真实订阅 token**。已有的(Loon `[Remote Proxy]`、QX `[server_remote]`)用占位符替代,如 `https://YOUR_AIRPORT/subscribe?token=__REDACTED__`。
 - ❌ **不得把含 token 的文件提交到 git 或推到任何远程**。`git init` 之前先 scrub;token 会进 git 历史,删了也留痕。
-- ❌ **不得降低证书校验**:`skip-cert-verify` / `skip_validating_cert` 保持 `false`(Loon 节点上的 `skip-cert-verify=true` 待修)。
+- ❌ **不得降低证书校验**:`skip-cert-verify` / `skip_validating_cert` 保持 `false`(Loon 节点上的 `skip-cert-verify=true` 已于 v2.2.1 修复)。
 - ❌ **不要尝试改 MITM CA 口令或重新生成证书**——只能在各 App 内手动操作,配置文件无法自动化。Egern 的 `ca_passphrase: egern` 是默认弱口令,在说明里提示用户去 App 改,但不要在文件里硬写新口令。
-- ✅ 改远程规则源时,bm7 系把 URL 里 `/master/` 改 `/release/`(人工发布,降静默失效)。
+- ✅ 改远程规则源时,bm7 系把 URL 里 `/master/` 改 `/release/`(人工发布,降静默失效)。**但不可一刀切**:必须逐路径联网核验 release 是否提供该路径(见 §六-1),否则会把 404 静默引进来。
 - ✅ 每次改动走 git commit,保证可回滚、可 diff review。
 
 ---
@@ -75,3 +75,37 @@
 - 先**只读审查 + 出改动清单**,等确认后再逐文件修改。一次改一个 App,不要四个一起动。
 - Egern 是 YAML,可做语法校验(`yq`/`python -c 'import yaml'`)后再保存。
 - 每个改动在说明里写清:动了什么、为什么、影响哪三维(安全/稳定/功耗)、是否需要用户手动跟进。
+
+---
+
+## 六、经验沉淀(2026-06 审查轮)
+
+1. **`/master → /release/` 不能一刀切,必须逐路径验证。**
+   release 分支是 bm7 人工发布的子集,**并非每个 master 路径都有对应 release 版本**。本轮实测到的缺口:
+   - QX `rule/QuantumultX/Gemini/Gemini.list` —— release 上 404(启用中!),保留 master。
+   - SR `rule/Shadowrocket/ChinaMax/ChinaMax_IP.list` —— master/release 皆 404(见下)。
+   改之前对每个 URL 跑一次 `curl -o /dev/null -w "%{http_code}"`,只切返回 200 的;其余保留 master 并注明原因。
+
+2. **远程 URL 死链巡检(发现 2 处历史死链)。**
+   审查发现两个**自始就失效、却因 enabled=false 或无报错而长期隐藏**的远程源:
+   - QX `BlockAppleOTA/BlockAppleOTA.list` —— bm7 QuantumultX 目录无此清单(master/release 皆 404),`enabled=false` 掩盖。
+   - SR `ChinaMax/ChinaMax_IP.list` —— 路径写错(正确为 `ChinaIPs/ChinaIPs.list`),且该 RULE-SET **启用且无开关**,故"国内 ISP CIDR 兜底"自 v2.6.1 起从未真正加载。已更正。
+   **建议**:每次大改顺手对所有远程 URL(规则集/脚本/模块)做一次 200 巡检,别假设"写了就生效"。
+
+3. **基线"逐字一致"是目标而非现状。** 本轮才把 SR 的银行/支付/icloud MITM 排除补齐(原仅其余三套有)。新增/修改安全基线项时,务必四套同步,并跑一次跨文件 diff 确认。
+
+---
+
+## 七、需用户手动跟进清单(配置无法自动完成)
+
+> 以下为审查轮结论中标注"需用户手动"的项,集中归档。Claude Code 不能代办。
+
+- **Loon**:`skip-cert-verify` 已改 false;逐节点真机验证连通(若某节点连不上,是该节点证书问题,找机场修,勿改回 true)。
+- **Egern**:
+  - App 内重新生成 `egern.p12` 并把 `ca_passphrase` 从默认 `egern` 改成强口令。
+  - 把 DNS `forward` 层 0.08 的"机场节点域名 → bootstrap"模板填上你机场的真实节点根域(若节点用 IP 字面量则免);填后真机验证 TUN 模式连通。
+  - 模块去重(关 Daily/NobyDa)后,留意是否有个别 App 广告回潮,需要时单独重开定位。
+- **QX**:
+  - `[task_local]` 三条 cron 目前是 `enabled=false` 模板,把占位脚本/账号换成真实值并在 App/BoxJS 授权后再启用;链路巡检那条确认 cron 下"仅异常时通知"。
+  - `BlockAppleOTA` 另寻有效上游源或删除该行(当前死链,已禁用)。
+- **四套通用**:重置机场订阅并作废旧 token、在各 App 内重填真实订阅、生成并信任 MITM 根证书、真机观察去广告与连通效果、离线无法验证的远程 URL 在真机更新时再确认。
