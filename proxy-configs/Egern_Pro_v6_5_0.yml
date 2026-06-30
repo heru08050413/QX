@@ -270,6 +270,20 @@ dns:
         match: www.gstatic.com
         value: bootstrap
 
+    # ── 层 0.08: 机场节点域名 → bootstrap (v6.5.1, 需用户手动填) ──
+    #   ⚠️ TUN(vif_only)+ 境外DoH经代理 的固有风险: 若机场节点用【域名】
+    #   寻址(非 IP 字面量), 该域名会落到兜底 '*' → Foreign-DoH, 而境外 DoH
+    #   又要先有代理 → 启动期解析循环依赖 / 死锁. 节点域名必须用 bootstrap
+    #   (system + 国内纯IP) 直解, 不依赖代理.
+    #
+    #   操作: 把你机场订阅里【节点服务器域名的根域】填到下面并取消注释.
+    #   例(占位, 改成你自己的): 若节点形如 hk01.example-airport.com, 则:
+    #     - domain_suffix:
+    #         match: example-airport.com
+    #         value: bootstrap
+    #
+    #   若你的机场节点本就是 IP 字面量(无域名), 则无需此段, 不受影响.
+
     # ── 层 0.1: 路由器/NAS 管理后台域名 → system (v6.4.0 吸收 Repcz) ──
     #   这些是局域网内设备的管理页, 必须用系统 DNS 解析才能拿到内网 IP;
     #   若走 DoH 会解析失败或拿到错误结果, 导致打不开路由器后台.
