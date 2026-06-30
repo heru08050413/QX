@@ -367,11 +367,39 @@ https://raw.githubusercontent.com/app2smile/rules/master/module/spotify.conf, ta
 
 [task_local]
 # 提示: 若非常用, 可在 App 内将非刚需项勾选 Disabled 进一步降耗
+#
+# ───────────────────────────────────────────────────────────────────
+# 手动交互查询 (event-interaction): 点按触发, 弹 UI. 保持原样.
+# ───────────────────────────────────────────────────────────────────
 event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/streaming-ui-check.js, tag=流媒体-解锁查询, img-url=checkmark.seal.system, enabled=true
 event-interaction https://raw.githubusercontent.com/I-am-R-E/Functional-Store-Hub/Master/NodeLinkCheck/Script/NodeLinkCheck.js, tag=链路检测, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Stack.png, enabled=true
 event-interaction https://raw.githubusercontent.com/fmz200/wool_scripts/main/QuantumultX/scripts/server_info.js, tag=节点详情查询, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ipInfo.png, enabled=true
 event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/traffic-check.js, tag=策略流量查询, img-url=arrow.up.arrow.down.circle.system, enabled=true
 event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/server-info-plus.js, tag=节点信息查询, img-url=tag.circle.system, enabled=true
+
+# ───────────────────────────────────────────────────────────────────
+# v5.1.7 [能力] cron 定时任务 (落地 QX 独有强项, 对齐 CLAUDE.md §二)
+# ───────────────────────────────────────────────────────────────────
+# QX cron 语法: <分> <时> <日> <月> <周> <script-url>, tag=..., enabled=...
+# ⚠️ 以下三条默认 enabled=false: 它们依赖你机场专属脚本 / 你的账号,
+#    必须先把 script-path 换成可用的真实脚本(并在 App 内授权)再开启,
+#    否则会拉到 404 / 空跑. 占位 URL 仅示意位置, 不可直接用.
+#
+# (1) 机场订阅到期 / 流量提醒 —— 每日 09:00
+#     依赖: 你机场提供的"订阅信息/流量查询"脚本(各家 API 不同, 无通用源).
+#     真实源举例: 机场面板给的 QX 任务脚本, 或 BoxJS 里对应机场的 checkin.
+0 9 * * * https://YOUR_AIRPORT/path/to/subscription-info.js, tag=订阅流量提醒, img-url=arrow.up.arrow.down.circle.system, enabled=false
+
+# (2) 节点链路健康巡检 —— 每日 09:00 与 21:00 各一次
+#     复用已在用的 NodeLinkCheck.js(同上 event 版本); cron 版无人值守巡检.
+#     注: 该脚本原为交互式, 启用前请确认它在 cron 下会"仅在异常时通知"
+#     而非每次弹窗; 若每次都通知会打扰, 调成每日 1 次或改用静默健康脚本.
+0 9,21 * * * https://raw.githubusercontent.com/I-am-R-E/Functional-Store-Hub/Master/NodeLinkCheck/Script/NodeLinkCheck.js, tag=链路巡检, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Stack.png, enabled=false
+
+# (3) 签到类任务 (示例占位) —— 每日 08:05
+#     依赖: 你要签到的服务对应脚本 + 已在 App/BoxJS 内捕获的 Cookie/账号.
+#     灰色功能, 自行评估合规与风控. 换成真实脚本后再开启.
+5 8 * * * https://YOUR_SERVICE/path/to/checkin.js, tag=每日签到, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ipInfo.png, enabled=false
 
 
 [http_backend]
