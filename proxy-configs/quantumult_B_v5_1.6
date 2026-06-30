@@ -106,15 +106,18 @@ prefer-doh3
 doh-server=https://dns.alidns.com/dns-query, https://doh.pub/dns-query
 
 # AI 服务: 强制境外 DoH (防国内 DNS 间歇污染)
-doh-server=/*.openai.com/https://1.1.1.1/dns-query
-doh-server=/*.chatgpt.com/https://1.1.1.1/dns-query
-doh-server=/*.oaistatic.com/https://1.1.1.1/dns-query
-doh-server=/*.oaiusercontent.com/https://1.1.1.1/dns-query
-doh-server=/*.anthropic.com/https://1.1.1.1/dns-query
-doh-server=/*.claude.ai/https://1.1.1.1/dns-query
-doh-server=/gemini.google.com/https://1.1.1.1/dns-query
-doh-server=/*.generativelanguage.googleapis.com/https://1.1.1.1/dns-query
-doh-server=/aistudio.google.com/https://1.1.1.1/dns-query
+# v5.1.7 [安全] 补 Cloudflare 次要 IP 1.0.0.1 冗余 (对齐 SR v2.6.9):
+#   单一 1.1.1.1 端点被阻断时, 可 fallback 到 1.0.0.1, 避免回退系统 DNS
+#   拿污染 IP. 与 SR 同款做法.
+doh-server=/*.openai.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.chatgpt.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.oaistatic.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.oaiusercontent.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.anthropic.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.claude.ai/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/gemini.google.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/*.generativelanguage.googleapis.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+doh-server=/aistudio.google.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 
 # v5.1.5 新增: 社交阅读站 + 其 CDN 走境外 DoH (防污染/防错误调度)
 # LinkedIn
@@ -263,13 +266,16 @@ host-suffix, xz.fbcdn.net, reject
 host-suffix, xy.fbcdn.net, reject
 
 # ---------- 微博保护区 (最先匹配, 避免被广告规则集误命中) ----------
+# v5.1.7 [一致性] 补 weibo.com.cn / miaopai.com, 对齐 SR/Egern 保护区覆盖.
 host-suffix, weibo.cn, direct
 host-suffix, weibo.com, direct
+host-suffix, weibo.com.cn, direct
 host-suffix, weibocdn.com, direct
 host-suffix, sinaimg.cn, direct
 host-suffix, sina.cn, direct
 host-suffix, sina.com.cn, direct
 host-suffix, sinajs.cn, direct
+host-suffix, miaopai.com, direct
 
 # ---------- v5.1.4 保留: 财经/证券硬编码 (离线降级保险) ----------
 # 理由: cert-pinning 长连接行情, 最怕 ChinaMax 远程加载失败时绕路.
