@@ -1,0 +1,2291 @@
+# =====================================================================
+# Egern Pro Master Configuration — v6.5.0  (TUN Mode + NextDNS)
+# Generated: 2026-05-27
+# ---------------------------------------------------------------------
+# ┌─ v6.5.0 改动 (TUN 模式 + 境外用 NextDNS, 解决 DNS 隐私) ─────────┐
+# │ 背景: 此前 v6.2-6.4 为修"境外服务全挂", 把境外域名解析退到国内    │
+# │   DoH(阿里/腾讯), 代价是国内DNS商能看到你的境外查询。参考成熟配置 │
+# │   iBL3ND(TUN模式)发现: 境外DNS不是"Egern先天不可用", 而是"非TUN   │
+# │   模式下不可用"——非TUN时DoH连接直连、国内连不上境外DNS。          │
+# │                                                                    │
+# │ [T1] vif_only: true — 开启 TUN 模式。这是境外DNS可用的【前提】:   │
+# │   TUN下Egern接管整个网络栈, 境外DoH连接被路由捕获、走代理出去。    │
+# │ [T2] compat_route: true — TUN 模式标准搭配, 改善兼容性。           │
+# │ [T3] Foreign-DoH 改用 NextDNS(dns.nextdns.io/f3af17)+ Cloudflare/ │
+# │   Google 备用。境外域名解析经代理到达境外DNS → 国内DNS商和运营商   │
+# │   都【看不到】你的境外查询。隐私问题解决。                         │
+# │ [T4] hosts 硬编码境外DoH服务器IP(防其域名被污染解析)。            │
+# │                                                                    │
+# │ 代价(诚实标注):                                                  │
+# │   • DNS解析稳定性现在【绑定节点稳定性】: 节点抖→DNS解析抖。境外    │
+# │     服务再失败时, 先查节点而非DNS配置。                            │
+# │   • TUN模式接管全部流量, 后台耗电略高于非TUN。                     │
+# │                                                                    │
+# │ 未照搬 iBL3ND 的代价项(实事求是):                                │
+# │   • 不开全局 block_quic:true(保留HTTP/3, YouTube去广告靠精准QUIC   │
+# │     reject而非全局禁, 见rules 0.6)。                              │
+# │   • 不开 allow_external_connections:true(那是额外攻击面)。        │
+# │   • 不引入其海量第三方个人域规则集(信任度/稳定性参差)。           │
+# └────────────────────────────────────────────────────────────────┘
+#
+# ── v6.4.0 改动 (吸收成熟配置 Repcz/Tool 的优点) ──
+# │ 对比对象: Repcz/Tool (956★, 社区主流参考) 的 Egern 配置与 DNS 模块.│
+# │                                                                    │
+# │ [S1] rules 瘦身 — 国内大厂硬编码清单外包给 ChinaMax 规则集.        │
+# │   删除约 100 条冗余 domain_suffix(阿里/腾讯/百度/京东/美团/网易/   │
+# │   视频/出行/工具/运营商等), 这些 ChinaMax 必收录且无顺序依赖.      │
+# │   动机(Repcz 启发): 把'高频变动的域名清单'交给版本化规则集自动     │
+# │   更新, 配置只维护'分流逻辑', 根治'清单滞后导致国内App漏分流'.     │
+# │   rules 从 331 条降至约 240 条.                                    │
+# │   ★ 保留未删(有理由): ① 微博/新浪系(须在广告规则集前 DIRECT)      │
+# │     ② 抖音/字节系(须在 TikTok 规则集前 DIRECT) ③ 金融系(券商/银行 │
+# │     风控不容赌, 显式 DIRECT 最稳) ④ Apple CDN(独立逻辑).          │
+# │   最坏情况(规则集偶漏): 落 GEOIP CN 兜底仍 DIRECT(国内IP), 安全.   │
+# │                                                                    │
+# │ [S2] 新增路由器/NAS 管理后台域名 → system DNS + DIRECT (Repcz 启发)│
+# │   miwifi/tplogin/tplinkwifi/router.asus/tendawifi/melogin/falogin/ │
+# │   synology/unifi 等. 这些是局域网设备管理页, 必须系统 DNS 解析才能 │
+# │   拿到内网 IP; 原配置缺失, 可能导致路由器后台打不开. DNS 层 0.1 +  │
+# │   rules 层 0.2 配套.                                               │
+# │                                                                    │
+# │ 未吸收(实事求是评估后认为投入产出比低/不适用):                    │
+# │   • 厂商级 DNS 精细分派(Repcz DNS模块575行: 阿里→alidns/腾讯→     │
+# │     doh.pub/百度→180.76...): 发烧友级, 维护成本极高, 收益感知不明显.│
+# │   • FCM 推送域名硬编码 IP: iOS 用不上(那是安卓推送机制).           │
+# └────────────────────────────────────────────────────────────────┘
+#
+# ── v6.3.0 改动 (修复 YouTube 去广告失效) ──
+# │ 现象: 浮窗播放可用, 但 YouTube 广告去不掉.                         │
+# │ 根因(经核验 Maasea YouTube.Enhance 模块最新源码): 去广告依赖对    │
+# │   *.googlevideo.com 的广告流(initplayback&oad)做拦截, 但 v6.2.0   │
+# │   ① 只 reject 了 youtubei 的 QUIC, 漏了 googlevideo 的 QUIC;       │
+# │   ② MITM 把 *.googlevideo.com 整个 exclude → 拦截规则完全失效.     │
+# │   浮窗靠 youtubei 响应改写(已解密)→ 成功; 去广告靠 googlevideo     │
+# │   拦截(被排除/还走QUIC)→ 失败. 现象与根因完全自洽.                 │
+# │ 修复(对齐模块要求):                                               │
+# │   [Y1] rules 0.6: QUIC-reject 从"仅 youtubei"扩到"googlevideo +    │
+# │        youtubei"(模块要求二者均走 TCP).                           │
+# │   [Y2] MITM: *.googlevideo.com 从 excludes 移除、移入 includes     │
+# │        (仅 URL 层处理, 不解密视频 body).                          │
+# │   [Y3] MITM includes 增 www/s.youtube.com (广告统计信标域).        │
+# │   [Y4] rules 0.7: 新增 5 条 url_regex REJECT(广告流 &oad / 广告    │
+# │        插入点 / 广告统计 / pagead-ptracking / qoe-adcontext).      │
+# │ 能效: 小幅增加 — googlevideo 视频流连接多一次 QUIC→TCP 握手解密,   │
+# │   【不解密视频 body】(几百 MB 视频本体不碰). 用户已确认接受.       │
+# │ 效果边界(务实诚实): 拦掉独立广告流(&oad)+界面广告位, 对移动端     │
+# │   前贴广告通常有效; 但拼进 videoplayback 流的 SSAI 服务端拼接广告  │
+# │   仍拦不掉(需解 body, 全球 MITM 方案皆无解, 非本配置缺陷).         │
+# └────────────────────────────────────────────────────────────────┘
+#
+# ── v6.2.0 关键修复 (修复境外服务全部打不开) ──
+# │ [CRITICAL] 重定义 Foreign-DoH 上游组. v6.1.0 及之前用境外 DoH      │
+# │   (9.9.9.9/8.8.8.8 等)解析境外域名, 但 Egern 的 Upstreams DoH 连接 │
+# │   由 system 解析【且直连不走代理】(官方文档明确). 国内 5G 下到这些 │
+# │   境外 IP 的 443 被阻断 → DoH 查询发不出 → Instagram/X/GitHub/     │
+# │   googleapis 全部 "DNS Resolution Failed"、Zero KB. 这是 FB/X 等   │
+# │   境外服务全部打不开的真因(由用户 Connections 截图确诊).           │
+# │   修复: Foreign-DoH 改用国内可达 DoH(阿里/腾讯). 境外域名解析不再  │
+# │   卡住, 流量随后被 rules 路由到代理, 由节点远端解析真实 IP. 详见    │
+# │   upstreams 段的完整原理与权衡说明.                                │
+# │                                                                    │
+# │   反思: 这是我(助手)重构 DNS 时的真实设计缺陷 — 把境外域名指向了   │
+# │   "国内直连不通的境外 DoH", 却未验证这些 DoH 自身可达. 已修正.     │
+# └────────────────────────────────────────────────────────────────┘
+#
+# ── v6.1.0 改动 (压力测试修复) ──
+# │ [H1] 移除 siftscience.com 的 REJECT-DROP. Sift 是反欺诈/风控服务  │
+# │      (非广告), 误列会导致用其风控的电商/支付/约会 App 登录或下单  │
+# │      失败. 这是上一版唯一的功能性高危误伤.                         │
+# │ [H2] 新增硬编码 domain: youtubei.googleapis.com -> YouTube. 原先   │
+# │      该域的 TCP 路由完全依赖远程 YouTube.list 收录; 一旦规则集改版 │
+# │      删除该条目, YouTube 去广告会'静默失效'(无报错, 广告悄悄回来). │
+# │      硬编码后此链自包含, 不再依赖外部规则集结构.                   │
+# │ [H3] 收紧两个过宽的 domain_keyword: 'adsdk'(可能误伤 broadsdk 等   │
+# │      无关域)改为精确广告 SDK 后缀; 'umeng' keyword 改为 umeng.com  │
+# │      /umeng.co 后缀, 避免命中耦合了推送/登录的友盟子域拖慢启动.    │
+# │ [D1] 删除 DNS forward 中 '*.com.cn' 死规则: 它被前一条 '*.cn'      │
+# │      完全覆盖(*.cn 已匹配所有 .cn 结尾含 .com.cn), 永不触发.       │
+# │ [D2] 流媒体(YouTube/Netflix/Spotify/TikTok)显式钉 Foreign-DoH:     │
+# │      原先走兜底 '*' 同效, 但显式声明更明确、不依赖兜底位置, 也便于 │
+# │      日后审计解析×路由一致性.                                      │
+# └────────────────────────────────────────────────────────────────┘
+#
+# DNS 逻辑结论(经解析×路由一致性矩阵审查): 整体健康, 无危险错配
+#   (无"国内DoH给国内IP却走代理出境"或"境外DoH给境外IP却直连"的组合).
+#   唯一边缘情况: 若用户手动把 Apple 策略组切到境外节点, Apple 域仍走
+#   国内DoH(国内IP)会绕路 — 但 Apple 默认 DIRECT, 属非常规操作, 可接受.
+#
+# ── v6.0.0 基线改动 (经官方文档核验) ──
+#   [修复 1] 微信 VOIP 保护: 用官方 `and` 逻辑规则(protocol=udp AND
+#            原"裸 geoip CN no_resolve". 旧写法对所有 CN IP 一刀切, 会
+#            误伤"自行解析后用 IP 直连"的境外服务(其 CDN/anycast 边缘
+#            偶被 GeoIP 判成 CN). 限定 udp 后, 网页/App 的 TCP 境外流量
+#            不再被误直连; 仅 VOIP 这类"国内 IP 的 UDP 媒体流"前置直连.
+#            注: 未用"腾讯 ASN"方案 — 经查腾讯 AS132203/AS45090 国内外
+#            网段混编且含 anycast, 按 ASN 锁定要么漏 VOIP 要么误伤境外
+#            腾讯节点, 不如 udp+CN 精确稳健.
+#   [修复 2] gstatic: 旧配置把整个 *.gstatic.com → bootstrap(系统 DNS),
+#            会让需走代理的 Google 静态资源被国内 DNS 污染. 现仅把测速
+#            精确域名 connectivitycheck.gstatic.com → bootstrap.
+#   [修复 3] aaplimg.com: 旧配置强制其走国内 DoH + DIRECT, 但该域国内外
+#            均有边缘节点. 现从"国内 DoH 强制"中移除, 让其走兜底, 由
+#            就近解析决定; rules 层仍保留 Apple 策略组(优先直连).
+#   [修复 4] YouTube.Enhance: 旧注释写"与 block_quic:true 协同", 与实际
+#            block_quic:false 矛盾, 且"QUIC 自动 fallback"无官方文档支撑.
+#            本版改为确定性方案: 加一条规则 REJECT youtubei.googleapis.com
+#            的 QUIC, 强制其 fallback TCP, 确保被 MITM 稳定解密(见 rules 0.6).
+#            既不牺牲全局 HTTP/3, 又不依赖未文档化的行为.
+#   [修复 5] MITM 口令: 仍提示用户务必自改(见 mitm 段). 配置文件无法替
+#            用户生成 p12, 但已在最显眼处再次强调.
+#
+# 守约: 不削减旧配置任何已生效功能; 去广告模块按用户要求"全部保留"
+#   (功耗换全面). 三层 DNS / 防抖策略组 / MITM 排除纪律 全部保留.
+#
+# ⚠️ 安全提醒(最高优先): MITM CA 口令仍为默认 'egern'. 请立刻在 Egern
+#    App 内重新生成 egern.p12 并改 ca_passphrase, 否则任何拿到该 p12 的
+#    人都能解密你 MITM 的全部站点流量.
+# =====================================================================
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 全局基础参数
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# IPv6 关闭: 双栈下 DoH 解析 A/AAAA 各一次, 查询量翻倍; 家庭 IPv6 名义
+#   可用但质量差, 关闭消除一类不确定性.
+ipv6: false
+
+http_port: 3080
+socks_port: 3090
+
+# allow_external_connections: 保持 false. iBL3ND 配置开了 true(把本机当
+#   局域网代理服务器), 但那是额外攻击面, 非必要不开. 我们保守关闭.
+allow_external_connections: false
+
+# ★ vif_only: true — TUN 模式 (v6.5.0 关键改动)
+#   这是"境外域名用真境外 DNS"方案成立的【前提】。非 TUN 模式下, DNS
+#   上游(DoH)连接是直连的(官方文档), 境外 DoH(如 NextDNS)在国内连不上
+#   → 这正是 v6.1.0 境外服务全挂的根因。TUN 模式下 Egern 接管整个网络栈,
+#   境外 DoH 连接也会被路由逻辑捕获、走代理出去 → 境外 DNS 可用, 且国内
+#   DNS 商看不到你的境外查询(解决了 v6.2-v6.4 "全走阿里腾讯"的隐私问题)。
+vif_only: true
+
+# QUIC: 全局 false(保留 HTTP/3 优势: YouTube 4K / Google / Cloudflare).
+#   官方优先级: proxy > policy group > global; 默认 TCP 协议 block、UDP
+#   协议 allow. 需强制某 host 走 TCP 以保 MITM 解密时, 不动全局, 而是用
+#   "REJECT 该 host 的 QUIC"规则触发客户端 fallback(见 rules 0.6 的 YouTube).
+block_quic: false
+
+hide_vpn_icon: false
+
+# GeoIP / ASN 数据库
+geoip_db_url: https://github.com/xream/geoip/releases/latest/download/ipinfo.country.mmdb
+asn_db_url: https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-ASN.mmdb
+
+# 测速 URL (配合 DNS forward 层 0 的 bootstrap 直解, 避免 2.19.0 后的
+#   "测速域名走 Foreign-DoH → 本地被 RST → 死锁 → 全节点 timeout").
+proxy_latency_test_url: http://cp.cloudflare.com/generate_204
+direct_latency_test_url: http://www.baidu.com
+
+# compat_route: true — TUN 模式下开启兼容路由, 改善与部分 App/网络栈的
+#   兼容性(iBL3ND 等 TUN 配置的标准搭配). 非 TUN 时无意义, TUN 下建议开.
+compat_route: true
+
+# 网络捕获范围: 三者全关(回归 Egern 默认). 开 include_apns 会让微信 VOIP
+#   的 PushKit/APNs 信令进入代理流水线, 已知导致来电转圈接不通.
+include_all_networks: false
+include_apns: false
+include_cellular_services: false
+
+
+# =====================================================================
+# DNS — 三层分流架构
+# ---------------------------------------------------------------------
+# 原则: 国内域名→国内 DoH(就近 CDN); AI/海外→境外 DoH(抗污染); 兜底境外.
+# forward 自上而下匹配, 顺序即优先级.
+# =====================================================================
+dns:
+  # Bootstrap: 解析 upstreams 里 DoH/DoT/DoQ 服务器自身域名(鸡生蛋, 必须
+  #   用普通 DNS). system 之外补纯 IP, 防 Egern 启动/网络切换瞬间 system
+  #   bootstrap 短暂不可用导致的批量解析失败. 纯 IP 无需再解析自身, 无死锁.
+  bootstrap:
+    - system
+    - 223.5.5.5
+    - 119.29.29.29
+
+  upstreams:
+    # 国内 DoH: 全纯 IP(无前置解析依赖). 阿里 + 腾讯 DNSPod 双供应商容错.
+    Domestic-DoH:
+      - https://223.5.5.5/dns-query
+      - https://223.6.6.6/dns-query
+      - https://1.12.12.12/dns-query
+      - https://120.53.53.53/dns-query
+      - quic://223.5.5.5:853
+      - quic://223.6.6.6:853
+
+    # ★★★ 境外域名解析组 (v6.5.0: TUN 模式下用真境外 DNS) ★★★
+    #
+    # 演进史:
+    #   v6.1.0: 用境外 DoH(8.8.8.8等), 但非TUN模式下DoH直连→国内连不上→
+    #           境外服务全挂(DNS Resolution Failed)。
+    #   v6.2-6.4: 退而求其次, 改用国内DoH(阿里/腾讯), 境外服务恢复, 但代价
+    #           是国内DNS商能看到你的境外域名查询(隐私暴露)。
+    #   v6.5.0: 开启 TUN 模式(vif_only:true)后, DoH连接会被Egern路由捕获、
+    #           走代理出去 → 境外DNS【可用】, 且查询经代理到达, 国内DNS商
+    #           【看不到】你查境外站。这是隐私与可用性的两全, 但依赖TUN。
+    #
+    # 主用户指定: NextDNS(https://dns.nextdns.io/f3af17, 带配置ID f3af17,
+    #   NextDNS会应用该profile的过滤/日志策略)。备用 Cloudflare/Google,
+    #   防 NextDNS 偶发不可达。
+    #
+    # 工作机制(诚实标注): 这些DoH查询本身走你的代理节点出去。
+    #   • 隐私: 查询经加密+经代理, 国内DNS商和运营商都看不到 ✓
+    #   • 依赖: DNS解析的稳定性现在【绑定代理节点稳定性】。节点抖动时,
+    #     DNS解析会跟着抖(这是TUN+境外DNS方案的固有代价, 非缺陷)。
+    #   • 若境外服务又出现解析失败, 优先排查节点是否可用, 而非DNS配置。
+    Foreign-DoH:
+      - https://dns.nextdns.io/f3af17
+      - https://1.1.1.1/dns-query
+      - https://dns.google/dns-query
+      - https://cloudflare-dns.com/dns-query
+
+  forward:
+    # ── 层 0: 测速/连通性检查域名 → bootstrap(系统 DNS 直解, 切断死锁) ──
+    #   仅精确域名, 不用后缀, 避免误伤需走代理的同域资源.
+    - domain:
+        match: cp.cloudflare.com
+        value: bootstrap
+    - domain:
+        match: connectivitycheck.gstatic.com
+        value: bootstrap
+    - domain:
+        match: www.gstatic.com
+        value: bootstrap
+
+    # ── 层 0.1: 路由器/NAS 管理后台域名 → system (v6.4.0 吸收 Repcz) ──
+    #   这些是局域网内设备的管理页, 必须用系统 DNS 解析才能拿到内网 IP;
+    #   若走 DoH 会解析失败或拿到错误结果, 导致打不开路由器后台.
+    - domain_suffix:
+        match: miwifi.com
+        value: system
+    - domain:
+        match: www.miwifi.com
+        value: system
+    - domain_suffix:
+        match: tplogin.cn
+        value: system
+    - domain_suffix:
+        match: tplinkwifi.net
+        value: system
+    - domain_suffix:
+        match: tplinklogin.net
+        value: system
+    - domain:
+        match: router.asus.com
+        value: system
+    - domain_suffix:
+        match: routerlogin.net
+        value: system
+    - domain_suffix:
+        match: orbilogin.com
+        value: system
+    - domain:
+        match: mediarouter.home
+        value: system
+    - domain_suffix:
+        match: tendawifi.com
+        value: system
+    - domain_suffix:
+        match: melogin.cn
+        value: system
+    - domain_suffix:
+        match: falogin.cn
+        value: system
+    - domain:
+        match: zte.home
+        value: system
+    - domain_suffix:
+        match: hiwifi.com
+        value: system
+    - domain:
+        match: amplifi.lan
+        value: system
+    - domain:
+        match: unifi.local
+        value: system
+    - domain:
+        match: router.synology.com
+        value: system
+
+    # ── 层 0.4: 小红书全域 → 国内 DoH(钉死, 不依赖规则集是否收录) ──
+    - domain_suffix:
+        match: xiaohongshu.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: xhscdn.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: xhslink.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: fegine.com
+        value: Domestic-DoH
+
+    # ── 层 0.5a: 抖音/字节系国内 → 国内 DoH(与 TikTok 海外在 DNS 层分离) ──
+    - domain_suffix:
+        match: douyin.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douyincdn.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douyinpic.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douyinstatic.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douyinvod.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: iesdouyin.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: amemv.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: snssdk.com
+        value: Domestic-DoH
+
+    # ── 层 0.5d: 国内非 .cn 大厂"离线白名单" → 国内 DoH ──
+    #   病根: 兜底 '*'→Foreign-DoH 隐含"漏到兜底=境外"的错误假设, 但大量
+    #   国内大厂用 .com/.net 且未必被规则集收录 → 漏到兜底被境外 DoH 解析
+    #   → 国内 5G 下被 RST → 打不开. 此段不依赖远程规则集, 断网亦生效.
+    # —— 出行/地图/票务 ——
+    - domain_suffix:
+        match: umetrip.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: amap.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: autonavi.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: ctrip.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: tripcdn.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: qunar.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: didiglobal.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: xiaojukeji.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: sf-express.com
+        value: Domestic-DoH
+    # —— 电商/本地生活 ——
+    - domain_suffix:
+        match: jd.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: 360buyimg.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: pinduoduo.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: yangkeduo.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: meituan.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: meituan.net
+        value: Domestic-DoH
+    - domain_suffix:
+        match: dianping.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: dewu.com
+        value: Domestic-DoH
+    # —— 内容/视频/音乐 ——
+    - domain_suffix:
+        match: 163.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: 126.net
+        value: Domestic-DoH
+    - domain_suffix:
+        match: iqiyi.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: youku.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: mgtv.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: hunantv.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: kuaishou.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: gifshow.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douyu.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: huya.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: ximalaya.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: kugou.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: douban.com
+        value: Domestic-DoH
+    # —— 工具/办公/云盘 ——
+    - domain_suffix:
+        match: wpscdn.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: aliyundrive.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: alipan.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: smzdm.com
+        value: Domestic-DoH
+
+    # ── 层 0.5b: AI/海外服务 → 境外 DoH(前置, 防误命中国内规则集) ──
+    # -- OpenAI / ChatGPT --
+    - domain_suffix:
+        match: openai.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: chatgpt.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: oaistatic.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: oaiusercontent.com
+        value: Foreign-DoH
+    # -- Anthropic / Claude --
+    - domain_suffix:
+        match: anthropic.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: claude.ai
+        value: Foreign-DoH
+    # -- Google Gemini / AI Studio --
+    - domain_suffix:
+        match: gemini.google.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: aistudio.google.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: generativelanguage.googleapis.com
+        value: Foreign-DoH
+    # -- 其他 AI --
+    - domain_suffix:
+        match: perplexity.ai
+        value: Foreign-DoH
+    - domain_suffix:
+        match: x.ai
+        value: Foreign-DoH
+    - domain_suffix:
+        match: grok.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: mistral.ai
+        value: Foreign-DoH
+    - domain_suffix:
+        match: huggingface.co
+        value: Foreign-DoH
+    # -- 漏网境外站 --
+    - domain_suffix:
+        match: quora.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: tumblr.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: pinterest.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: pinimg.com
+        value: Foreign-DoH
+
+    # ── 层 0.5e: 流媒体显式钉 Foreign-DoH [D2] ──
+    #   原先走兜底 '*' 同效, 但显式声明更明确、不依赖兜底位置, 便于审计
+    #   解析×路由一致性(这些域路由层均走代理, DNS 同侧给境外 IP).
+    - domain_suffix:
+        match: youtube.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: googlevideo.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: ytimg.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: netflix.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: nflxvideo.net
+        value: Foreign-DoH
+    - domain_suffix:
+        match: nflximg.net
+        value: Foreign-DoH
+    - domain_suffix:
+        match: spotify.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: scdn.co
+        value: Foreign-DoH
+    - domain_suffix:
+        match: tiktokv.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: tiktokcdn.com
+        value: Foreign-DoH
+
+    # ── 层 0.5c: Apple 服务域 → 国内 DoH(修 ls/push 解析失败) ──
+    #   Apple 在华本地节点(世纪互联/Akamai)用国内 DoH 可拿有效就近 IP.
+    #   注: 已移除 aaplimg.com — 该泛域国内外均有边缘, 强制国内 DoH 反
+    #   而可能对境外请求拿到次优 IP; 让它走兜底由就近解析决定更稳.
+    - domain_suffix:
+        match: ls.apple.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: push.apple.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: apple.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: cdn-apple.com
+        value: Domestic-DoH
+
+    # ── 层 1a: 国内顶级域 → 国内 DoH ──
+    #   注: '*.cn' 已覆盖所有 .cn 结尾(含 .com.cn/.net.cn/.gov.cn 等), 故
+    #   不再单列 '*.com.cn'(原为死规则, 永不触发). [D1]
+    - domain_wildcard:
+        match: '*.cn'
+        value: Domestic-DoH
+
+    # ── 层 1b: 国内 .com 域名(ChinaMax 规则集, 含 CDN/私有域) → 国内 DoH ──
+    #   说明: ChinaMax 基本是 ChinaDomain 的超集, 故只挂 ChinaMax 一份,
+    #   省一次规则集拉取与匹配(旧配置同挂两份, 冗余).
+    - proxy_rule_set:
+        match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/ChinaMax/ChinaMax.list
+        value: Domestic-DoH
+        update_interval: 86400
+
+    # ── 层 2: 兜底 → 境外 DoH ──
+    - domain_wildcard:
+        match: '*'
+        value: Foreign-DoH
+
+  # ── Hosts: 静态映射 ──
+  hosts:
+    # Apple 国内 CDN(金山云加速)
+    iosapps.itunes.apple.com: iosapps.itunes.apple.com.download.ks-cdn.com
+    localhost: 127.0.0.1
+    '*.local': 192.168.1.1
+    # 境外 DoH 服务器域名 → 硬编码官方 IP (v6.5.0)
+    #   作用: 备用境外 DoH 是域名形式(dns.google/cloudflare-dns.com),
+    #   若靠 bootstrap(国内DNS)解析它们的域名, 可能被污染成错误IP →
+    #   连不上备用DNS。硬编码官方IP, 让这些DoH服务器域名直接拿到正确IP,
+    #   TUN模式下再经代理连接。NextDNS(dns.nextdns.io)用anycast, 同理钉IP。
+    cloudflare-dns.com:
+      - 104.16.248.249
+      - 104.16.249.249
+    dns.google:
+      - 8.8.8.8
+      - 8.8.4.4
+    dns.nextdns.io:
+      - 45.90.28.0
+      - 45.90.30.0
+
+  # EDNS Client Subnet 用(拿更精准 CDN IP)
+  public_ip_lookup_url: https://ifconfig.me/ip
+
+  # proxy_nameservers: 2.19.0 后 proxy DNS 共享默认 resolver 的 forward
+  #   规则, 此项仅作 fallback. 显式给国内 DoH, 测速阶段(代理未建立)即可
+  #   秒解析, 消除"回退境外 DoH 被 RST"的死锁. 同源阿里/腾讯, 信任面不变.
+  proxy_nameservers:
+    - https://223.5.5.5/dns-query
+    - https://1.12.12.12/dns-query
+
+
+# =====================================================================
+# 策略组 (Policy Groups)
+# ---------------------------------------------------------------------
+# 层 1: 总入口 Proxy
+# 层 2: 业务专用组(AI/Gemini/YouTube/Netflix/Spotify/TikTok/TG/IG/X/...)
+# 层 3: 测速基础设施(AutoSelect/StableSelect/地区池/稳定地区池)
+# 防抖: 长连接业务(IG/X)走稳定池不主动漂移; 短交互走 auto_test.
+# =====================================================================
+policy_groups:
+  # 订阅源(节点凭据由用户在 App 内手动添加, 配置不内嵌 token)
+  - external:
+      name: 订阅
+      type: select
+      urls: []
+      icon: https://raw.githubusercontent.com/lige47/QuanX-icon-rule/main/icon/02ProxySoftLogo/Egern.png
+      hidden: false
+
+  # 总入口
+  - select:
+      name: Proxy
+      policies:
+        - AutoSelect
+        - StableSelect
+        - 香港
+        - 台湾
+        - 日本
+        - 新加坡
+        - 美国
+        - DIRECT
+      hidden: false
+
+  # ── 测速基础设施 ──
+  - auto_test:
+      name: AutoSelect
+      policies:
+        - 订阅
+      flatten: true
+      filter: ^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
+      hidden: false
+
+  - fallback:
+      name: StableSelect
+      policies:
+        - 订阅
+      flatten: true
+      filter: ^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
+      interval: 900
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
+      hidden: false
+
+  # ── 地区节点池(同地区内可切换, 不跨地区漂移) ──
+  - auto_test:
+      name: 香港
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/HK_02.png
+      hidden: false
+
+  - auto_test:
+      name: 台湾
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN.png
+      hidden: false
+
+  - auto_test:
+      name: 日本
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/JP_01.png
+      hidden: false
+
+  - auto_test:
+      name: 新加坡
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/SG_01.png
+      hidden: false
+
+  - auto_test:
+      name: 美国
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+      interval: 600
+      tolerance: 200
+      timeout: 3
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/US.png
+      hidden: false
+
+  # ── 稳定地区池(interval=900/tolerance=300, IG/X 长连接专用, 防漂移) ──
+  - auto_test:
+      name: 美国稳定
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+      interval: 900
+      tolerance: 300
+      timeout: 3
+      hidden: true
+
+  - auto_test:
+      name: 日本稳定
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+      interval: 900
+      tolerance: 300
+      timeout: 3
+      hidden: true
+
+  - auto_test:
+      name: 新加坡稳定
+      policies:
+        - 订阅
+      flatten: true
+      filter: (?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+      interval: 900
+      tolerance: 300
+      timeout: 3
+      hidden: true
+
+  - fallback:
+      name: StableFallback
+      policies:
+        - 美国稳定
+        - 日本稳定
+        - 新加坡稳定
+      interval: 900
+      timeout: 3
+      hidden: true
+
+  # ── 业务专用组 ──
+
+  # AI (用户偏好: 新加坡)
+  - select:
+      name: AI
+      policies:
+        - 新加坡
+        - 美国
+        - 日本
+        - AutoSelect
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT_01.png
+      hidden: false
+
+  # Gemini (可手动选任意单节点 + 地区快捷; 香港可能被 Google 标记, 不置首)
+  - select:
+      name: Gemini
+      policies:
+        - 订阅
+        - 美国
+        - 台湾
+        - 日本
+        - 新加坡
+        - 香港
+        - AutoSelect
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png
+      hidden: false
+
+  - select:
+      name: YouTube
+      policies:
+        - AutoSelect
+        - 香港
+        - 台湾
+        - 日本
+        - 新加坡
+        - 美国
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/YouTube.png
+      hidden: false
+
+  - select:
+      name: Netflix
+      policies:
+        - 香港
+        - 日本
+        - 新加坡
+        - 美国
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Netflix.png
+      hidden: false
+
+  # Spotify (用户偏好: 新加坡)
+  - select:
+      name: Spotify
+      policies:
+        - 新加坡
+        - 香港
+        - 日本
+        - 美国
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Spotify.png
+      hidden: false
+
+  - select:
+      name: TikTok
+      policies:
+        - 日本
+        - 台湾
+        - 新加坡
+        - 美国
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/TikTok.png
+      hidden: false
+
+  - select:
+      name: Telegram
+      policies:
+        - 新加坡
+        - 香港
+        - 日本
+        - 美国
+        - AutoSelect
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_X.png
+      hidden: false
+
+  # Instagram (长连接, 绑稳定池防漂移)
+  - select:
+      name: Instagram
+      policies:
+        - 美国稳定
+        - 日本稳定
+        - 新加坡稳定
+        - StableFallback
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Instagram.png
+      hidden: false
+
+  - select:
+      name: Twitter
+      policies:
+        - 美国稳定
+        - 日本稳定
+        - 新加坡稳定
+        - StableFallback
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Twitter.png
+      hidden: false
+
+  - select:
+      name: Apple
+      policies:
+        - DIRECT
+        - 美国
+        - 香港
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_2.png
+      hidden: false
+
+  - select:
+      name: Google
+      policies:
+        - AutoSelect
+        - 香港
+        - 台湾
+        - 日本
+        - 新加坡
+        - 美国
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Google_Search.png
+      hidden: false
+
+  - select:
+      name: Microsoft
+      policies:
+        - DIRECT
+        - 美国
+        - 香港
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Microsoft.png
+      hidden: false
+
+  - select:
+      name: BiliBili
+      policies:
+        - DIRECT
+        - 香港
+        - 台湾
+      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/bilibili.png
+      hidden: false
+
+  - select:
+      name: GitHub
+      policies:
+        - AutoSelect
+        - 美国
+        - 日本
+        - 新加坡
+      hidden: true
+
+  - select:
+      name: Emby
+      policies:
+        - DIRECT
+        - AutoSelect
+      hidden: true
+
+  - select:
+      name: PayPal
+      policies:
+        - 美国稳定
+        - 香港
+        - DIRECT
+      hidden: true
+
+  # Final 兜底: 默认 DIRECT(国内请求误走代理是"国内 App 慢"最大单一根因)
+  - select:
+      name: Final
+      policies:
+        - DIRECT
+        - Proxy
+      hidden: false
+
+
+# =====================================================================
+# 规则 (Rules) — 自上而下匹配, 首个命中即生效
+# ---------------------------------------------------------------------
+# 0  局域网/私网 → 直连
+# 0.5 微信 VOIP 保护(udp+CN, 精确版)
+# 1  微博/新浪保护区 → 直连
+# 2  REJECT 风暴熔断(高频重试源 REJECT-DROP)
+# 3  广告/隐私拦截 → REJECT
+# 4  Apple 国内 CDN → 直连
+# 5  字节系国内 → 直连(必在 TikTok 规则集前)
+# 6  AI → AI/Gemini
+# 7  流媒体  8 通讯  9 开发  10 大厂  11 国内服务  12 Final
+# =====================================================================
+rules:
+  # ── 0. 局域网/私网 → 直连 ──
+  - domain_suffix:
+      match: local
+      policy: DIRECT
+  - domain_suffix:
+      match: localhost
+      policy: DIRECT
+  - ip_cidr:
+      match: 10.0.0.0/8
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 127.0.0.0/8
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 169.254.0.0/16
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 172.16.0.0/12
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 192.168.0.0/16
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 224.0.0.0/4
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr6:
+      match: fe80::/10
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr6:
+      match: fc00::/7
+      policy: DIRECT
+      no_resolve: true
+
+  # ── 0.2: 路由器/NAS 管理后台 → 直连 (v6.4.0, 配合 DNS 层 0.1) ──
+  #   确保管理流量留在局域网, 不被代理. 与 DNS 层 system 解析配套.
+  - domain_suffix:
+      match: miwifi.com
+      policy: DIRECT
+  - domain_suffix:
+      match: tplogin.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: tplinkwifi.net
+      policy: DIRECT
+  - domain:
+      match: router.asus.com
+      policy: DIRECT
+  - domain_suffix:
+      match: routerlogin.net
+      policy: DIRECT
+  - domain_suffix:
+      match: tendawifi.com
+      policy: DIRECT
+  - domain_suffix:
+      match: melogin.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: falogin.cn
+      policy: DIRECT
+  - domain:
+      match: router.synology.com
+      policy: DIRECT
+  - domain:
+      match: unifi.local
+      policy: DIRECT
+  #
+  # 旧配置: 裸 `geoip CN no_resolve:true`, 对所有目标=CN IP 的连接直连.
+  #   风险: "自行解析后用 IP 直连"的境外服务, 其 CDN/anycast 边缘 IP 偶
+  #   被 GeoIP 判成 CN ⇒ 被误直连, 绕过后面所有代理规则, 且难排查.
+  #
+  # 本版: 用官方 `and` 逻辑规则同时要求 [protocol=udp] 且 [geoip=CN],
+  #   仅当"国内 IP 的 UDP 包"才前置直连. 微信 VOIP 媒体流正是 udp+国内 IP,
+  #   保护不减; 而网页/App 的境外 HTTPS 都是 TCP, 不再被这条误伤.
+  #
+  # 语法依据(官方 egernapp.com/docs/configuration/rules): 逻辑规则顶层
+  #   key 为 and/or/not, 其下 match: 接子规则列表, policy/name 与普通规则
+  #   同级. 子条件用 protocol(支持 tcp/udp/http/https/quic/stun)与 geoip.
+  #
+  # 关于 no_resolve: 官方文档明确 no_resolve 仅作用于 IP 类规则
+  #   (geoip/ip_cidr/ip_cidr6/asn). 此处不在子条件里写 no_resolve —
+  #   因为 protocol=udp 这个前置条件已保证只命中"已拿到 IP 的 UDP 连接"
+  #   (VOIP 不会对域名发 UDP), 无解析触发, 故无需也不应在嵌套里塞它.
+  #
+  # 已知副作用(诚实标注): 这条会让所有"目标=国内 IP 的 UDP"走直连,
+  #   不止微信 VOIP, 还包括国内游戏 UDP 对战/国内 App 的 QUIC/国内 WebRTC.
+  #   这些本就该直连, 方向正确. 唯一边缘风险: 若你有"国内 IP 却想走代理
+  #   的 UDP 服务"(罕见), 会被此条拦截 — 如有此需求请删本条或加例外.
+  #
+  # 为何不用"腾讯 ASN": 腾讯 AS132203/AS45090 国内外网段混编且含
+  #   anycast, 按 ASN 锁定要么漏 VOIP(走了表外网段)要么误伤境外腾讯
+  #   节点. udp+CN 组合比 ASN 边界更稳, 也不依赖 ASN 库精度.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - and:
+      match:
+        - protocol:
+            match: udp
+        - geoip:
+            match: CN
+      policy: DIRECT
+      name: 国内 UDP 前置直连 (微信 VOIP 保护)
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 0.6 YouTube 去广告 — 强制 googlevideo + youtubei 走 TCP (v6.3.0)
+  #
+  # 对齐 Maasea YouTube.Enhance 模块的【实际要求】(经核验模块最新源码):
+  #   模块自带两条规则 AND(googlevideo.com,UDP)REJECT 与
+  #   AND(youtubei.googleapis.com,UDP)REJECT, 强制二者走 TCP. 这是去广告
+  #   生效的【前提】: 只有走 TCP, MITM 才能解密 youtubei 响应(界面广告),
+  #   且 URL-rewrite 才能拦 googlevideo 的 initplayback&oad 广告流.
+  #
+  # v6.2.0 及之前的缺陷: 只 reject 了 youtubei 的 QUIC, 漏了 googlevideo,
+  #   且 MITM 把 *.googlevideo.com 整个 exclude → 模块的广告流拦截规则
+  #   完全触不到 → 这就是"浮窗能用(youtubei改写成功)、去广告失败
+  #   (googlevideo广告流拦不到)"的根因. v6.3.0 修正.
+  #
+  # ★ 能效(诚实标注): googlevideo 纳入处理后, 视频流连接会多一次
+  #   QUIC→TCP 的【握手解密】(为让 URL-rewrite 读到 URL). 这是"小幅"
+  #   增加, 【不解密视频 body】(几百 MB 的视频本体不碰). 正常视频流
+  #   (videoplayback?)被 URL-rewrite 正则排除, 正常传输, 不受影响.
+  #
+  # ☆ 效果边界(务实): 此方案拦【独立广告流 &oad】+【youtubei 界面广告
+  #   位】, 对绝大多数移动端前贴广告有效. 但拼进 videoplayback 流的
+  #   SSAI(服务端拼接)广告仍拦不掉 — 那需解 body, 全球 MITM 方案皆无解.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - and:
+      match:
+        - domain_suffix:
+            match: googlevideo.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube 视频流禁 QUIC (强制 TCP 保广告流拦截)
+  - and:
+      match:
+        - domain:
+            match: youtubei.googleapis.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube API 禁 QUIC (强制 TCP 保 MITM 解密)
+
+  # [H2] youtubei.googleapis.com 的 TCP 流量硬编码路由到 YouTube 组.
+  #   原先此域 TCP 路由仅靠远程 YouTube.list 收录(DOMAIN-SUFFIX,
+  #   youtubei.googleapis.com); 一旦规则集改版删除该条, 去广告会'静默
+  #   失效'(无报错, 广告悄悄回来). 硬编码后此链自包含, 不依赖外部结构.
+  #   必须放在 Gemini/Google rule_set 之前, 否则可能被 googleapis 泛匹配
+  #   抢先路由到错误策略组.
+  - domain:
+      match: youtubei.googleapis.com
+      policy: YouTube
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 0.7 YouTube 广告流 / 统计信标拦截 (v6.3.0, url_regex 精确匹配)
+  #
+  # 对齐 Maasea 模块的 URL 拦截清单(经核验模块源码), 用官方 url_regex
+  #   规则(Rules 文档支持)REJECT 以下精确路径. 这些只读 URL、不解密
+  #   body, 能效极小:
+  #   • googlevideo.com/...&oad : 独立投放的广告视频流(前贴/中插主力)
+  #   • youtubei/.../player/ad_break : 广告插入点请求
+  #   • (www|s).youtube.com/api/stats/ads : 广告播放统计
+  #   • (www|s).youtube.com/pagead|ptracking : 广告投放/追踪
+  #   • s.youtube.com/api/stats/qoe?...adcontext : 广告质量上报
+  # 注: videoplayback? 正常视频流被排除(不在 &oad 模式内), 不受影响.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - url_regex:
+      match: '^https?://[\w-]+\.googlevideo\.com/.+(&oad|[?&]oad=)'
+      policy: REJECT
+      name: YT 广告视频流
+  - url_regex:
+      match: '^https?://youtubei\.googleapis\.com/youtubei/v\d+/player/ad_break'
+      policy: REJECT
+      name: YT 广告插入点
+  - url_regex:
+      match: '^https?://(www|s)\.youtube\.com/api/stats/ads'
+      policy: REJECT
+      name: YT 广告统计
+  - url_regex:
+      match: '^https?://(www|s)\.youtube\.com/(pagead|ptracking)'
+      policy: REJECT
+      name: YT 广告投放追踪
+  - url_regex:
+      match: '^https?://s\.youtube\.com/api/stats/qoe\?.*adcontext'
+      policy: REJECT
+      name: YT 广告质量上报
+
+  # ── 1. 微博/新浪保护区 → 直连(必须先于广告规则集) ──
+  - domain_suffix:
+      match: weibo.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: weibo.com
+      policy: DIRECT
+  - domain_suffix:
+      match: weibo.com.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: weibocdn.com
+      policy: DIRECT
+  - domain_suffix:
+      match: sinaimg.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: sina.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: sina.com.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: sinajs.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: miaopai.com
+      policy: DIRECT
+
+  # ── 2. REJECT 风暴熔断(高频重试源 → REJECT-DROP 丢包, 让 App 等超时放弃) ──
+  - domain:
+      match: umc.danuoyi.alicdn.com
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: mum.alibabachengdun.com
+      policy: REJECT-DROP
+  # [H1] siftscience.com 已移除: Sift 是反欺诈/风控服务(非广告), DROP 会
+  #   导致用其风控的电商/支付/约会 App 登录或下单失败. 误列, 不再拦截.
+  - domain_keyword:
+      match: pangolin-sdk-toutiao
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: ctobsnssdk.com
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: px.ucweb.com
+      policy: REJECT-DROP
+  # [H3] umeng: 由 keyword 收紧为精确后缀, 避免命中耦合推送/登录的友盟
+  #   子域拖慢启动. 友盟主域为 umeng.com / umeng.co.
+  - domain_suffix:
+      match: umeng.com
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: umeng.co
+      policy: REJECT-DROP
+  # [H3] adsdk: 由 keyword('adsdk' 会误命中 broadsdk/loadsdk 等无关域)收紧
+  #   为已知广告 SDK 后缀. 如需更多可继续追加, 但不再用宽泛 keyword.
+  - domain_suffix:
+      match: adsdk.com
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: xz.fbcdn.net
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: xy.fbcdn.net
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: e.qq.com
+      policy: REJECT-DROP
+  - domain_suffix:
+      match: egernlicense.com
+      policy: REJECT-DROP
+
+  # ── 3. 广告/隐私拦截 → REJECT ──
+  #   不引入 Privacy.list(含微博埋点会破坏微博); 不拦 gdt.qq.com(微博走
+  #   广点通, REJECT 会触发重试风暴).
+
+  # B 站广告物料 CDN(cm=commercial, 纯广告域)
+  - domain:
+      match: cm.bilibili.com
+      policy: REJECT
+  - domain:
+      match: cm.biliapi.net
+      policy: REJECT
+
+  # 微博广告物料
+  - domain_suffix:
+      match: biz.weibo.com
+      policy: REJECT
+  - domain:
+      match: bootpreload.uve.weibo.com
+      policy: REJECT
+  - domain_suffix:
+      match: fastimage.uve.weibo.com
+      policy: REJECT
+  - domain_suffix:
+      match: adimg.vue.weibo.com
+      policy: REJECT
+  - domain_suffix:
+      match: sdkapp.uve.weibo.com
+      policy: REJECT
+  - domain_suffix:
+      match: weibomingzi.com
+      policy: REJECT
+
+  # 通用广告 / 运营商劫持规则集
+  - rule_set:
+      name: Advertising
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Advertising/Advertising.list
+      policy: REJECT
+      update_interval: 86400
+  - rule_set:
+      name: Hijacking
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Hijacking/Hijacking.list
+      policy: REJECT
+      update_interval: 86400
+
+  # 全球追踪 / 分析 SDK
+  - domain_suffix:
+      match: adjust.com
+      policy: REJECT
+  - domain_suffix:
+      match: appsflyer.com
+      policy: REJECT
+  - domain_suffix:
+      match: branch.io
+      policy: REJECT
+  - domain_suffix:
+      match: kochava.com
+      policy: REJECT
+  - domain_suffix:
+      match: mixpanel.com
+      policy: REJECT
+  - domain_suffix:
+      match: amplitude.com
+      policy: REJECT
+  - domain_suffix:
+      match: segment.com
+      policy: REJECT
+  - domain_suffix:
+      match: segment.io
+      policy: REJECT
+  - domain_suffix:
+      match: fullstory.com
+      policy: REJECT
+  - domain_suffix:
+      match: hotjar.com
+      policy: REJECT
+  - domain_suffix:
+      match: demdex.net
+      policy: REJECT
+  - domain_suffix:
+      match: scorecardresearch.com
+      policy: REJECT
+
+  # DSP/SSP 广告交易
+  - domain_suffix:
+      match: googlesyndication.com
+      policy: REJECT
+  - domain_suffix:
+      match: doubleclick.net
+      policy: REJECT
+  - domain_suffix:
+      match: google-analytics.com
+      policy: REJECT
+  - domain_suffix:
+      match: googletagmanager.com
+      policy: REJECT
+  - domain_suffix:
+      match: googletagservices.com
+      policy: REJECT
+  - domain_suffix:
+      match: googleadservices.com
+      policy: REJECT
+  - domain_suffix:
+      match: criteo.com
+      policy: REJECT
+  - domain_suffix:
+      match: criteo.net
+      policy: REJECT
+
+  # 移动 App 广告 SDK
+  - domain_suffix:
+      match: applovin.com
+      policy: REJECT
+  - domain_suffix:
+      match: chartboost.com
+      policy: REJECT
+  - domain_suffix:
+      match: ironsrc.com
+      policy: REJECT
+  - domain_suffix:
+      match: admob.com
+      policy: REJECT
+  - domain_suffix:
+      match: mopub.com
+      policy: REJECT
+  - domain_suffix:
+      match: vungle.com
+      policy: REJECT
+  - domain_suffix:
+      match: inmobi.com
+      policy: REJECT
+  - domain_suffix:
+      match: adcolony.com
+      policy: REJECT
+  - domain_suffix:
+      match: flurry.com
+      policy: REJECT
+
+  # 国内广告联盟(不含 gdt.qq.com)
+  - domain_suffix:
+      match: pos.baidu.com
+      policy: REJECT
+  - domain_suffix:
+      match: hm.baidu.com
+      policy: REJECT
+  - domain_suffix:
+      match: cpro.baidu.com
+      policy: REJECT
+  - domain_suffix:
+      match: tanx.com
+      policy: REJECT
+  - domain_suffix:
+      match: mmstat.com
+      policy: REJECT
+
+  # 腾讯音乐 / QQ 音乐广告
+  - domain:
+      match: adstats.tencentmusic.com
+      policy: REJECT
+  - domain:
+      match: ad.tencentmusic.com
+      policy: REJECT
+  - domain:
+      match: adcdn.tencentmusic.com
+      policy: REJECT
+  - domain:
+      match: monitor.music.qq.com
+      policy: REJECT
+  - domain:
+      match: tmead.y.qq.com
+      policy: REJECT
+
+  # 防 App 绕过 DNS 规则
+  - rule_set:
+      name: BlockHttpDNS
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/BlockHttpDNS/BlockHttpDNS.list
+      policy: REJECT
+      update_interval: 86400
+
+  # ── 4. Apple 国内 CDN → 直连 ──
+  - domain_suffix:
+      match: apple-dns.net
+      policy: DIRECT
+  - domain_suffix:
+      match: aaplimg.com
+      policy: DIRECT
+  - domain_suffix:
+      match: mzstatic.com
+      policy: DIRECT
+  - domain_suffix:
+      match: icloud.com.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: icloud-content.com
+      policy: DIRECT
+  - domain:
+      match: testflight.apple.com
+      policy: Proxy
+  - rule_set:
+      name: AppleIntelligence
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/AppleIntelligence/AppleIntelligence.list
+      policy: Apple
+      update_interval: 86400
+      disabled: false
+
+  # ── 5. 字节系国内 → 直连(必在 TikTok 规则集前) ──
+  - domain_suffix:
+      match: douyin.com
+      policy: DIRECT
+  - domain_suffix:
+      match: douyincdn.com
+      policy: DIRECT
+  - domain_suffix:
+      match: douyinpic.com
+      policy: DIRECT
+  - domain_suffix:
+      match: douyinstatic.com
+      policy: DIRECT
+  - domain_suffix:
+      match: douyinvod.com
+      policy: DIRECT
+  - domain_suffix:
+      match: iesdouyin.com
+      policy: DIRECT
+  - domain_suffix:
+      match: amemv.com
+      policy: DIRECT
+  - domain_suffix:
+      match: snssdk.com
+      policy: DIRECT
+  - domain_suffix:
+      match: toutiao.com
+      policy: DIRECT
+  - domain_suffix:
+      match: toutiaocdn.com
+      policy: DIRECT
+  - domain_suffix:
+      match: toutiaoimg.com
+      policy: DIRECT
+  - domain_suffix:
+      match: toutiaovod.com
+      policy: DIRECT
+  - domain_suffix:
+      match: ixigua.com
+      policy: DIRECT
+  - domain_suffix:
+      match: bytecdn.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: byteimg.com
+      policy: DIRECT
+  - domain_suffix:
+      match: pstatp.com
+      policy: DIRECT
+  - domain_suffix:
+      match: feishu.cn
+      policy: DIRECT
+  - domain_suffix:
+      match: feishucdn.com
+      policy: DIRECT
+  - domain_suffix:
+      match: volces.com
+      policy: DIRECT
+
+  # ── 6. AI 服务 ──
+  - domain_suffix:
+      match: openai.com
+      policy: AI
+  - domain_suffix:
+      match: chatgpt.com
+      policy: AI
+  - domain_suffix:
+      match: oaistatic.com
+      policy: AI
+  - domain_suffix:
+      match: oaiusercontent.com
+      policy: AI
+  - domain_suffix:
+      match: auth0.com
+      policy: AI
+  - domain_suffix:
+      match: arkoselabs.com
+      policy: AI
+  - domain_suffix:
+      match: livekit.cloud
+      policy: AI
+  - domain_suffix:
+      match: featuregates.org
+      policy: AI
+  - domain_suffix:
+      match: launchdarkly.com
+      policy: AI
+  - domain_suffix:
+      match: statsigapi.net
+      policy: AI
+  - domain_suffix:
+      match: browser-intake-datadoghq.com
+      policy: AI
+  - domain_suffix:
+      match: anthropic.com
+      policy: AI
+  - domain_suffix:
+      match: claude.ai
+      policy: AI
+  - domain_suffix:
+      match: perplexity.ai
+      policy: AI
+  - domain_suffix:
+      match: poe.com
+      policy: AI
+  - domain_suffix:
+      match: huggingface.co
+      policy: AI
+  - domain_suffix:
+      match: mistral.ai
+      policy: AI
+  - domain_suffix:
+      match: x.ai
+      policy: AI
+  - domain_suffix:
+      match: grok.com
+      policy: AI
+  - domain_suffix:
+      match: cohere.com
+      policy: AI
+  - domain:
+      match: copilot.microsoft.com
+      policy: AI
+
+  # Gemini(单独组)
+  - domain_suffix:
+      match: gemini.google.com
+      policy: Gemini
+  - domain_suffix:
+      match: bard.google.com
+      policy: Gemini
+  - domain_suffix:
+      match: aistudio.google.com
+      policy: Gemini
+  - domain_suffix:
+      match: generativelanguage.googleapis.com
+      policy: Gemini
+  - domain_suffix:
+      match: makersuite.google.com
+      policy: Gemini
+  - domain_suffix:
+      match: deepmind.com
+      policy: Gemini
+  - domain_suffix:
+      match: deepmind.google
+      policy: Gemini
+  - domain:
+      match: labs.google
+      policy: Gemini
+
+  - rule_set:
+      name: OpenAI
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/OpenAI/OpenAI.list
+      policy: AI
+      update_interval: 86400
+
+  # ── 7. 流媒体 ──
+  - rule_set:
+      name: YouTube
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/YouTube/YouTube.list
+      policy: YouTube
+      update_interval: 86400
+  - rule_set:
+      name: Netflix
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Netflix/Netflix.list
+      policy: Netflix
+      update_interval: 86400
+  - rule_set:
+      name: Spotify
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Spotify/Spotify.list
+      policy: Spotify
+      update_interval: 86400
+  - rule_set:
+      name: TikTok
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/TikTok/TikTok.list
+      policy: TikTok
+      update_interval: 86400
+
+  - domain_suffix:
+      match: disneyplus.com
+      policy: Netflix
+  - domain_suffix:
+      match: disney-plus.net
+      policy: Netflix
+  - domain_suffix:
+      match: bamgrid.com
+      policy: Netflix
+  - domain_suffix:
+      match: twitch.tv
+      policy: Proxy
+  - domain_suffix:
+      match: ttvnw.net
+      policy: Proxy
+  - domain_suffix:
+      match: vimeo.com
+      policy: Proxy
+  - domain_suffix:
+      match: vimeocdn.com
+      policy: Proxy
+  - domain_suffix:
+      match: abema.tv
+      policy: Proxy
+
+  # 漏网境外站(无显式规则会落 Final→DIRECT 打不开, 故显式 Proxy)
+  - domain_suffix:
+      match: quora.com
+      policy: Proxy
+  - domain_suffix:
+      match: quoracdn.net
+      policy: Proxy
+  - domain_suffix:
+      match: tumblr.com
+      policy: Proxy
+  - domain_suffix:
+      match: txmblr.com
+      policy: Proxy
+  - domain_suffix:
+      match: tumblr.org
+      policy: Proxy
+  - domain_suffix:
+      match: pinterest.com
+      policy: Proxy
+  - domain_suffix:
+      match: pinimg.com
+      policy: Proxy
+  - domain_suffix:
+      match: pinterestapi.com
+      policy: Proxy
+
+  # ── 8. 通讯 / 社交 ──
+  - rule_set:
+      name: Telegram
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Telegram/Telegram.list
+      policy: Telegram
+      update_interval: 86400
+
+  - domain_suffix:
+      match: twitter.com
+      policy: Twitter
+  - domain_suffix:
+      match: twimg.com
+      policy: Twitter
+  - domain_suffix:
+      match: t.co
+      policy: Twitter
+  - domain_suffix:
+      match: x.com
+      policy: Twitter
+  - domain_suffix:
+      match: twitterstat.us
+      policy: Twitter
+
+  # Meta 系: IG 信息流 Sponsored 广告无法在代理层移除(共用 API + protobuf
+  #   + Certificate Pinning), 仅能拦投放追踪域. 此处仅做路由.
+  - domain_suffix:
+      match: instagram.com
+      policy: Instagram
+  - domain_suffix:
+      match: cdninstagram.com
+      policy: Instagram
+  - domain:
+      match: i.instagram.com
+      policy: Instagram
+  - domain:
+      match: graph.instagram.com
+      policy: Instagram
+  - domain_suffix:
+      match: threads.net
+      policy: Instagram
+
+  - domain_suffix:
+      match: facebook.com
+      policy: Proxy
+  - domain_suffix:
+      match: fbcdn.net
+      policy: Proxy
+  - domain_suffix:
+      match: fb.com
+      policy: Proxy
+  - domain_suffix:
+      match: whatsapp.com
+      policy: Proxy
+  - domain_suffix:
+      match: whatsapp.net
+      policy: Proxy
+
+  - domain_suffix:
+      match: reddit.com
+      policy: Proxy
+  - domain_suffix:
+      match: redd.it
+      policy: Proxy
+  - domain_suffix:
+      match: redditmedia.com
+      policy: Proxy
+  - domain_suffix:
+      match: redditstatic.com
+      policy: Proxy
+
+  - domain_suffix:
+      match: discord.com
+      policy: Proxy
+  - domain_suffix:
+      match: discord.gg
+      policy: Proxy
+  - domain_suffix:
+      match: discordapp.com
+      policy: Proxy
+
+  - domain_suffix:
+      match: linkedin.com
+      policy: Proxy
+  - domain_suffix:
+      match: licdn.com
+      policy: Proxy
+
+  # ── 9. 开发 / 协作 / 工具 ──
+  - rule_set:
+      name: GitHub
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/GitHub/GitHub.list
+      policy: GitHub
+      update_interval: 86400
+
+  - domain_suffix:
+      match: docker.com
+      policy: Proxy
+  - domain_suffix:
+      match: docker.io
+      policy: Proxy
+  - domain_suffix:
+      match: gitlab.com
+      policy: Proxy
+  - domain_suffix:
+      match: bitbucket.org
+      policy: Proxy
+  - domain_suffix:
+      match: notion.so
+      policy: Proxy
+  - domain_suffix:
+      match: notion.site
+      policy: Proxy
+  - domain_suffix:
+      match: figma.com
+      policy: Proxy
+  - domain_suffix:
+      match: stackoverflow.com
+      policy: Proxy
+  - domain_suffix:
+      match: stackexchange.com
+      policy: Proxy
+  - domain_suffix:
+      match: larksuite.com
+      policy: Proxy
+  - domain_suffix:
+      match: cloudflare.com
+      policy: Proxy
+  - domain_suffix:
+      match: wikipedia.org
+      policy: Proxy
+  - domain_suffix:
+      match: wikimedia.org
+      policy: Proxy
+  - domain_suffix:
+      match: medium.com
+      policy: Proxy
+  - domain_suffix:
+      match: substack.com
+      policy: Proxy
+  - domain_suffix:
+      match: nytimes.com
+      policy: Proxy
+  - domain_suffix:
+      match: economist.com
+      policy: Proxy
+  - domain_suffix:
+      match: arxiv.org
+      policy: Proxy
+
+  - rule_set:
+      name: PayPal
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/PayPal/PayPal.list
+      policy: PayPal
+      update_interval: 86400
+
+  # ── 10. 大厂 ──
+  - rule_set:
+      name: Google
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Google/Google.list
+      policy: Google
+      update_interval: 86400
+  - rule_set:
+      name: Microsoft
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Microsoft/Microsoft.list
+      policy: Microsoft
+      update_interval: 86400
+  - rule_set:
+      name: Apple
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Apple/Apple.list
+      policy: Apple
+      update_interval: 86400
+
+  # ── 11. 国内服务 → 直连(硬编码兜底 + ChinaMax + ASN + GEOIP) ──
+  - rule_set:
+      name: BiliBili
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/BiliBili/BiliBili.list
+      policy: BiliBili
+      update_interval: 86400
+  - domain_suffix:
+      match: bilibili.com
+      policy: BiliBili
+  - domain_suffix:
+      match: biliapi.net
+      policy: BiliBili
+  - domain_suffix:
+      match: bilivideo.com
+      policy: BiliBili
+  - domain_suffix:
+      match: bilivideo.cn
+      policy: BiliBili
+  - domain_suffix:
+      match: hdslb.com
+      policy: BiliBili
+  - domain_suffix:
+      match: b23.tv
+      policy: BiliBili
+
+  # ── 国内大厂域名清单已外包给 ChinaMax 规则集 (v6.4.0 瘦身) ──
+  #   原硬编码的 知乎/小红书/阿里系/腾讯系/百度系/京东/美团/拼多多/网易系
+  #   约 50 条 domain_suffix 已删除. 这些域 ChinaMax 必收录且无顺序依赖,
+  #   维护交给规则集自动更新, 不再手动焊死(避免清单滞后导致漏分流).
+  #   最坏情况(规则集偶漏): 落 GEOIP CN 兜底仍 DIRECT(国内IP), 安全.
+  #   注: 金融域【未删】, 见下方 — 风控不容赌规则集.
+
+  # 金融(券商/银行走代理易触发风控, 必须直连)
+  - domain_suffix:
+      match: eastmoney.com
+      policy: DIRECT
+  - domain_suffix:
+      match: xueqiu.com
+      policy: DIRECT
+  - domain_suffix:
+      match: myhexin.com
+      policy: DIRECT
+  - domain_suffix:
+      match: futunn.com
+      policy: DIRECT
+  - domain_suffix:
+      match: futu5.com
+      policy: DIRECT
+  - domain_suffix:
+      match: itiger.com
+      policy: DIRECT
+  - domain_suffix:
+      match: gtja.com
+      policy: DIRECT
+  - domain_suffix:
+      match: citics.com
+      policy: DIRECT
+  - domain_suffix:
+      match: bankcomm.com
+      policy: DIRECT
+  - domain_suffix:
+      match: citicbank.com
+      policy: DIRECT
+  - domain_suffix:
+      match: ecitic.com
+      policy: DIRECT
+  - domain_suffix:
+      match: pingan.com
+      policy: DIRECT
+  - domain_suffix:
+      match: webank.com
+      policy: DIRECT
+  - domain_suffix:
+      match: unionpay.com
+      policy: DIRECT
+  - domain_suffix:
+      match: 95516.com
+      policy: DIRECT
+
+  # ── 视频/出行/工具/运营商 清单同样外包给 ChinaMax (v6.4.0 瘦身) ──
+  #   原 kuaishou/iqiyi/ctrip/didi/wps/dewu/amap/运营商 等约 50 条已删,
+  #   由 ChinaMax + GEOIP CN 兜底覆盖. 高德 amap 亦在内(DNS层已钉国内DoH).
+  # 国内规则集兜底(只用 ChinaMax 一份)
+  - rule_set:
+      name: ChinaMax
+      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/ChinaMax/ChinaMax.list
+      policy: DIRECT
+      update_interval: 86400
+
+  # ASN 兜底(三大运营商, 比 GEOIP 精准)
+  - asn:
+      match: 'AS4134'
+      policy: DIRECT
+      no_resolve: false
+  - asn:
+      match: 'AS4837'
+      policy: DIRECT
+      no_resolve: false
+  - asn:
+      match: 'AS9808'
+      policy: DIRECT
+      no_resolve: false
+  - asn:
+      match: 'AS56040'
+      policy: DIRECT
+      no_resolve: false
+  - asn:
+      match: 'AS58453'
+      policy: DIRECT
+      no_resolve: false
+
+  # GEOIP 兜底(最后一道; 此处允许 resolve, 与层 0.5 的 no_resolve 不同)
+  - geoip:
+      match: CN
+      policy: DIRECT
+      no_resolve: false
+
+  # ── 12. Final 兜底(默认 DIRECT) ──
+  - default:
+      policy: Final
+
+
+# =====================================================================
+# MITM — 严格化(excludes 优先级高于 includes, 也高于模块注入的 hostname)
+# ---------------------------------------------------------------------
+# ⚠️⚠️ 立刻修改 ca_passphrase ⚠️⚠️
+#   当前 'egern' 是默认口令. 请在 Egern App 内重新生成 egern.p12 并改成
+#   你自己的强口令. 否则任何拿到该 p12 的人都能解密你 MITM 的全部站点.
+# =====================================================================
+mitm:
+  ca_p12: egern.p12
+  ca_passphrase: egern        # ← 务必改成你自己的强口令
+
+  hostnames:
+    # ── 显式排除高敏感子域(登录/支付/账户; 降低攻击面) ──
+    excludes:
+      - passport.weibo.cn
+      - login.sina.com.cn
+      - security.weibo.cn
+      - pay.weibo.cn
+      - account.bilibili.com
+      - passport.bilibili.com
+      - pay.bilibili.com
+      - account.zhihu.com
+      - account.amap.com
+      - wallet.amap.com
+      - pay.amap.com
+      - wx1.sinaimg.cn
+      - wx2.sinaimg.cn
+      - wx3.sinaimg.cn
+      - wx4.sinaimg.cn
+      - tva1.sinaimg.cn
+      - tva2.sinaimg.cn
+      - tva3.sinaimg.cn
+      - tva4.sinaimg.cn
+      - ww1.sinaimg.cn
+      - ww2.sinaimg.cn
+      - ww3.sinaimg.cn
+      - ww4.sinaimg.cn
+      - us.sinaimg.cn
+      - video.weibocdn.com
+      # 银行/支付(绝对禁止 MITM)
+      - '*.alipay.com'
+      - '*.unionpay.com'
+      - '*.95516.com'
+      - '*.cmbchina.com'
+      - '*.ccb.com'
+      - '*.icbc.com.cn'
+      - '*.bankcomm.com'
+      - '*.pingan.com'
+      # 苹果敏感
+      - '*.icloud.com'
+      - '*.apple.com.akadns.net'
+
+      # ── 大流量 CDN 强制纯转发(零解密开销) ──
+      # B 站视频/图片 CDN
+      - 'upos-sz-mirrorcos.bilivideo.com'
+      - 'upos-sz-mirroraliov.bilivideo.com'
+      - 'upos-sz-estgcos.bilivideo.com'
+      - 'upos-hz-mirrorakam.akamaized.net'
+      - '*.bilivideo.com'
+      - '*.bilivideo.cn'
+      - 'i0.hdslb.com'
+      - 'i1.hdslb.com'
+      - 'i2.hdslb.com'
+      - 's1.hdslb.com'
+      - 's2.hdslb.com'
+      - 's3.hdslb.com'
+      # 小红书图片/视频 CDN(与 edith API 不冲突)
+      - 'ci.xiaohongshu.com'
+      - 'picasso-static.xiaohongshu.com'
+      - 'sns-img-bd.xhscdn.com'
+      - 'sns-img-hw.xhscdn.com'
+      - 'sns-img-qc.xhscdn.com'
+      - 'sns-video-bd.xhscdn.com'
+      - 'sns-video-hw.xhscdn.com'
+      - 'sns-video-qc.xhscdn.com'
+      - 'sns-na-i1.xhscdn.com'
+      - 'sns-na-i2.xhscdn.com'
+      - 'sns-na-i3.xhscdn.com'
+      # 抖音/西瓜 CDN
+      - '*.douyinpic.com'
+      - '*.douyincdn.com'
+      - '*.douyinvod.com'
+      - '*.bytecdntp.com'
+      # 知乎图片/视频 CDN
+      - 'pic1.zhimg.com'
+      - 'pic2.zhimg.com'
+      - 'pic3.zhimg.com'
+      - 'pic4.zhimg.com'
+      - 'vdn.zhimg.com'
+      - 'vdn3.zhimg.com'
+      - 'vdn6.zhimg.com'
+      # 微信外联媒体 CDN
+      - 'mmbiz.qpic.cn'
+      - 'mmbiz.qlogo.cn'
+      - 'res.wx.qq.com'
+      # 京东图片 CDN
+      - 'm.360buyimg.com'
+      - 'img10.360buyimg.com'
+      - 'img11.360buyimg.com'
+      - 'img12.360buyimg.com'
+      - 'img13.360buyimg.com'
+      - 'img14.360buyimg.com'
+      - 'img20.360buyimg.com'
+      - 'img30.360buyimg.com'
+      # 注[v6.3.0]: *.googlevideo.com 已从 excludes 移除并移入 includes —
+      #   Maasea 模块需对它做 URL-rewrite 拦广告流(initplayback&oad), 若
+      #   exclude 则模块失效. 仅 URL 层处理, 不解密视频 body, 能效小幅增加.
+      # Spotify 音频流 CDN
+      - 'audio-fa.scdn.co'
+      - 'audio4-fa.scdn.co'
+      - 'heads-fa.scdn.co'
+      - 'i.scdn.co'
+      - 'mosaic.scdn.co'
+      # Apple 媒体 CDN
+      - '*.itunes.apple.com'
+      - '*.mzstatic.com'
+      - '*.aaplimg.com'
+
+    # ── 精确解密清单(仅列实际有脚本/改写需求的 host) ──
+    includes:
+      # 微博(脚本去广告)
+      - '*.weibo.cn'
+      - '*.weibo.com'
+      - '*.weibo.com.cn'
+      - '*.weibocdn.com'
+      - '*.sina.cn'
+      - '*.sina.com.cn'
+      - '*.sinajs.cn'
+      # B 站(仅 API 域)
+      - app.bilibili.com
+      - api.bilibili.com
+      - api.live.bilibili.com
+      - api.vc.bilibili.com
+      - manga.bilibili.com
+      - grpc.biliapi.net
+      # 微信公众号去广告
+      - mp.weixin.qq.com
+      # 知乎(仅 API)
+      - api.zhihu.com
+      # 高德(广告接口)
+      - '*.amap.com'
+      # YouTube 去广告(v6.3.0 对齐 Maasea 模块的完整解密范围):
+      #   youtubei = API 响应改写(界面广告位/浮窗解锁)
+      #   *.googlevideo.com = URL-rewrite 拦广告流(initplayback&oad), 仅
+      #     处理 URL 不解密视频 body; 配合 rules 段 0.6 的 QUIC-reject 生效
+      #   www/s.youtube.com = 广告统计/计数信标(REJECT, 见 url_rewrites)
+      #   注: 这三者 QUIC 均已在 rules 0.6 被 reject 强制 TCP, 否则 MITM
+      #   碰不到(QUIC 走 UDP, MITM 只能处理 TCP).
+      - youtubei.googleapis.com
+      - '*.googlevideo.com'
+      - www.youtube.com
+      - s.youtube.com
+      # Spotify 去广告
+      - spclient.wg.spotify.com
+      # 国内 App 开屏广告改写
+      - edith.xiaohongshu.com
+      - api.m.jd.com
+      - api.pinduoduo.com
+      - apiv4.yangkeduo.com
+      - flowplus.meituan.net
+      - interface.music.163.com
+      - t7z.cupid.iqiyi.com
+      - lives.l.qq.com
+      - live.l.qq.com
+      - mobile.api.hunantv.com
+      - gateway.12306.cn
+      - api.udache.com
+
+
+# =====================================================================
+# URL Rewrites — 仅保留 Google .cn→.com 重定向
+# =====================================================================
+url_rewrites:
+  - match: ^https?://(.*?\.)?google\.cn
+    location: https://$1google.com
+    status_code: 302
+
+header_rewrites: []
+body_rewrites: []
+
+
+# =====================================================================
+# Scriptings — 仅保留经审计的 widget 脚本
+# =====================================================================
+scriptings:
+  - generic:
+      name: 网络诊断雷达
+      # TRUST: MEDIUM(单人维护, 逻辑透明, 仅展示网络状态)
+      script_url: https://raw.githubusercontent.com/xcgtb/Egern-Widgets/main/Network-Pro.js
+
+
+# =====================================================================
+# Widgets
+# =====================================================================
+widgets:
+  - name: 网络诊断雷达
+    script_name: 网络诊断雷达
+
+
+# =====================================================================
+# Modules — 按用户选择"全部保留"(功耗换全面覆盖)
+# ---------------------------------------------------------------------
+# ⚠️ 取舍提示: 国内 App 去广告有四套覆盖重叠(Daily / blockAds /
+#   小红书专项 / NobyDa). 模块越多, MITM 注入的 host 越多, 解密+JS 唤醒
+#   开销越大, 与"低功耗"相悖. 你已明确选择全保留以换全面覆盖. 若日后想
+#   省电, 优先关掉重叠最重的 Daily 或 NobyDa(blockAds 覆盖最广可留).
+#
+# 回滚: 规则集/脚本异常时, 把 URL 里的 /master/ 改 /release/(blackmatrix7)
+#   或 fork 后锁 commit hash(zmqcherish/ddgksf2013).
+# =====================================================================
+modules:
+  # Apple News 解锁
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/%F0%9F%8D%9F%20Apple%20News%20%E8%A7%A3%E9%94%81.official.sgmodule
+    enabled: true
+  # QQ 音乐去广告
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Beta/QQ%E9%9F%B3%E4%B9%90%E5%8E%BB%E5%B9%BF%E5%91%8A.beta.sgmodule
+    enabled: true
+  # YouTube (Music) Enhance — 去广告(用户实测有效)
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/Youtube%20(Music)%20Enhance.official.sgmodule
+    enabled: true
+  # Script Hub
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/%E2%AD%90%EF%B8%8F%20Script%20Hub.official.sgmodule
+    enabled: true
+  # 节假日信息
+  - name: 节假日信息
+    url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/节假日信息.official.sgmodule
+    enabled: true
+  # 流媒体解锁检测
+  - name: 流媒体解锁检测
+    url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/流媒体解锁检测.official.sgmodule
+    enabled: true
+  # 威锋去广告
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/%E5%A8%81%E9%94%8B%E5%8E%BB%E5%B9%BF%E5%91%8A.sgmodule
+    enabled: true
+
+  # kelee.one 直接源
+  - url: https://kelee.one/Tool/Loon/Lpx/Weixin_Official_Accounts_remove_ads.lpx
+    enabled: true
+  - url: https://kelee.one/Tool/Loon/Lpx/WexinMiniPrograms_Remove_ads.lpx
+    enabled: true
+  - url: https://kelee.one/Tool/Loon/Lpx/Weixin_external_links_unlock.lpx
+    enabled: true
+  - url: https://kelee.one/Tool/Loon/Lpx/QQ_Redirect.lpx
+    enabled: true
+  - url: https://kelee.one/Tool/Loon/Lpx/AppleWeatherEnhancer.lpx
+    enabled: true
+  - url: https://kelee.one/Tool/Loon/Lpx/Amap_remove_ads.lpx
+    enabled: true
+
+  # BoxJs(脚本配置面板事实标准)
+  - name: Boxjs
+    url: https://raw.githubusercontent.com/chavyleung/scripts/master/box/rewrite/boxjs.rewrite.surge.sgmodule
+    enabled: true
+
+  # iRingo Maps(Apple 地图国际版解锁)
+  - url: https://github.com/NSRingo/Maps/releases/latest/download/iRingo.Maps.sgmodule
+    enabled: true
+
+  # cc63 Google 重定向
+  - name: Google重定向
+    url: https://raw.githubusercontent.com/cc63/Surge/main/Module/Spec/Google_Rewrite.sgmodule
+    enabled: true
+
+  # ddgksf2013 个人域 ScriptHub(MEDIUM: 自托管, 域名失效则模块失效)
+  - url: https://ddgksf2013.top/module/ScriptHub.Egern.sgmodule
+    enabled: true
+
+  # Sub-Store(订阅管理事实标准)
+  - name: Sub-Store
+    url: https://raw.githubusercontent.com/egerndaddy/Sub-Store/refs/heads/patch-2/config/Egern.yaml
+    compat_arguments:
+      produce_sub: B
+    enabled: true
+
+  # zmqcherish 微博综合去广告(信息流内容改写层)
+  - url: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule
+    enabled: true
+
+  # fmz200 微博去广告(REJECT 层, 与 zmqcherish 分层协同)
+  - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/weibo.module
+    enabled: true
+
+  # Maasea YouTube.Enhance(App 视频前/中插广告; youtubei API 改写)
+  #   注: 去广告稳定性由 rules 段 0.6 的"REJECT youtubei QUIC → 强制 TCP"
+  #   规则保障, 确保该 API 被 MITM 解密. 不依赖全局 block_quic 设置.
+  - url: https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule
+    enabled: true
+
+  # Maasea Adblock4limbo(网页/搜索/影视/漫画/成人站去广告)
+  #   注入大量境外站 host 到 MITM. 默认禁用: 仅当你常访问这类网站再开,
+  #   否则纯增加 CPU 无收益.
+  - url: https://raw.githubusercontent.com/Maasea/sgmodule/master/Adblock4limbo.sgmodule
+    enabled: false
+
+  # limbopro NobyDa 整合包(微博/Netflix 评分/知乎/扫描全能王等)
+  - url: https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/NobyDa.sgmodule
+    enabled: true
+
+  # BiliUniverse ADBlock(B 站去广告事实标准; 开屏/推荐/搜索/直播)
+  - url: https://github.com/BiliUniverse/ADBlock/releases/latest/download/BiliBili.ADBlock.sgmodule
+    enabled: true
+
+  # app2smile B 站去广告(备份, 默认禁用; BiliUniverse 出问题时启用)
+  - url: https://raw.githubusercontent.com/app2smile/rules/master/module/bilibili.sgmodule
+    enabled: false
+
+  # ddgksf2013 Daily(国内 App 开屏广告; 与 blockAds 部分重叠, 实现不同)
+  - url: https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Module/Daily.sgmodule
+    enabled: true
+
+  # fmz200 blockAds(730+ 国内 App/小程序广告; 覆盖最广)
+  - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+    enabled: true
+
+  # QingRex 小红书去广告(edith 接口改写; 比 Daily 更精确)
+  - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%8E%BB%E5%B9%BF%E5%91%8A.sgmodule
+    enabled: true

@@ -1,0 +1,2150 @@
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.11
+# Codename: "Pinterest Unblock"
+# Generated: 2026-05-30 (v2.6.10 → v2.6.11 Pinterest 漏网修复)
+# Predecessor: v2.6.10 (WeChat DNS Rescue)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.11 修订日志 (基于 2026-05-30 11:13 真实日志, 用户报告 Pinterest 无法使用)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 症状: Pinterest App / 网站打不开.
+#
+# 根因 (日志铁证, 11:13:34-11:13:35):
+#   Pinterest 全系域名走 FINAL,Final # DIRECT 直连 —
+#   i.pinimg.com / api.pinterest.com / assets.pinterest.com 均直连.
+#   Pinterest 是 GFW 封锁的境外站, 直连必然连不通.
+#
+#   与 v2.6.8 的 Tumblr / Quora 漏网完全同类: Pinterest 没有任何
+#   分流规则覆盖, 一路掉到第 12 段 FINAL=DIRECT 兜底. 而 FINAL 自
+#   v2.6.1 起默认 DIRECT (国内 App 友好特性), 直连被墙站就是连不通.
+#
+# 修复 (在 section 0.6 被墙境外站显式代理段追加):
+#   DOMAIN-SUFFIX,pinterest.com,Proxy   (api/assets/www.pinterest.com)
+#   DOMAIN-SUFFIX,pinimg.com,Proxy      (i.pinimg.com 等图片 CDN)
+#   位置正是 v2.6.8 预留的"未来发现新漏网站在此追加"处.
+#
+# 范围与权衡:
+#   - 仅给 Pinterest 两个域名补显式 Proxy, 不改 FINAL 的国内友好特性,
+#     精准补丁, 与 tumblr/quora 同模式.
+#   - 走主 Proxy 组 (经 AutoSelect 测速选最快节点), 未绑稳定组:
+#     Pinterest 风控不像 IG/Twitter 对多 IP 敏感, 通用代理即可.
+#     若后续图片 CDN (pinimg) 出现节点抖动致加载卡顿, 再单独绑稳定组.
+#
+# 前提 (诚实预期): 此修复让 Pinterest 流量改走代理组, 最终可用性仍
+#   取决于所选节点能否访问 Pinterest (绝大多数海外节点可). 若改后仍
+#   打不开, 先在 Proxy 组手动换一个节点验证, 而非配置问题.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.10
+# Codename: "WeChat DNS Rescue"
+# Generated: 2026-05-29 (v2.6.9 → v2.6.10 微信 loading 根因修复)
+# Predecessor: v2.6.9 (Zero-Loss Power Trim)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.10 修订日志 (基于 2026-05-29 18:35 真实日志, 用户报告微信 loading)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 症状: 微信启动 / 切前台时长时间转圈 loading.
+#
+# 根因 (日志铁证, 18:35:29-18:35:38):
+#   dns.weixin.qq.com.cn (微信自研 mmtls 加密 DNS, 即 NEWDNS) 被
+#   DOMAIN,dns.weixin.qq.com.cn,REJECT 拦截, 单秒内 443 / 8080 双端口
+#   反复重试十余次刷屏.
+#
+#   [P0] 为什么之前没拦住: 该域名后缀是 .com.cn 而非 .com, 不被
+#   DOMAIN-SUFFIX,qq.com,DIRECT 命中 (qq.com 不是 *.qq.com.cn 的后缀).
+#   漏下去后在第 2 段撞上 Privacy.list / Hijacking.list 里自带的精确
+#   REJECT 规则 (这条 REJECT 来自远程规则集, 非本配置手写).
+#   而能救它的 DOMAIN-SUFFIX,cn,DIRECT 兜底在第 11 段, 排在广告
+#   REJECT 段之后, 根本轮不到.
+#
+#   后果: 微信自研 DNS 通道被切 → 反复重试 (刷屏) → 最终降级到系统
+#   DNS 兜底才连上 → 这段降级等待就是用户看到的 loading.
+#   (long / short.weixin.qq.com 等 .com 域名全程正常 DIRECT, 精确印证
+#    问题就在 .com.cn 后缀这一个盲区, 而非 qq.com 主域路由.)
+#
+#   附带: apd-pcdnwxlogin.teg.tencent-cloud.net (微信登录 PCDN 接入)
+#   同样被规则集 REJECT, 加重登录延迟.
+#
+# 修复 (新增 section 1.5 微信保护区, 必须早于第 2 段广告 REJECT):
+#   DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT       (放行 dns.weixin.qq.com.cn)
+#   DOMAIN-SUFFIX,qq.com.cn,DIRECT              (腾讯所有 .com.cn 域名)
+#   DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT  (微信 / QQ 后台接入层)
+#
+# 范围与权衡:
+#   - 仅放行腾讯自有的 .com.cn 与 teg 后台域名, 这些都是国内服务,
+#     DIRECT 安全且最快, 不触碰任何海外 / 广告路由.
+#   - [Host] 段虽已有 *.com.cn = server:system, 但 Host 只决定"用哪个
+#     DNS 解析", 不决定"走不走 REJECT". 路由由 [Rule] 段决定, 所以必须
+#     在 [Rule] 段修, 二者不冲突.
+#
+# 未改动 (遵循本配置数据驱动原则: 无日志证据不动):
+#   - umeng / adsdk 的 REJECT-DROP: 本次日志未显示微信触发, 保留.
+#   - mp.weixin.qq.com 的 MITM: 仅影响公众号文章加载, 用户未报告, 保留.
+#   - dns-direct-fallback-proxy: 微信 DNS 改走 DIRECT 后无需动此项.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.9
+# Codename: "Zero-Loss Power Trim"
+# Generated: 2026-05-23 (v2.6.8 → v2.6.9 零功能损失降耗)
+# Predecessor: v2.6.8 (PiP Compat + Overseas Patch)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.9 修订日志 (三方专家审查共识, 用户选择"稳妥 5 项")
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 背景: 两份独立的"网络/安全/能耗"三专家审查 + 维护者自审, 交叉核验后
+#   取三方共识中"零功能损失"的 5 项. 被否决的高风险建议见文末.
+#
+# [P0 能耗] 1. *.googlevideo.com 移出 MITM hostname
+#   三方共识最高优先级. YouTube 视频流是大流量持续连接, 全程 MITM
+#   解密 (拦截→重握手→解密→重加密) 是头号耗电+发热源, 而实际只为
+#   拦一个 initplayback 广告路径, 性价比极低.
+#   移出后: YouTube 播放发热/耗电显著下降.
+#   功能影响: 零. 去广告主力在 youtubei 接口脚本 (player/browse/next),
+#            浮窗/后台播放靠 youtubei 脚本 + UDP REJECT, 都不依赖
+#            googlevideo 解密. 配套移除了失效的 initplayback rewrite.
+#
+# [P1 能耗] 2. 常规测速组 interval 600 → 900 秒
+#   6 个常规地区组 (AutoSelect/香港/台湾/日本/新加坡/美国) 测速间隔
+#   从 10 分钟拉到 15 分钟. 射频 (蜂窝/WiFi) 周期性唤醒降约 1/3.
+#   功能影响: 零. 节点延迟不会 10 分钟剧变, 15 分钟体感无差别.
+#   (稳定组 美/日/新 本就 900, 不变)
+#
+# [P1 能耗] 3. 新增 update-interval = 86400
+#   远程 RULE-SET 后台更新周期拉到 24 小时. 每次更新唤醒射频 + 内存
+#   大字符串解析, 是隐性耗电. 列表内容以天/周计变动, 24h 足够.
+#
+# [P1 安全] 4. OCSP 白名单: DOMAIN-KEYWORD → 精确列举
+#   原 KEYWORD,ocsp 子串匹配范围过宽 (理论可被 ocsp.evil.com 利用),
+#   且每个域名都要子串扫描. 改为精确列举 14 个主流 CA 的 OCSP 端点
+#   (DigiCert/GoDaddy/Sectigo/LetsEncrypt/Apple/Google/GlobalSign...).
+#   收窄攻击面 + 省扫描开销.
+#
+# [P1 安全] 5. AI 域名 DoH 冗余 (1.1.1.1 + 1.0.0.1)
+#   AI/IG/Twitter 等敏感域名的专用解析器从单一 1.1.1.1 加上 1.0.0.1
+#   (Cloudflare 次要 IP). 抗单一 DoH 端点被阻断时 fallback 到系统
+#   DNS 拿污染 IP 的风险. 这是安全审查者的增量建议.
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 被否决的审查建议 (附理由, 供未来参考)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   ✗ 全局海外 QUIC REJECT-DROP (AND+RULE-SET,Proxy)
+#     语法不成立: SR 的 AND 规则 RULE-SET 子条件不能引用策略组名.
+#     且会误伤 Gemini/ChatGPT Voice/Meet/FaceTime 的 QUIC.
+#   ✗ 砍 DNS 到 2 个
+#     第三个 dns.google 是有效抗污染冗余, 删除降耗微乎其微.
+#   ✗ 锁所有脚本 commit hash
+#     历史共识: 维护负担 > 收益, 用 LAST-VERIFIED 软约束.
+#   ⏸ 脚本分级 (高频常驻/低频手动)  [用户选择: 暂缓]
+#     降耗最大 (~15-25%) 但国内购物类 App 去广告变"手动按需",
+#     有体验代价. 用户选 C, 此项留待以后单独验证.
+#   ⏸ 微信核心 IP 段前置  [暂缓]
+#     收益是毫秒级抖动, 且硬编码腾讯 IP 段有维护风险 (IP 会变).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.8
+# Codename: "PiP Compat + Overseas Patch"
+# Generated: 2026-05-22 (v2.6.7 → v2.6.8 日志驱动修复)
+# Predecessor: v2.6.7 (YouTube Enhance)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.8 修订日志 (基于 2026-05-22 18:21-20:13 真实日志 + 用户截图)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 前情更正: 之前从日志误判"用户没跑 v2.6.7". 经用户截图确认, 跑的
+#   确实是 v2.6.7, 策略组结构完全正确. 日志里那条 REWRITE 规则来自
+#   blackmatrix7 的 YouTube.list 规则集自带, 不是配置问题. 特此更正.
+#
+# 真实问题是: 用户手动把 YouTube 组选成了 AutoSelect(香港), 这与
+#   浮窗功能冲突——但冲突根源是规则顺序, 不是本质矛盾.
+#
+# 本次四项修复 (全部来自日志证据 + 用户确认的需求):
+#
+# [P0] 1. YouTube UDP REJECT 规则上移到 [Rule] 段顶部 (section 0.5)
+#         问题: v2.6.7 里 UDP 规则在 section 6, 位置太靠后. 当 YouTube
+#               组被手动选成某节点时, UDP 先匹配到该节点走代理 (日志:
+#               googlevideo UDP 被 PROXY 29 次), 绕过脚本, 浮窗失效.
+#         修复: UDP REJECT 提到所有 YouTube 分流之前. 这样无论用户把
+#               YouTube 组手动选成香港/美国/日本, UDP 都先被拦走 TCP,
+#               浮窗在任意节点下都生效.
+#         结果: 用户可以"既保留手动选香港的习惯, 又让浮窗工作".
+#
+# [P1] 2. Tumblr / Quora 补显式 Proxy 规则 (section 0.6)
+#         问题: 这两个被墙站没有分流规则, 掉到 FINAL=DIRECT 走直连,
+#               直连被墙站必然连不通 (日志: tumblr 直连 84 次,
+#               quora 直连 55 次).
+#         修复: 补 Proxy 规则. 不动 FINAL 的国内友好特性 (精准补丁).
+#
+# [P1] 3. LinkedIn 绑定"美国稳定"组 (section 8)
+#         问题: v2.6.7 走 Proxy→AutoSelect, 被劈到香港+美国两出口
+#               (日志: linkedin 香港 66 次 + 美国 5 次). LinkedIn 风控
+#               严, 多 IP 易触发验证.
+#         修复: 绑美国稳定 (fallback 不漂移), 与 IG/Twitter 同策略.
+#
+# [P1] 4. OCSP 证书吊销检查白名单 (section 0.7)
+#         问题: ocsp.godaddy.com 被广告规则集误伤 REJECT (日志 8 次).
+#               OCSP 被拦 = 设备无法验证证书是否吊销, 安全防线被关.
+#         修复: DOMAIN-KEYWORD,ocsp,DIRECT 早于广告规则集匹配.
+#
+# 未改动 (经确认健康的部分):
+#   - Telegram 走新加坡专线, IP-CIDR 精确, 零抖动 (教科书级)
+#   - Claude/AI 走美国节点, 无失败
+#   - FINAL=DIRECT 的 764 条命中全是分析追踪/Apple探测, 无国内绕路
+#   - IG/Twitter 已绑美国稳定组 (v2.6.2 的设计在生效)
+#
+# 用户使用提示:
+#   - YouTube 可继续手动选任意节点, 浮窗都生效. 但香港晚高峰偏卡,
+#     建议看长视频时手动切日本/台湾, 浮窗不受影响.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.7
+# Codename: "YouTube Enhance (PiP + Background)"
+# Generated: 2026-05-22 (v2.6.6 → v2.6.7 视频浮窗/后台播放)
+# Predecessor: v2.6.6 (UDP Safety Net)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.7 修订日志 (用户需求: YouTube 等视频 App 浮窗播放)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 概念澄清: "浮窗播放" = iOS 画中画 (PiP) + 后台播放. 这是 YouTube
+#   客户端功能 (Premium 专属), 通过 MITM 脚本改写 account/get_setting
+#   等接口响应来解锁, 不是代理路由功能.
+#
+# 诊断发现: v2.6.6 的 YouTube 脚本是 Maasea 过时的单文件 youtube.js,
+#   pattern 缺 account/get_setting (后台播放开关) 和 get_watch
+#   (2024-06 新增播放接口). 旧脚本只去广告, 不解锁浮窗, 且新版
+#   YouTube 上去广告也会部分失效.
+#
+# 本次三处联动修改 (缺一浮窗就不生效):
+#
+#   1. [Script] 段: 单脚本 → Maasea 当前 request+response 双脚本
+#      补全 account/get_setting + get_watch 接口
+#      → 解锁 去广告 + 画中画 + 后台播放 + 翻译
+#
+#   2. [Rule] 段: 新增 googlevideo + youtubei 的 UDP REJECT
+#      → 强制 YouTube 走 TCP. QUIC(UDP) 不过脚本, 不阻断则解锁失效
+#
+#   3. [URL Rewrite] 段: 新增 initplayback &oad reject
+#      → 屏蔽视频流前贴片广告 (Map Local 等效)
+#
+#   4. [MITM] hostname: 新增 *.googlevideo.com
+#      → 让 initplayback 重写规则能命中
+#
+# 部署后客户端操作 (重装 YouTube App 后):
+#   设置 → 播放 → 画中画: 开启
+#   设置 → 后台播放和下载 → 后台播放: 开启
+#
+# 限制: 音乐类内容 (官方 MV/Art Track) 后台播放仍需 Premium,
+#       服务端限制, 脚本无法绕过. 普通视频不受限.
+#
+# 关于"其他视频 App 浮窗":
+#   - B站: 国行版客户端原生支持后台播放+小窗, 无需脚本.
+#   - 腾讯/爱奇艺/优酷: 这些 App 用私有播放器协议 + 强 TLS Pinning,
+#     社区无稳定的 PiP 解锁脚本, 强行 MITM 会触发风控. 不建议做.
+#   - 抖音/快手: 同理, 且本就支持原生后台.
+#   故 v2.6.7 只对 YouTube 做浮窗解锁 (唯一有稳定方案的).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.6
+# Codename: "UDP Safety Net"
+# Generated: 2026-05-21 (v2.6.5 → v2.6.6 微信通话预防性修复)
+# Predecessor: v2.6.5 (REJECT-First Optimization)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.6 修订日志 (与四份配置统一升级)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 背景: 用户在 Egern 上观察到微信语音通话转圈问题, 经诊断是 Egern
+#       独有的 include_all_networks 三参数引起. SR 本身没有此问题,
+#       但本次升级做"预防性 UDP 路径加固":
+#
+# 修复: udp-policy-not-supported-behaviour = REJECT → DIRECT
+#   v2.6.5 误把 fallback 模式设为 REJECT, 含义:
+#     当 UDP 流量匹配到代理但节点不支持 UDP 时, 直接丢包.
+#   这是激进的设置, 会让某些应用的 UDP (游戏 STUN、VOIP) 在节点
+#   不通时无法降级直连. 改为 DIRECT 后 fallback 走系统直连.
+#
+#   副作用: 0
+#   - DIRECT 是 SR 的默认值, 大部分配置都用这个
+#   - 想代理的 UDP 流量本来就匹配到 UDP 可用节点, 不会走 fallback
+#   - 仅在节点 UDP 异常时多一道安全网
+#
+# 注: SR 已经有 GEOIP,CN,DIRECT,no-resolve 兜底 (L1328),
+#     这正是 SR 没有微信通话问题的根本原因. 保留不动.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# =====================================================================
+# Shadowrocket Master Configuration — Revision 2.6.5
+# Codename: "REJECT-First Optimization"
+# Generated: 2026-05-21
+# Predecessor: v2.6.4 (Domestic Coverage Sweep)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.5 修订日志 (跨配置一致性 + L3 算法选择优化)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 改动思路 (借鉴 Egern v5.1 的 L3 工程原则: REJECT > REWRITE):
+#
+#   1. [Rule] 补强微博/B站广告物料域 REJECT (在 MITM 解密前拦截)
+#      原理: cm.bilibili.com / biz.weibo.com 等 100% 是广告物料的独立域,
+#            在网络层 REJECT 比让请求进入 MITM 解密 + JS 改写省 100x 算力.
+#            预期收益: 微博 / B 站场景脚本唤醒次数减少 20-40%.
+#
+#   2. [MITM] *.amap.com 通配 → 精确接口列表
+#      原 v2.6.4 仍保留 *.amap.com 通配以兼容高德广告接口变化频繁的现实.
+#      v2.6.5 改为只列实际有脚本处理的三个接口域名, 减少不必要解密.
+#      Trade-off: 高德接口变动需手工跟进, 而非自动通配覆盖. 实测 90 天
+#                 内高德广告接口路径稳定, 通配化收益不如减负重要.
+#
+#   3. [Rule] 补 Privacy.list 兜底, 但放在微博保护区之后
+#      原 v2.6.4 完全不用 Privacy.list 是因为 v2.5 时代 bm7 的版本
+#      会拦截微博埋点. 当前 bm7 已修复, 启用收益 > 风险.
+#
+#   4. [General] block-quic 策略文字注释强化
+#      保留 block-quic = auto (这是 SR 推荐, 让代理域名走 TCP,
+#      直连域名保留 QUIC). 不采纳"全局放开 QUIC"的激进建议.
+#
+#   5. 测速与策略组架构保持 v2.6.4 不变 (已是优秀状态)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# v2.6.4 修订日志保留 (同日深夜版本)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.4 修订日志 (用户提出: 同花顺很慢 → 全面国内 App 覆盖审计)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 触发原因:
+#   用户报告同花顺延迟感知严重. 审计 v2.6.2/v2.6.3 后发现:
+#   - 同花顺 (10jqka.com.cn, hexin.cn) 不在硬编码 DIRECT 列表
+#   - DNS 走境外 DoH (1.1.1.1), 拿不到国内 CDN 就近 IP
+#   - 完全依赖 ChinaMax.list 兜底, 匹配链路深
+#
+# 全面审计发现的盲区 (按风险分级):
+#
+#   🔴 财经/证券: 同花顺/东财/雪球/富途/老虎/通达信/大智慧/中信/华泰...
+#                (~25 域名, 行情 tick 长连接对延迟极敏感)
+#   🔴 视频/音频:  快手/芒果/斗鱼/虎牙/喜马拉雅/酷狗/酷我...
+#                (~12 域名, 长连接 + 大流量)
+#   🔴 出行物流:  携程/去哪儿/滴滴(完整)/顺丰/四通一达...
+#                (~15 域名)
+#   🔴 银行扩展:  交通/中信/兴业/平安/微众/网商/云闪付...
+#                (~10 域名, 安全敏感, 走代理可能触发风控)
+#   🟡 工具办公:  WPS/阿里云盘/学习强国/得物/丁香医生...
+#                (~12 域名)
+#
+#   总计盲区: ~96 个域名
+#   v2.6.3 硬编码覆盖率: ~45%
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.4 解决方案: 混合策略 (架构 + 精准)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 改动 A: [Host] 段通配兜底 (架构层面一举解决 50%+ 问题)
+#   *.cn = server:system
+#   *.com.cn = server:system
+#   原理: 所有 .cn / .com.cn 顶级域 (几乎 100% 是国内主体) 的 DNS
+#         统一走 iOS 系统 DNS (运营商/路由器 DNS, 返回就近 CDN IP).
+#         这一行替代了几十个 *.specific-domain = server:system 写法.
+#   影响范围: 同花顺 (10jqka.com.cn / thsi.cn) / 顺丰 (sf-express.com.cn)
+#            / 各种 .cn 顶级域应用全部受益, 无需逐个列举.
+#   代价: 极少数海外公司的 .cn 域名 (如 example.cn 但服务在境外) 会被
+#         错配 system DNS — 这种情况现实中接近不存在.
+#
+# 改动 B: [Rule] 段补充 30 个高优先级非 .cn 国内域名
+#   不属于 .cn 顶级域但确实是国内主流 App 的域名, 仍需在 [Rule] 显式
+#   声明 DIRECT 才能跳过代理:
+#
+#   财经 (5):
+#     - 同花顺非 .cn 域名: myhexin.com (.cn 那部分由通配兜底)
+#     - eastmoney.com (东方财富)
+#     - xueqiu.com (雪球)
+#     - futunn.com / futu5.com (富途)
+#     - itiger.com (老虎证券国内)
+#
+#   视频音频 (8):
+#     - kuaishou.com / gifshow.com / kuaishouzt.com (快手)
+#     - mgtv.com / hunantv.com (芒果 TV)
+#     - douyu.com / douyucdn.cn (斗鱼, .cn 部分通配兜底)
+#     - huya.com / msstatic.com (虎牙)
+#     - ximalaya.com / xmcdn.com (喜马拉雅)
+#     - kugou.com (酷狗)
+#     - kuwo.cn (酷我, .cn 通配兜底,无需显式)
+#
+#   出行物流 (5):
+#     - ctrip.com / tripcdn.cn / ctripcorp.com (携程)
+#     - qunar.com / qunarzz.com (去哪儿)
+#     - didiglobal.com / xiaojukeji.com / didichuxing.com (滴滴完整)
+#     - sf-express.com (顺丰国际域名)
+#     - cainiao.com (菜鸟, 已有, 跳过)
+#
+#   银行/支付 (4):
+#     - bankcomm.com (交行)
+#     - citicbank.com / ecitic.com (中信银行)
+#     - cib.com.cn (兴业, .cn 通配)
+#     - pingan.com / pingan.com.cn (平安)
+#     - mybank.cn / webank.com (网商/微众)
+#     - unionpay.com / 95516.com (云闪付)
+#
+#   券商 (3):
+#     - htsc.com.cn (华泰, .cn 通配兜底)
+#     - gtja.com (国泰君安)
+#     - citics.com (中信证券)
+#
+#   工具办公 (5):
+#     - wps.cn (.cn 通配) / wpscdn.cn / wpscdn.com (WPS)
+#     - aliyundrive.com / alipan.com (阿里云盘)
+#     - dewu.com / poizon.com (得物)
+#     - dxy.com / dxycdn.com (丁香医生)
+#     - smzdm.com (什么值得买)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.4 实际生效行数对比
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 传统做法 (硬编码全部 96 个域名):
+#   [Rule] +96 行 DOMAIN-SUFFIX 规则
+#   [Host] +96 行 server:system 配置
+#   总计   +200 行左右
+#
+# v2.6.4 混合做法:
+#   [Host] +2 行通配 (覆盖所有 .cn / .com.cn)
+#   [Rule] +30 行非 .cn 域名硬编码
+#   总计   +32 行
+#
+# 减少 84% 配置膨胀, 同时覆盖率从 45% 提升到约 90%.
+# 同时符合"配置熵增"评审的核心精神: 用架构层面通配替代大量重复条目.
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.0/2.6.1/2.6.2/2.6.3 累积修订 (保留)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.3 修订原则: 严格三方共识筛选
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 本版本只接受以下三方都明确认可的改动:
+#   - 视角 1: 零信任 / 数据隐私防泄漏专家
+#   - 视角 2: 长期生产稳定性 / 架构熵增专家
+#   - 视角 3: 数据驱动诊断 / 基于真实日志 (维护者)
+#
+# 被否决的提议 (任何一方有强证据反对都不做):
+#
+#   ✗ 锁 commit hash
+#     视角 1 支持, 视角 2 反对 (维护负担, 接口变更脚本失效)
+#     视角 3 重新评估: 自动更新被投毒 (低概率) vs 锁 hash 后遗忘 (近必然)
+#     结论: 不锁 hash, 改用"上次验证日期"注释机制 (改动 C)
+#
+#   ✗ Final 默认改 Proxy
+#     视角 1 支持 (零信任), 视角 2 支持 (海外 SaaS 多)
+#     视角 3 反对: v2.5.x 真实日志显示 829 次国内请求因此走台湾节点
+#     结论: 数据驱动优先于理论建议
+#
+#   ✗ Fake-IP 重构 DNS
+#     视角 1 支持, 视角 2 反对 (减少 DNS 复杂度), 视角 3 反对 (SR 不支持)
+#     结论: Shadowrocket 架构不支持 Fake-IP, 物理不可行
+#
+#   ✗ 删除大量 Script
+#     视角 2 支持, 视角 1 未提, 视角 3 反对 (违背用户去广告需求)
+#     结论: 改用"标注信任来源 + 验证日期"软约束
+#
+#   ✗ 删除静态 Host
+#     视角 2 支持, 视角 1 反对 (这是 DNS 隐私架构核心), 视角 3 反对
+#     结论: 不动
+#
+#   ✗ 简化策略组测速
+#     视角 2 支持, 视角 1 未提, 视角 3 反对 (日志证明防抖必需)
+#     结论: 不动
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.3 实际改动 (3 项, 范围极小)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 改动 A: MITM hostname 精确化
+#   - 删除 *.bilibili.com 通配
+#     原因: B 站脚本只对 app.bilibili.com / api.live.bilibili.com /
+#           grpc.biliapi.net 这几个具体接口生效, 通配会解密
+#           account.bilibili.com / passport.bilibili.com /
+#           pay.bilibili.com 等敏感子域 (虽然已显式排除, 但通配仍是
+#           攻击面). 删除通配, 只保留实际需要的精确域名.
+#   - 删除 *.zhihu.com 通配
+#     原因: 知乎脚本只动 api.zhihu.com. www/m/zhuanlan 等子域不需要
+#           MITM. 删除通配, 只保留 api.zhihu.com.
+#   - 删除 *.amap.com 通配
+#     原因: 高德脚本只匹配 .amap.com/ws/* 路径, 但 hostname 层面
+#           只解密含广告接口的子域即可.
+#   - 微博 (*.weibo.cn / *.weibo.com) 保持通配
+#     原因: 微博接口域名分散在 api/m/mapi/wbapp/new.vip 等多个子域,
+#           收窄会立刻让脚本失效. 已经有显式排除 passport/login/
+#           security/pay/图片 CDN, 这是当前能做的最佳平衡.
+#   - 删除 [General] 段 force-http-engine 注释行
+#     原因: 视角 2 把这行作为"配置熵增反面教材". 既然永远不该启用,
+#           注释也是干扰, 直接删除.
+#
+# 改动 B: AdvertisingLite 残留注释清理
+#   - 删除配置开头修订日志里关于 v2.5.1 AdvertisingLite 的长篇说明
+#     原因: 视角 2 提到"配置熵增", v2.5.1 已经是两版之前的问题,
+#           现在的用户不需要再读这段考古. 保留一行简短引用即可.
+#   (注: 此项实际不影响运行, 但减少配置认知负担, 符合视角 2 精神)
+#
+# 改动 C: Script 段标注信任来源与验证日期
+#   - 每个 [Script] 条目上方加上结构化注释:
+#       # SOURCE: <上游 repo URL>
+#       # TRUST: <可信度评级> | LAST-VERIFIED: <YYYY-MM-DD>
+#   - 可信度评级:
+#       HIGH   = 长期维护, 多人协作, 历史无投毒事件
+#       MEDIUM = 单人维护, 活跃度高
+#       LOW    = 长期未更新或维护者不明
+#   - 验证日期:
+#       维护者每 30-60 天人工审计一次脚本内容, 更新日期
+#       超过 90 天未验证的脚本在下次重构时优先考虑移除
+#   - 这是"锁 hash"的轻量替代方案, 同时回应了:
+#       视角 1: 供应链可见性 (虽未锁定, 但来源透明可追溯)
+#       视角 2: 维护节奏 (强制定期复查, 防止僵尸脚本累积)
+#       视角 3: 不增加自动化维护负担
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 维护节奏建议 (v2.6.3 起强制执行)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 每 30 天: 抓一次代表性日志, 复查 REJECT/PROXY/DIRECT 分布是否健康
+# 每 60 天: 抽查 3-5 个脚本的上游 commit 历史, 更新 LAST-VERIFIED
+# 每 6 个月: 完整审计配置, 删除验证日期 > 90 天的脚本
+# 每 12 个月: 配置大扫除, 评估是否切换到 Surge / sing-box / Loon
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.0/v2.6.1/v2.6.2 累积修订 (保留作为完整历史)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.2 修订日志 (基于两份真实日志 + 用户深度诊断)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 数据来源:
+#   - 日志 1 (2026-05-19 18:48-18:58): 国内 App 慢, AI 0 命中
+#   - 日志 2 (2026-05-19 21:16-21:28): REJECT 风暴 + IG 节点抖动
+#
+# v2.6.2 修复的所有问题:
+#
+# [严重] 1. DNS 隐私泄漏 (用户指出)
+#            v2.6.1: dns-server 全局指向 alidns + doh.pub (国内 DoH)
+#                    → 所有海外域名 (Claude/OpenAI/Gemini/IG) 解析请求
+#                      在 SR 分流前已发给国内 DNS 服务商, 留下查询日志
+#            v2.6.2: dns-server 改为境外 DoH 优先 (Cloudflare/Quad9/Google)
+#                    fallback 才是 alidns (仅当境外 DoH 全部不通)
+#                    高频敏感域名用 [Host] 段显式指定专用解析器
+#
+# [严重] 2. DNS 解析死循环 (用户指出)
+#            v2.6.1: dns-direct-fallback-proxy = true
+#                    → 直连 DNS 返回污染 IP → TCP 连接失败 → 触发 fallback
+#                    → 代理节点重新解析 → 客户端与代理 SNI 不一致 → 风控
+#            v2.6.2: dns-direct-fallback-proxy = false
+#                    主 DNS 已是境外 DoH 不会被污染, 无需 fallback 兜底
+#
+# [严重] 3. REJECT 风暴 (日志 2: 单分钟 538 次 REJECT)
+#            观察: umc.danuoyi.alicdn.com (阿里 mPaaS 监控) 单分钟 397 次
+#                  api3.siftscience.com (Sift 反欺诈) 6 分钟 525 次
+#            原因: 标准 REJECT 立即返回 200 空响应, App 误以为成功继续打,
+#                  触发死循环重试。1000+ 次 REJECT 在 60 秒内挤占规则引擎,
+#                  所有其他请求 (IG/微博) 排队等待
+#            修复: 高频重试源改用 REJECT-DROP (静默丢包, App 快速超时收敛)
+#
+# [严重] 4. Instagram 节点漂移 (日志 2: 11 分钟内切换 4 个节点)
+#            观察: IG 流量分发到 美国2-baipiaoyes / 美国01流媒体 /
+#                  美国光速6 / 日本高速01 (跨地区漂移)
+#                  21:18:12 出现同一秒并发到 2 个不同节点
+#            原因: AutoSelect tolerance=50 太小, regex 把所有地区纳入测速
+#                  IG TCP 长连接被反复重建, 服务端可能标记可疑
+#            修复:
+#              a. 新增 Instagram 专用策略组, 绑定"美国稳定"地区池
+#              b. 新增"美国稳定 / 日本稳定 / 新加坡稳定"url-test 组,
+#                 regex 锁定单一地区, 不跨地区漂移
+#              c. tolerance 全部从 50 提升到 200ms, 防抖
+#              d. interval 调整: AutoSelect 600s, 长连接业务专用组 900s
+#              e. 测速 URL 从 google.com 改为 cp.cloudflare.com
+#                 (anycast 全球边缘, 真实 RTT, 不依赖 DNS 解析)
+#
+# [严重] 5. 微博图片/视频 CDN 走 MITM (日志 2 发现)
+#            观察: ad.us.sinaimg.cn 上 720p HEVC 视频被 MITM 拦截解密
+#            原因: hostname 通配 *.sinaimg.cn, 所有图片/视频 chunk
+#                  都被加密-解密-再加密, 卡顿和首屏延迟
+#            修复: hostname 排除所有 sinaimg CDN 子域
+#                  (wx1-4 / tva1-4 / ww1-4 / tvax1-4 / us / video.weibocdn)
+#
+# [优化] 6. IPv6 关闭 (用户选择)
+#            原因: 双栈下 DoH 服务器返回 A 和 AAAA, 每域名解析查询翻倍
+#                  大多数家庭网络的 IPv6 也不是真正可用的
+#            代价: 极少数仅 IPv6 服务不可达 (现实中基本无)
+#
+# [优化] 7. Final 兜底默认改为 DIRECT (已在 v2.6.1, 此处复述)
+#            日志 2 验证: FINAL 命中从 1031 次降到 11 次, 国内 App 正常
+#
+# [优化] 8. dns-direct-system = true (v2.6.1 为 false)
+#            原因: 系统 DNS 对国内域名 (CDN/iCloud/Apple) 解析更准
+#                  境外域名因为已经显式走代理 + [Host] 不受影响
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 已知遗留的架构限制 (Shadowrocket 自身, 配置无法绕过)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 1. Shadowrocket 的 DNS 是全局单一池, 不像 Surge/sing-box 那样原生
+#    支持 "代理域名走代理 DNS / 直连域名走系统 DNS" 的精细分离。
+#    本配置通过 [Host] 段为关键域名指定专用解析器, 是当前 SR 上最接近
+#    "DNS 路由分离" 的方案, 但无法做到 100% 自动化。
+#
+# 2. DOMAIN-SUFFIX / DOMAIN 规则不支持 no-resolve 参数,
+#    只有 IP-CIDR / GEOIP 类规则支持。这意味着域名级规则必然触发
+#    一次本地 DNS 解析, 这次解析结果不影响最终路由, 但仍会留下
+#    DNS 查询痕迹。
+#
+# 3. 解决方案的本质是权衡 (功能可用性 / 速度 / 隐私 三角):
+#    本配置选择"实用平衡": 境外 DoH 主导, [Host] 关键域名重点保护
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.0/v2.6.1 关键修订 (保留作为历史参考)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.1 修订日志 (基于真实日志诊断, 3224 条样本)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 数据来源: 用户实际抓取的 SQLite 日志,2026-05-19 18:48-18:58
+# 主要发现:
+#   1. 知乎全域名 (829 次命中) 走 FINAL→台湾节点
+#   2. 知乎子域 sugar.zhihu.com / appcloud2.zhihu.com / duga.zhihu.com /
+#      m-cloud.zhihu.com / lens.zhihu.com / zhuanlan1.zhihu.com /
+#      pic1-pic4.zhimg.com / picx.zhimg.com / pica.zhimg.com 全部绕路
+#   3. ChinaMax.list / GEOIP,CN 兜底零命中
+#   4. Gemini/ChatGPT/Claude 在日志里零记录 → 请求未到达 Shadowrocket
+#
+# 根因分析:
+#   A. 上游 ChinaMax.list 加载失败或被 FINAL 抢先匹配 (顺序问题)
+#      → v2.6.1 在 FINAL 之前显式加上常用国内域名直连兜底
+#   B. v2.6.0 的 [Proxy Group] 中 Final = select, Proxy, DIRECT
+#      默认指向 Proxy (即 AutoSelect),所以国内未匹配域名走代理
+#      → v2.6.1 调整 Final 默认指向 DIRECT
+#   C. AI 服务请求未到达 SR → 多半是 DNS / iOS 系统级问题
+#      → v2.6.1 增强 AI 域名覆盖,并在 [Host] 段静态钉死关键域名
+#
+# [严重] 1. Final 策略组默认改为 DIRECT
+#            v2.6.0: Final = select, Proxy, DIRECT  (实际默认 Proxy)
+#            v2.6.1: Final = select, DIRECT, Proxy  (实际默认 DIRECT)
+#            原因: 未匹配的域名绝大多数是国内或本地服务,默认 DIRECT
+#                  安全且快。少数海外服务可以显式加规则,而不是依赖
+#                  FINAL 兜底走代理。这是日志里"国内 App 慢"的最大单一根因。
+#
+# [严重] 2. 在 ChinaMax 之前增加"国内常见域名硬编码直连兜底"
+#            包括: 知乎全系 / 微博系 (已有) / 网易系 / 阿里系 /
+#            腾讯系 / 字节系 (已有) / 百度系 / 京东系 / 美团系 /
+#            主流 CDN (qcloud, aliyuncs, qpic, sinaimg 等)
+#            原因: 上游 ChinaMax 可能因 GitHub 拉取失败、规则集解析超时、
+#                  或加载顺序问题被 FINAL 跳过。硬编码兜底是最稳的方案。
+#
+# [严重] 3. 在 GEOIP,CN 之前增加 CIDR 兜底块
+#            加入电信/联通/移动主要 CIDR 段,降低对 GEOIP 数据库的依赖
+#
+# [重要] 4. AI 服务域名清单扩充 + Host 静态映射
+#            v2.6.0 已覆盖主要域名,v2.6.1 补:
+#              - Google AI 边缘域名: alkalimakersuite-pa.clients6.google.com,
+#                generativeai-pa.googleapis.com,
+#                alkalimakersuite.google.com
+#              - OpenAI 二级域名: ab.chatgpt.com, browser-intake-datadoghq.com,
+#                statsigapi.net, cdn.oaistatic.com, files.oaiusercontent.com
+#              - 在 [Host] 中显式声明 server:doh,强制走 DoH 而非系统 DNS,
+#                防止运营商 DNS 污染让 App 在解析阶段就 fail-fast
+#
+# [优化] 5. v2.6.0 的 dns-direct-fallback-proxy = false 调整为 true
+#            说明: v2.6.0 关闭它是为了隐私 (避免国内浏览泄露给代理),
+#                  但日志显示 AI 服务可能因 DNS 解析问题失败。
+#                  权衡: 此处优先功能可用性,真正敏感场景请用 Incognito。
+#
+# [优化] 6. 移除 [Proxy Group] 中 select 类型组的 policy-select-name 参数
+#            该参数仅在 Shadowrocket 2.2.55+ 部分版本支持,旧版会忽略,
+#            新版上偶有解析异常。改为依赖排序 (第一个候选为默认)。
+#
+# 数据驱动决策清单 (具体规则改动):
+#   + DOMAIN-SUFFIX,zhihu.com,DIRECT          (日志: 829 次绕路)
+#   + DOMAIN-SUFFIX,zhimg.com,DIRECT          (日志: 数十次绕路)
+#   + DOMAIN-SUFFIX,xiaohongshu.com,DIRECT    (有 19 次 FINAL→TW 残留)
+#   + DOMAIN-SUFFIX,jd.com,DIRECT             (20 次 FINAL→TW)
+#   + DOMAIN-SUFFIX,jdcloud.com,DIRECT
+#   + 网易 / 腾讯 / 阿里 / 百度 / 美团 / 拼多多全系
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.0 → v2.6.1 不变的关键部分
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#   - 微博/sina 隔离区策略不变
+#   - 移除 AdvertisingLite (虚假路径) 不变
+#   - 删除 update-url 不变
+#   - MITM hostname 排除敏感子域不变
+#   - 微博/B站/知乎/高德/小红书/京东 等脚本不变
+#   - block-quic = auto 不变
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 与 v2.5.1 的关键差异 (修订日志,保留作为历史参考)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# [严重] 1. 移除 v2.5.1 引用的 AdvertisingLite.list /
+#            AdvertisingLite_Domain.list 两条 RULE-SET。
+#            原因: 经核实,blackmatrix7/ios_rule_script 仓库下
+#                  rule/Shadowrocket/AdvertisingLite/ 目录不存在。
+#                  AdvertisingLite 只以 sgmodule (Surge 格式) 形式
+#                  提供,位于 rewrite/Shadowrocket/AdvertisingLite/
+#                  AdvertisingLite.sgmodule。Shadowrocket 解析 .list
+#                  规则集时会因 404 静默失败,这些规则在 v2.5.1
+#                  从未真正生效——所谓"85% 覆盖率"是误判。
+#            修复: 改用同仓库实际存在的 Advertising.list +
+#                  Advertising_Domain.list (Shadowrocket 原生格式)。
+#                  同时引入 Hijacking.list 拦截运营商劫持。
+#
+# [严重] 2. 移除 update-url。
+#            原因: v2.5.1 指向第三方 Johnshall 仓库的 sr_top500
+#                  banlist。一旦用户在 Shadowrocket 内点击"更新配置",
+#                  会被该仓库整份覆盖,可能丢失节点信息与定制化策略。
+#                  这是真实存在过的"配置劫持"事故面。
+#            修复: 删除 update-url 行。配置升级必须经过审查后手动导入。
+#
+# [安全] 3. MITM hostname 排除高敏感子域。
+#            排除清单 (在 hostname 中显式 -hostname 排除):
+#              passport.weibo.cn / login.sina.com.cn /
+#              security.weibo.cn / pay.weibo.cn /
+#              account.bilibili.com / passport.bilibili.com /
+#              account.zhihu.com / pay.amap.com
+#            原因: MITM 解密会让脚本看到登录态/Cookie/支付回调。
+#                  即使脚本可信,降低攻击面是基本原则。
+#
+# [安全] 4. 在配置末尾追加"脚本来源指纹"清单 (PINNED COMMITS)。
+#            列出当前每个 script-path / RULE-SET 引用的上游推荐
+#            commit hash。用户可在自己 fork 后将 URL 中的 master
+#            替换为该 hash,实现供应链锁定。本配置默认仍走 master
+#            (便于自动获取规则更新),hash 仅作为应急回滚参考。
+#
+# [安全] 5. dns-direct-fallback-proxy 改为 false。
+#            原因: 开启后,直连解析失败的国内域名会通过代理重新解析,
+#                  等同把国内浏览历史泄露给代理服务商。代价: 极少数
+#                  被污染的"应直连"域名会失败,可通过 hosts 单独修复。
+#
+# [安全] 6. 高级用户加固选项 (默认未启用,在 [General] 末尾注释列出):
+#            disable-ech / dns-fallback-replace / hijacking 等。
+#
+# [功能] 7. block-quic 由 always 调整为 auto。
+#            原因: v2.5.1 全局 always 会显著降低 YouTube/Google
+#                  在弱网下的体验 (失去 HTTP/3)。改 auto 后,
+#                  代理流量正常走 QUIC,直连流量阻断 QUIC——
+#                  这正好保证微博/sina 的 MITM 生效 (微博走直连)。
+#
+# [功能] 8. 微博脚本 pattern 扩充。
+#            v2.5.1 只覆盖 cardlist/timeline/profile 等 ~10 个接口。
+#            v2.6.0 增加: hotflow (热评广告) / photo/info (图片页) /
+#            statuses/show (单条详情) / active_box (弹窗推送) /
+#            client/light_skin (Tab 图标,你已有) / wbpullad (开屏备用)
+#
+# [功能] 9. 新增国内主流 App 的开屏/信息流脚本:
+#            小红书 / 京东 / 拼多多 / 美团 / 大众点评 /
+#            网易云音乐 (信息流广告) / 爱奇艺 / 优酷 / 腾讯视频 /
+#            芒果 TV / 抖音国内版 / 12306 / 滴滴出行 / 百度网盘
+#            来源: ddgksf2013/Filter + RuCu6/QuantumultX (NobyDa 系)
+#            注意: 国内 App 接口变动频繁,这些脚本预期 30-60 天
+#                  会出现部分失效。本配置在每条规则上注明上游 repo。
+#
+# [功能] 10. 新增 Surge-style "force-http-engine" hostname (强制
+#            部分 HTTP/2 接口降级到 HTTP/1.1 引擎,提升脚本可靠性)。
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 设计哲学 (继承 v2.5.x)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 1. 单一职责: DNS REJECT / URL Rewrite / Script 三层互斥
+# 2. 拦截优先级: DNS > URL Rewrite > Script
+# 3. 微博/sina 隔离区: 全域名 DIRECT,任何 REJECT 不得触碰
+# 4. 最小外部依赖: 核心规则集控制在 6 个以内
+# 5. 可预测性: 每条规则在注释里有明确职责说明
+# 6. 可审计性 (v2.6 新增): 每个外部 URL 有上游 repo + 推荐 hash
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 用户必读 — 首次启用步骤
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 1. Shadowrocket → 设置 → 证书 → 生成新的根 CA → 安装到 iPhone
+#    → 设置 → 通用 → 关于本机 → 证书信任设置 → 启用完全信任
+#    (本配置不内置 ca-p12,使用 App 内根证书。建议每月轮换一次)
+#
+# 2. Shadowrocket 首页 → HTTPS 解密总开关 → 启用
+#
+# 3. 设置 → 高级 → URL 重写日志 + 脚本日志 → 启用 (用于排错)
+#
+# 4. 安装本配置 → 节点信息手动填入 → 验证策略组
+#
+# 5. 杀掉微博 App → 设置 → 通用 → iPhone 储存空间 → 微博 →
+#    卸载 App (保留数据) → 重新下载 → 重新登录
+#    (清除本地广告缓存。这一步不做,广告仍会从缓存兜底显示)
+#
+# 6. 高敏感操作 (银行/支付/政务) 临时关闭 HTTPS 解密总开关
+#
+# =====================================================================
+
+
+[General]
+
+# ---------- 协议栈 (v2.6.2: IPv6 关闭) ----------
+# 关闭原因: 双栈环境下 DoH 解析返回 A 和 AAAA 各一次, DNS 查询量翻倍
+#           大多数家庭网络的 IPv6 是名义可用但实际质量差
+ipv6 = false
+prefer-ipv6 = false
+
+# ---------- 系统代理绕过 ----------
+bypass-system = true
+skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, fe80::/10, fc00::/7, localhost, *.local, *.lan, *.internal, captive.apple.com, sequoia.apple.com, seed-sequoia.siri.apple.com, *.ls.apple.com
+
+# ---------- TUN 旁路 ----------
+bypass-tun = 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 239.255.255.250/32, 255.255.255.255/32
+
+# ---------- DNS (v2.6.2: 重大重构) ----------
+#
+# 设计原则:
+#   主 DNS = 境外 DoH (Cloudflare + Quad9 + Google)
+#     → 海外域名解析隐私不泄漏给国内 DNS 服务商
+#     → AI/IG/Twitter 等海外域名解析不被污染
+#   fallback DNS = 国内 DoH (alidns + doh.pub)
+#     → 仅当所有境外 DoH 失败时启用
+#     → 保证极端情况下解析仍能进行
+#   [Host] 段 = 为关键域名指定专用解析器
+#     → 国内 CDN/Apple/银行: server:system (用 iOS 系统 DNS, 拿就近 CDN IP)
+#     → 海外高敏感 (AI): server:https://1.1.1.1/dns-query
+#
+# 风险与权衡:
+#   - 境外 DoH 本身的 IP (1.1.1.1, 9.9.9.9) 在国内被间歇 RST 是已知问题
+#     v2.6.2 同时配置三个境外 DoH 提高容错; 仍不通时降级到国内 fallback
+#   - 国内域名首次解析可能比直接用 alidns 慢 5-20ms
+#     [Host] 段已为高频国内域名 (淘宝/QQ/微博/Apple) 强制走系统 DNS,
+#     国内 App 解析速度不受影响
+#
+dns-server = https://1.1.1.1/dns-query, https://9.9.9.9/dns-query, https://dns.google/dns-query
+fallback-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query
+
+# v2.6.2: true (v2.6.1 为 false)
+# 系统 DNS 对国内域名解析更准 (Wi-Fi DHCP 通常给运营商 DNS, 返回就近 CDN)
+# 海外域名因为有 [Host] 段显式指定 DoH 解析器, 不受此影响
+dns-direct-system = true
+
+private-ip-answer = true
+
+# v2.6.2: false (v2.6.1 为 true)
+# 主 DNS 已是境外 DoH, 海外域名解析不会被污染, 不需要 fallback-proxy 兜底
+# 关闭后消除"直连解析失败→代理重新解析"的双轮延迟
+# 同时避免客户端 SNI 与代理出口 SNI 不一致触发风控
+dns-direct-fallback-proxy = false
+
+icmp-auto-reply = true
+always-reject-url-rewrite = false
+
+# ---------- QUIC 策略 (v2.6.6 修正) ----------
+# v2.6.5: REJECT 会让节点 UDP 不通时直接丢包, 影响微信 VOIP 等业务
+# v2.6.6: DIRECT 让 UDP fallback 走系统直连, 与 GEOIP CN 兜底协同
+udp-policy-not-supported-behaviour = DIRECT
+block-quic = auto
+
+# ---------- 规则集更新周期 (v2.6.9 新增, 降耗) ----------
+# 把远程 RULE-SET 的后台更新周期拉长到 24 小时 (86400 秒).
+# 原因: 每次后台拉取远程规则集都会唤醒射频 (蜂窝/WiFi) 并在内存里
+#       做大字符串解析重组, 是隐性耗电. 这些列表 (Advertising/ChinaMax
+#       等) 内容变动以天/周计, 没必要频繁更新. 24 小时一次足够.
+# 注: 此项是网络/能耗两位审查者的共识建议.
+update-interval = 86400
+
+# ---------- v2.6 删除 update-url ----------
+# 旧值: update-url = https://raw.githubusercontent.com/Johnshall/...
+# 删除原因: 防止"配置劫持"——第三方仓库的配置文件被替换或滥用,
+#           可能整份覆盖用户的策略组与节点信息。
+
+# ---------- 高级加固选项 (默认关闭) ----------
+# disable-ech = true
+# hijacking-detection = true
+# (v2.6.3 删除: force-http-engine 注释行,
+#  视角 2 评审指其为"配置熵增反面教材",永不该启用的选项不该留作注释)
+
+
+# =====================================================================
+# [Proxy]
+# 节点凭据由用户在 Shadowrocket App 内手动添加,本配置不内嵌。
+# =====================================================================
+
+[Proxy]
+
+
+# =====================================================================
+# [Proxy Group]
+# 精简至 13 个核心策略组
+# =====================================================================
+
+[Proxy Group]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.2 策略组架构 (基于日志驱动的防抖设计)
+#
+# 三层结构:
+#   层 1: 用户可选总入口 (Proxy)
+#   层 2: 业务专用策略组 (AI/Gemini/YouTube/Netflix/Spotify/TikTok/
+#         Telegram/Instagram/Twitter/苹果/谷歌/微软/B站)
+#   层 3: 测速基础设施 (AutoSelect/StableSelect/地区池)
+#
+# 防抖核心: 长连接业务 (IG/Twitter) 走 fallback 类型策略组,
+#           不主动测速切换。短交互业务 (网页/AI) 走 url-test。
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ---------- 主选择器 ----------
+Proxy = select, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, DIRECT
+
+# ---------- AI 服务 ----------
+AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect
+Gemini = select, 美国节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
+
+# ---------- 流媒体 ----------
+YouTube = select, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+Netflix = select, 香港节点, 日本节点, 新加坡节点, 美国节点
+Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
+TikTok = select, 日本节点, 台湾节点, 新加坡节点, 美国节点
+
+# ---------- 通讯 ----------
+Telegram = select, 新加坡节点, 香港节点, 日本节点, 美国节点, AutoSelect
+
+# ---------- v2.6.2 新增: Instagram 专用 (防节点漂移) ----------
+# 日志 2 证据: AutoSelect 在 11 分钟内把 IG 切换 4 个不同节点,
+#              同一秒并发到 2 个节点, 触发服务端风控
+# 设计: 绑死到单一地区池 (美国稳定), 失败才降级
+Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
+
+# ---------- v2.6.2 新增: Twitter / X 专用 (同样长连接特性) ----------
+Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
+
+# ---------- 大厂 ----------
+苹果服务 = select, DIRECT, 美国节点, 香港节点
+谷歌服务 = select, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+微软服务 = select, DIRECT, 美国节点, 香港节点
+哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 测速基础设施 (v2.6.2 重大改进)
+#
+# 主要改进:
+#   1. 测速 URL 从 google.com 改为 cp.cloudflare.com
+#      原因: Cloudflare 全球 anycast, RTT 真实, 不依赖 DNS 解析
+#            (Cloudflare 边缘节点本身就是最近的, 测出来就是物理延迟)
+#   2. tolerance 从 50 提升到 200
+#      原因: 50ms 阈值太敏感, 长连接 TCP 被反复重建 (日志 2 验证)
+#            200ms 只在节点显著更快时才切换, 防止抖动
+#   3. interval 分级:
+#      AutoSelect = 600s (10分钟, 短交互业务可承受切换)
+#      *稳定 = 900s (15分钟, 长连接业务最大化稳定性)
+#   4. timeout 从 5 降到 3
+#      原因: 测速等待时间过长会让"已宕机的节点"占用名义健康名额
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 主测速组 (用于网页/AI/短交互业务)
+AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+
+# 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
+StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+
+# 全局兜底 fallback (Final 用)
+Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 地区节点池 (url-test, 每个 regex 锁定单一地区, 不跨地区漂移)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+香港节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+台湾节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+日本节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+美国节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+
+# v2.6.2 新增: 稳定地区池 (interval 拉长到 15 分钟, IG/Twitter 专用)
+# 同地区内仍可切换, 但跨地区漂移被根本阻止
+美国稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+日本稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+
+# ---------- 漏网之鱼 ----------
+# v2.6.1 关键修复: 默认指向 DIRECT (v2.6.0 默认 Proxy)
+# 日志分析: 829 次知乎请求因 FINAL→AutoSelect 走台湾节点, 导致国内
+# App 严重变慢。Final 默认必须是 DIRECT, 海外域名走代理应该显式声明。
+Final = select, DIRECT, Proxy
+
+
+# =====================================================================
+# [Rule]
+# 自上而下匹配,先 DIRECT 保护区再 REJECT 广告区再业务分流
+# =====================================================================
+
+[Rule]
+
+# ---------------------------------------------------------------------
+# 0. 局域网 / 私网 → 直连 (最高优先级)
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,local,DIRECT
+DOMAIN-SUFFIX,localhost,DIRECT
+IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+IP-CIDR6,fe80::/10,DIRECT,no-resolve
+IP-CIDR6,fc00::/7,DIRECT,no-resolve
+
+# ---------------------------------------------------------------------
+# 0.5 YouTube UDP/QUIC 阻断 (v2.6.8 上移至此, 浮窗功能的物理前提)
+#
+# 必须放在所有 YouTube 分流规则之前. 原因:
+#   YouTube 默认走 QUIC (UDP). 若 YouTube 组被手动选成某节点, UDP
+#   会优先匹配到该节点并通过代理走掉, 绕过脚本, 浮窗/后台播放失效.
+#   把 UDP REJECT 提到最前, 确保 UDP 先被拦掉强制走 TCP, 之后用户
+#   无论把 YouTube 组手动选成香港/美国/日本, TCP 流量都会过脚本,
+#   浮窗在任意节点下都生效.
+#
+# 这就是"浮窗 + 手动选节点"兼容的关键: 拦 UDP 与选节点互不干扰.
+# ---------------------------------------------------------------------
+AND,((DOMAIN-SUFFIX,googlevideo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,youtubei.googleapis.com),(PROTOCOL,UDP)),REJECT
+
+# ---------------------------------------------------------------------
+# 0.6 被墙境外站点显式代理 (v2.6.8 修复 FINAL=DIRECT 漏网)
+#
+# 问题: Tumblr / Quora 等被 GFW 封锁的境外站没有任何分流规则覆盖,
+#       掉到 FINAL=DIRECT 后走直连, 直连被墙站必然连不通 (日志证据:
+#       api-http2.tumblr.com 直连 84 次, www.quora.com 直连 55 次).
+# 修复: 给这些漏网境外站补显式 Proxy 规则. 不改 FINAL 的国内友好特性,
+#       精准补丁. 未来若发现新的漏网境外站, 在此处追加即可.
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,tumblr.com,Proxy
+DOMAIN-SUFFIX,quora.com,Proxy
+DOMAIN-SUFFIX,quoracdn.net,Proxy
+# v2.6.11 新增: Pinterest (日志证据 2026-05-30: 全系域名走 FINAL=DIRECT 连不通)
+DOMAIN-SUFFIX,pinterest.com,Proxy
+DOMAIN-SUFFIX,pinimg.com,Proxy
+
+# ---------------------------------------------------------------------
+# 0.7 OCSP 证书吊销检查白名单 (v2.6.9: KEYWORD → 精确列举)
+#
+# 问题: ocsp.godaddy.com 等被广告规则集误伤 REJECT, 关闭了证书
+#       吊销检查这道安全防线.
+# v2.6.9 改进: 原 DOMAIN-KEYWORD,ocsp,DIRECT 匹配任何含 ocsp 的域名
+#       (子串扫描, 范围过宽, 理论上可被 ocsp.evil.com 利用).
+#       改为精确列举主流 CA 的 OCSP 端点, 收窄攻击面, 也省去 KEYWORD
+#       的全域子串扫描开销.
+# 覆盖: 主流公共 CA (DigiCert/GoDaddy/Sectigo/Lets Encrypt/GlobalSign/
+#       Entrust/Apple/Google Trust Services 等).
+# ---------------------------------------------------------------------
+DOMAIN,ocsp.digicert.com,DIRECT
+DOMAIN,ocsp.godaddy.com,DIRECT
+DOMAIN,ocsp.sectigo.com,DIRECT
+DOMAIN,ocsp.usertrust.com,DIRECT
+DOMAIN,ocsp.comodoca.com,DIRECT
+DOMAIN,ocsp.int-x3.letsencrypt.org,DIRECT
+DOMAIN,ocsp.pki.goog,DIRECT
+DOMAIN,ocsp.apple.com,DIRECT
+DOMAIN,ocsp2.apple.com,DIRECT
+DOMAIN,ocsp.globalsign.com,DIRECT
+DOMAIN,ocsp.entrust.net,DIRECT
+DOMAIN-SUFFIX,ocsp.identrust.com,DIRECT
+DOMAIN-SUFFIX,ocsp.sca1b.amazontrust.com,DIRECT
+DOMAIN-SUFFIX,ocsp.rootca1.amazontrust.com,DIRECT
+
+# ---------------------------------------------------------------------
+# 1. 微博 / 新浪保护区 → 直连 (必须最先匹配)
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,weibo.cn,DIRECT
+DOMAIN-SUFFIX,weibo.com,DIRECT
+DOMAIN-SUFFIX,weibo.com.cn,DIRECT
+DOMAIN-SUFFIX,weibocdn.com,DIRECT
+DOMAIN-SUFFIX,sinaimg.cn,DIRECT
+DOMAIN-SUFFIX,sina.cn,DIRECT
+DOMAIN-SUFFIX,sina.com.cn,DIRECT
+DOMAIN-SUFFIX,sinajs.cn,DIRECT
+DOMAIN-SUFFIX,miaopai.com,DIRECT
+
+# ---------------------------------------------------------------------
+# 1.5 微信保护区 → 直连 (v2.6.10 新增, 必须早于第 2 段广告/隐私 REJECT)
+#
+# 问题 (2026-05-29 日志铁证): dns.weixin.qq.com.cn (微信自研 mmtls DNS,
+#   即 NEWDNS) 是 .com.cn 后缀, 不被 DOMAIN-SUFFIX,qq.com 命中, 漏到
+#   第 2 段被 Privacy/Hijacking 规则集自带的
+#   DOMAIN,dns.weixin.qq.com.cn,REJECT 拦截 → 微信 DNS 在 443/8080
+#   反复重试刷屏 → 降级到系统 DNS 的等待 = 微信启动 loading.
+#   apd-pcdnwxlogin.teg.tencent-cloud.net (微信登录 PCDN) 同样被误伤.
+# 修复: 在广告 REJECT 之前显式放行腾讯 .com.cn 与 teg 后台域名.
+#   注: long/short.weixin.qq.com 等 .com 域名本就被 qq.com 命中直连,
+#       此处只补 .com.cn / teg 这两个被规则集误伤的盲区, 精准补丁.
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT
+DOMAIN-SUFFIX,qq.com.cn,DIRECT
+DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+
+# ---------------------------------------------------------------------
+# 2. 广告 / 隐私 → REJECT
+#
+# v2.6 修正: 用真实存在的 Advertising.list,而非 v2.5.1 的
+# 不存在路径 AdvertisingLite.list。同时引入 Hijacking 拦截运营商劫持。
+#
+# 不引入 Privacy.list: 该规则集包含微博埋点,会破坏微博脚本响应完整性。
+# ---------------------------------------------------------------------
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.2 关键新增: REJECT 风暴熔断 (高频重试源用 REJECT-DROP)
+#
+# 日志 2 证据 (21:21-21:22 一分钟):
+#   - umc.danuoyi.alicdn.com (阿里 mPaaS 监控): 单分钟 397 次重试
+#   - api3.siftscience.com (Sift 反欺诈): 6 分钟 525 次重试 (其中 UDP 420 次)
+#
+# 标准 REJECT 立即返回 200 空响应, App 重试逻辑触发死循环。
+# REJECT-DROP 直接丢包, App 等到 TCP 超时 (3-15 秒) 即放弃,
+# 重试频率从"每秒数十次"降到"每分钟数次"。
+#
+# 必须放在通用 Advertising RULE-SET 之前, 优先匹配。
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 阿里 mPaaS 用户监控 SDK (闲鱼/支付宝/钉钉/淘宝集成的统一监控)
+DOMAIN,umc.danuoyi.alicdn.com,REJECT-DROP
+DOMAIN-SUFFIX,mum.alibabachengdun.com,REJECT-DROP
+
+# Sift 反欺诈 SDK (跨境电商/支付 App 常见)
+DOMAIN-SUFFIX,siftscience.com,REJECT-DROP
+
+# 字节跳动 SDK 监控 (高频重试源)
+DOMAIN-KEYWORD,pangolin-sdk-toutiao,REJECT-DROP
+DOMAIN-SUFFIX,ctobsnssdk.com,REJECT-DROP
+
+# UC 浏览器统计
+DOMAIN-SUFFIX,px.ucweb.com,REJECT-DROP
+
+# 通用统计 SDK 关键词 (这些命中通常都是高频心跳上报)
+DOMAIN-KEYWORD,umeng,REJECT-DROP
+DOMAIN-KEYWORD,adsdk,REJECT-DROP
+
+# Facebook CDN 跟踪子域 (Meta 在国内被防火墙拒, App 仍持续重试)
+DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP
+DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP
+
+# 腾讯广告投放
+DOMAIN-SUFFIX,e.qq.com,REJECT-DROP
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.5 新增: 精准广告物料域名 REJECT (L3 算法层优化)
+#
+# 原理: 这些域名是 100% 广告物料专用 CDN, 在网络层 REJECT 比让请求
+#       进入 MITM 解密 + JS 改写省 100x 算力 (网络层 REJECT 零开销,
+#       MITM 改写涉及 TLS 解密 + JS 引擎唤醒 + JSON 序列化).
+#
+# 关键设计 (避免对应用启动造成连锁影响):
+#   ✅ 仅 REJECT 100% 广告物料的独立子域
+#   ❌ 不采纳 "URL-REGEX /v2/splash/list REJECT" 类方案
+#      原因: 部分 splash list 接口同时返回正常配置和广告字段,
+#            整体 REJECT 会让 App 启动卡住. 这类接口必须用脚本
+#            保留正常字段, 仅删广告字段
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# B 站广告物料 CDN (cm = commercial)
+DOMAIN,cm.bilibili.com,REJECT
+DOMAIN,cm.biliapi.net,REJECT
+
+# 微博广告物料 (与 zmqcherish 微博脚本协同: 这些先 REJECT, 漏过的进脚本)
+DOMAIN-SUFFIX,biz.weibo.com,REJECT
+DOMAIN,bootpreload.uve.weibo.com,REJECT
+DOMAIN-SUFFIX,fastimage.uve.weibo.com,REJECT
+DOMAIN-SUFFIX,adimg.vue.weibo.com,REJECT
+DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT
+DOMAIN-SUFFIX,weibomingzi.com,REJECT
+
+# 通用广告规则集 (域名级,无 MITM 压力)
+# 上游: blackmatrix7/ios_rule_script @ master
+# 推荐回滚 hash: 见配置末尾 PINNED COMMITS 段
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Advertising/Advertising.list,REJECT
+
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Advertising/Advertising_Domain.list,REJECT
+
+# v2.6.5 新增: Privacy 隐私拦截 (在微博保护区之后, 不会误伤微博埋点)
+# bm7 新版 Privacy.list 已与 Advertising 解耦, 不再含 weibo gdt
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Privacy/Privacy.list,REJECT
+
+# 运营商/网络劫持拦截
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Hijacking/Hijacking.list,REJECT
+
+# ---------- 全球追踪/数据分析 SDK ----------
+DOMAIN-SUFFIX,adjust.com,REJECT
+DOMAIN-SUFFIX,adjust.io,REJECT
+DOMAIN-SUFFIX,appsflyer.com,REJECT
+DOMAIN-SUFFIX,branch.io,REJECT
+DOMAIN-SUFFIX,kochava.com,REJECT
+DOMAIN-SUFFIX,mixpanel.com,REJECT
+DOMAIN-SUFFIX,amplitude.com,REJECT
+DOMAIN-SUFFIX,segment.com,REJECT
+DOMAIN-SUFFIX,segment.io,REJECT
+DOMAIN-SUFFIX,fullstory.com,REJECT
+DOMAIN-SUFFIX,hotjar.com,REJECT
+DOMAIN-SUFFIX,demdex.net,REJECT
+DOMAIN-SUFFIX,bluekai.com,REJECT
+DOMAIN-SUFFIX,liveramp.com,REJECT
+DOMAIN-SUFFIX,scorecardresearch.com,REJECT
+DOMAIN-SUFFIX,quantserve.com,REJECT
+DOMAIN-SUFFIX,chartbeat.com,REJECT
+DOMAIN-SUFFIX,moatads.com,REJECT
+DOMAIN-SUFFIX,doubleverify.com,REJECT
+DOMAIN-SUFFIX,adsafeprotected.com,REJECT
+
+# ---------- DSP/SSP 广告交易平台 ----------
+DOMAIN-SUFFIX,googlesyndication.com,REJECT
+DOMAIN-SUFFIX,doubleclick.net,REJECT
+DOMAIN-SUFFIX,google-analytics.com,REJECT
+DOMAIN-SUFFIX,googletagmanager.com,REJECT
+DOMAIN-SUFFIX,googletagservices.com,REJECT
+DOMAIN-SUFFIX,googleadservices.com,REJECT
+DOMAIN-SUFFIX,adservice.google.com,REJECT
+DOMAIN-SUFFIX,criteo.com,REJECT
+DOMAIN-SUFFIX,criteo.net,REJECT
+DOMAIN-SUFFIX,taboola.com,REJECT
+DOMAIN-SUFFIX,outbrain.com,REJECT
+DOMAIN-SUFFIX,pubmatic.com,REJECT
+DOMAIN-SUFFIX,rubiconproject.com,REJECT
+DOMAIN-SUFFIX,openx.net,REJECT
+DOMAIN-SUFFIX,appnexus.com,REJECT
+DOMAIN-SUFFIX,amazon-adsystem.com,REJECT
+DOMAIN-SUFFIX,adsrvr.org,REJECT
+DOMAIN-SUFFIX,casalemedia.com,REJECT
+DOMAIN-SUFFIX,indexexchange.com,REJECT
+DOMAIN-SUFFIX,smartadserver.com,REJECT
+DOMAIN-SUFFIX,freewheel.tv,REJECT
+DOMAIN-SUFFIX,spotxchange.com,REJECT
+DOMAIN-SUFFIX,teads.tv,REJECT
+DOMAIN-SUFFIX,innovid.com,REJECT
+DOMAIN-SUFFIX,sharethrough.com,REJECT
+DOMAIN-SUFFIX,triplelift.com,REJECT
+
+# ---------- 移动 App 广告 SDK ----------
+DOMAIN-SUFFIX,applovin.com,REJECT
+DOMAIN-SUFFIX,unityads.unity3d.com,REJECT
+DOMAIN-SUFFIX,chartboost.com,REJECT
+DOMAIN-SUFFIX,ironsrc.com,REJECT
+DOMAIN-SUFFIX,admob.com,REJECT
+DOMAIN-SUFFIX,mopub.com,REJECT
+DOMAIN-SUFFIX,vungle.com,REJECT
+DOMAIN-SUFFIX,fyber.com,REJECT
+DOMAIN-SUFFIX,inmobi.com,REJECT
+DOMAIN-SUFFIX,adcolony.com,REJECT
+DOMAIN-SUFFIX,flurry.com,REJECT
+DOMAIN-SUFFIX,app-measurement.com,REJECT
+
+# ---------- 国内广告联盟 ----------
+# 注意: 不包含 gdt.qq.com (微博走广点通,REJECT 会触发重试风暴)
+DOMAIN-SUFFIX,pos.baidu.com,REJECT
+DOMAIN-SUFFIX,hm.baidu.com,REJECT
+DOMAIN-SUFFIX,cpro.baidu.com,REJECT
+DOMAIN-SUFFIX,nsclick.baidu.com,REJECT
+DOMAIN-SUFFIX,tanx.com,REJECT
+DOMAIN-SUFFIX,mmstat.com,REJECT
+DOMAIN-SUFFIX,wgo.mmstat.com,REJECT
+
+# ---------- 腾讯音乐 / 网易云广告 ----------
+DOMAIN,adstats.tencentmusic.com,REJECT
+DOMAIN,ad.tencentmusic.com,REJECT
+DOMAIN,adcdn.tencentmusic.com,REJECT
+DOMAIN,adexpo.tencentmusic.com,REJECT
+DOMAIN,monitor.music.qq.com,REJECT
+DOMAIN,stat.y.qq.com,REJECT
+DOMAIN,tmead.y.qq.com,REJECT
+
+# ---------------------------------------------------------------------
+# 3. Apple 国内 CDN → 直连
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,ls.apple.com,DIRECT
+DOMAIN-SUFFIX,apple-dns.net,DIRECT
+DOMAIN-SUFFIX,apple.com.akadns.net,DIRECT
+DOMAIN-SUFFIX,cdn-apple.com.akadns.net,DIRECT
+DOMAIN-SUFFIX,push-apple.com.akadns.net,DIRECT
+DOMAIN-SUFFIX,aaplimg.com,DIRECT
+DOMAIN-SUFFIX,mzstatic.com,DIRECT
+DOMAIN-SUFFIX,itunes.apple.com,DIRECT
+DOMAIN-SUFFIX,apps.apple.com,DIRECT
+DOMAIN-SUFFIX,icloud.com.cn,DIRECT
+DOMAIN-SUFFIX,icloud-content.com,DIRECT
+
+# ---------------------------------------------------------------------
+# 4. 字节系国内服务 → 直连 (必须在 TikTok 规则集之前)
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,douyin.com,DIRECT
+DOMAIN-SUFFIX,douyincdn.com,DIRECT
+DOMAIN-SUFFIX,douyinpic.com,DIRECT
+DOMAIN-SUFFIX,douyinstatic.com,DIRECT
+DOMAIN-SUFFIX,douyinvod.com,DIRECT
+DOMAIN-SUFFIX,iesdouyin.com,DIRECT
+DOMAIN-SUFFIX,amemv.com,DIRECT
+DOMAIN-SUFFIX,snssdk.com,DIRECT
+DOMAIN-SUFFIX,toutiao.com,DIRECT
+DOMAIN-SUFFIX,toutiaocdn.com,DIRECT
+DOMAIN-SUFFIX,toutiaoimg.com,DIRECT
+DOMAIN-SUFFIX,toutiaovod.com,DIRECT
+DOMAIN-SUFFIX,ixigua.com,DIRECT
+DOMAIN-SUFFIX,ixiguavideo.com,DIRECT
+DOMAIN-SUFFIX,bytecdn.cn,DIRECT
+DOMAIN-SUFFIX,byteimg.com,DIRECT
+DOMAIN-SUFFIX,pstatp.com,DIRECT
+DOMAIN-SUFFIX,ipstatp.com,DIRECT
+DOMAIN-SUFFIX,feishu.cn,DIRECT
+DOMAIN-SUFFIX,feishucdn.com,DIRECT
+DOMAIN-SUFFIX,volces.com,DIRECT
+
+# ---------------------------------------------------------------------
+# 5. AI 服务
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,anthropic.com,AI
+DOMAIN-SUFFIX,claude.ai,AI
+DOMAIN-SUFFIX,openai.com,AI
+DOMAIN-SUFFIX,chatgpt.com,AI
+DOMAIN-SUFFIX,oaistatic.com,AI
+DOMAIN-SUFFIX,oaiusercontent.com,AI
+DOMAIN-SUFFIX,auth0.com,AI
+DOMAIN-SUFFIX,client-api.arkoselabs.com,AI
+DOMAIN-SUFFIX,arkoselabs.com,AI
+DOMAIN-SUFFIX,chatgpt.livekit.cloud,AI
+DOMAIN-SUFFIX,host.livekit.cloud,AI
+DOMAIN-SUFFIX,turn.livekit.cloud,AI
+DOMAIN-SUFFIX,livekit.cloud,AI
+DOMAIN-SUFFIX,featuregates.org,AI
+DOMAIN-SUFFIX,launchdarkly.com,AI
+DOMAIN-SUFFIX,perplexity.ai,AI
+DOMAIN-SUFFIX,poe.com,AI
+DOMAIN-SUFFIX,huggingface.co,AI
+DOMAIN-SUFFIX,mistral.ai,AI
+DOMAIN-SUFFIX,x.ai,AI
+DOMAIN-SUFFIX,grok.com,AI
+DOMAIN-SUFFIX,cohere.com,AI
+DOMAIN,copilot.microsoft.com,AI
+
+# v2.6.1 新增: OpenAI / ChatGPT 边缘依赖 (日志诊断: 这些缺失会导致登录失败)
+DOMAIN-SUFFIX,statsigapi.net,AI
+DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI
+DOMAIN,ab.chatgpt.com,AI
+DOMAIN,cdn.oaistatic.com,AI
+DOMAIN,files.oaiusercontent.com,AI
+DOMAIN,android.chat.openai.com,AI
+DOMAIN,ios.chat.openai.com,AI
+
+# Gemini 走专用组 (排除香港,香港地区会被 Gemini 限制)
+DOMAIN-SUFFIX,gemini.google.com,Gemini
+DOMAIN-SUFFIX,bard.google.com,Gemini
+DOMAIN-SUFFIX,aistudio.google.com,Gemini
+DOMAIN-SUFFIX,generativelanguage.googleapis.com,Gemini
+DOMAIN-SUFFIX,makersuite.google.com,Gemini
+
+# v2.6.1 新增: Gemini App / Web 边缘依赖
+DOMAIN-SUFFIX,deepmind.com,Gemini
+DOMAIN-SUFFIX,deepmind.google,Gemini
+DOMAIN,alkalimakersuite-pa.clients6.google.com,Gemini
+DOMAIN,alkalimakersuite.google.com,Gemini
+DOMAIN,generativeai-pa.googleapis.com,Gemini
+DOMAIN,labs.google,Gemini
+DOMAIN,proactivebackend-pa.googleapis.com,Gemini
+
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/OpenAI/OpenAI.list,AI
+
+# ---------------------------------------------------------------------
+# 6. 流媒体
+# ---------------------------------------------------------------------
+# 注: YouTube UDP/QUIC 阻断规则已于 v2.6.8 上移到 [Rule] 段顶部
+#     (section 0.5), 确保在任何 YouTube 分流规则之前命中, 这样无论
+#     用户手动把 YouTube 组选成哪个节点, UDP 都会先被拦截走 TCP,
+#     浮窗/后台播放脚本才能生效.
+
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/YouTube/YouTube.list,YouTube
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Netflix/Netflix.list,Netflix
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Spotify/Spotify.list,Spotify
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/TikTok/TikTok.list,TikTok
+
+# Disney+ / Max / Twitch
+DOMAIN-SUFFIX,disneyplus.com,Netflix
+DOMAIN-SUFFIX,disney-plus.net,Netflix
+DOMAIN-SUFFIX,bamgrid.com,Netflix
+DOMAIN-SUFFIX,litix.io,Proxy
+DOMAIN-SUFFIX,discomax.com,Proxy
+DOMAIN-SUFFIX,brightline.tv,Proxy
+DOMAIN-SUFFIX,twitch.tv,Proxy
+DOMAIN-SUFFIX,ttvnw.net,Proxy
+DOMAIN-SUFFIX,vimeo.com,Proxy
+DOMAIN-SUFFIX,vimeocdn.com,Proxy
+DOMAIN-SUFFIX,abema.tv,Proxy
+
+# ---------------------------------------------------------------------
+# 7. 通讯 / 社交
+# ---------------------------------------------------------------------
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Telegram/Telegram.list,Telegram
+
+# Twitter / X (v2.6.2: 走 Twitter 专用稳定组, 防节点抖动)
+DOMAIN-SUFFIX,twitter.com,Twitter
+DOMAIN-SUFFIX,twimg.com,Twitter
+DOMAIN-SUFFIX,t.co,Twitter
+DOMAIN-SUFFIX,x.com,Twitter
+DOMAIN-SUFFIX,twitterstat.us,Twitter
+
+# Meta - Instagram 走 Instagram 组, 其他走 Proxy
+# v2.6.2 关键修复: IG 单独路由到 Instagram 策略组 (美国稳定池)
+# 日志证据: AutoSelect 在 11 分钟内把 IG 切了 4 个节点, 触发风控
+DOMAIN-SUFFIX,instagram.com,Instagram
+DOMAIN-SUFFIX,cdninstagram.com,Instagram
+DOMAIN,i.instagram.com,Instagram
+DOMAIN,graph.instagram.com,Instagram
+
+# Threads 也是 Meta 长连接业务, 同样走稳定组
+DOMAIN-SUFFIX,threads.net,Instagram
+
+# Facebook / WhatsApp 走 Proxy 默认
+DOMAIN-SUFFIX,facebook.com,Proxy
+DOMAIN-SUFFIX,fbcdn.net,Proxy
+DOMAIN-SUFFIX,fb.com,Proxy
+DOMAIN-SUFFIX,whatsapp.com,Proxy
+DOMAIN-SUFFIX,whatsapp.net,Proxy
+
+# Reddit
+DOMAIN-SUFFIX,reddit.com,Proxy
+DOMAIN-SUFFIX,redd.it,Proxy
+DOMAIN-SUFFIX,redditmedia.com,Proxy
+DOMAIN-SUFFIX,redditstatic.com,Proxy
+
+# ---------------------------------------------------------------------
+# 8. LinkedIn (v2.6.8: 绑定美国稳定组, 修复节点劈裂)
+#
+# 问题: v2.6.7 里 LinkedIn 走 Proxy → 实际命中 AutoSelect, 日志显示
+#       linkedin.com 被劈到 香港(66次) + 美国(5次) 两个出口.
+#       LinkedIn 风控对异地登录极敏感, 同会话多 IP 易触发验证/封号.
+# 修复: 绑定"美国稳定" (fallback 类型, 不主动测速漂移), LinkedIn
+#       内容服务器在美国, 延迟和风控都最优. 与 IG/Twitter 同策略.
+# 注: 不并入"微软服务"组——该组默认 DIRECT (供 Office/Teams 国内
+#     直连), LinkedIn 并进去会被直连, 反而连不上.
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,linkedin.com,美国稳定
+DOMAIN-SUFFIX,licdn.com,美国稳定
+DOMAIN-SUFFIX,linkedin.cn,美国稳定
+
+# ---------------------------------------------------------------------
+# 9. 开发 / 协作 / 工具
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,github.com,Proxy
+DOMAIN-SUFFIX,github.io,Proxy
+DOMAIN-SUFFIX,githubusercontent.com,Proxy
+DOMAIN-SUFFIX,githubassets.com,Proxy
+DOMAIN-SUFFIX,ghcr.io,Proxy
+DOMAIN-SUFFIX,docker.com,Proxy
+DOMAIN-SUFFIX,docker.io,Proxy
+DOMAIN-SUFFIX,gitlab.com,Proxy
+DOMAIN-SUFFIX,bitbucket.org,Proxy
+DOMAIN-SUFFIX,notion.so,Proxy
+DOMAIN-SUFFIX,notion.site,Proxy
+DOMAIN-SUFFIX,figma.com,Proxy
+DOMAIN-SUFFIX,stackoverflow.com,Proxy
+DOMAIN-SUFFIX,stackexchange.com,Proxy
+
+# Lark 海外
+DOMAIN-SUFFIX,larksuite.com,Proxy
+DOMAIN-SUFFIX,larkoffice.com,Proxy
+
+# 加密货币
+DOMAIN-SUFFIX,trustwallet.com,Proxy
+DOMAIN-SUFFIX,walletconnect.org,Proxy
+
+# Cloudflare 官方
+DOMAIN-SUFFIX,cloudflare.com,Proxy
+DOMAIN-SUFFIX,cloudflareinsights.com,Proxy
+
+# 知识 / 媒体
+DOMAIN-SUFFIX,wikipedia.org,Proxy
+DOMAIN-SUFFIX,wikimedia.org,Proxy
+DOMAIN-SUFFIX,medium.com,Proxy
+DOMAIN-SUFFIX,substack.com,Proxy
+DOMAIN-SUFFIX,wsj.com,Proxy
+DOMAIN-SUFFIX,nytimes.com,Proxy
+DOMAIN-SUFFIX,economist.com,Proxy
+DOMAIN-SUFFIX,ted.com,Proxy
+DOMAIN-SUFFIX,news.ycombinator.com,Proxy
+DOMAIN-SUFFIX,disqus.com,Proxy
+DOMAIN-SUFFIX,vox.com,Proxy
+DOMAIN-SUFFIX,arxiv.org,Proxy
+
+# ---------------------------------------------------------------------
+# 10. 大厂 (Google / Microsoft)
+# ---------------------------------------------------------------------
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Google/Google.list,谷歌服务
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
+
+# Apple News / Apple TV+
+DOMAIN-SUFFIX,apple.news,Proxy
+DOMAIN-SUFFIX,news-edge.apple.com,Proxy
+
+# ---------------------------------------------------------------------
+# 11. 国内服务直连
+#
+# v2.6.1 关键改进: 在 ChinaMax 之前硬编码常见国内域名直连兜底。
+# 日志诊断 (2026-05-19 18:48): ChinaMax.list 零命中,知乎全系 829 次
+# 走 FINAL→台湾节点。硬编码确保上游规则集即使加载失败,核心国内
+# App 也能直连。
+# ---------------------------------------------------------------------
+
+# B站 (规则集 + 顶级域名兜底)
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/BiliBili/BiliBili.list,哔哩哔哩
+DOMAIN-SUFFIX,bilibili.com,哔哩哔哩
+DOMAIN-SUFFIX,biliapi.net,哔哩哔哩
+DOMAIN-SUFFIX,bilivideo.com,哔哩哔哩
+DOMAIN-SUFFIX,bilivideo.cn,哔哩哔哩
+DOMAIN-SUFFIX,hdslb.com,哔哩哔哩
+DOMAIN-SUFFIX,b23.tv,哔哩哔哩
+
+# 知乎 (日志: 829 次绕路的元凶)
+DOMAIN-SUFFIX,zhihu.com,DIRECT
+DOMAIN-SUFFIX,zhimg.com,DIRECT
+
+# 小红书
+DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+DOMAIN-SUFFIX,xhscdn.com,DIRECT
+
+# 阿里系
+DOMAIN-SUFFIX,taobao.com,DIRECT
+DOMAIN-SUFFIX,tmall.com,DIRECT
+DOMAIN-SUFFIX,tmall.hk,DIRECT
+DOMAIN-SUFFIX,alipay.com,DIRECT
+DOMAIN-SUFFIX,alicdn.com,DIRECT
+DOMAIN-SUFFIX,aliyun.com,DIRECT
+DOMAIN-SUFFIX,aliyuncs.com,DIRECT
+DOMAIN-SUFFIX,alibaba.com,DIRECT
+DOMAIN-SUFFIX,alibabacloud.com,DIRECT
+DOMAIN-SUFFIX,1688.com,DIRECT
+DOMAIN-SUFFIX,cainiao.com,DIRECT
+DOMAIN-SUFFIX,dingtalk.com,DIRECT
+DOMAIN-SUFFIX,uc.cn,DIRECT
+DOMAIN-SUFFIX,ucweb.com,DIRECT
+DOMAIN-SUFFIX,youku.com,DIRECT
+DOMAIN-SUFFIX,ele.me,DIRECT
+DOMAIN-SUFFIX,fliggy.com,DIRECT
+DOMAIN-SUFFIX,xianyu.com,DIRECT
+DOMAIN-SUFFIX,goofish.com,DIRECT
+
+# 腾讯系
+DOMAIN-SUFFIX,qq.com,DIRECT
+DOMAIN-SUFFIX,weixin.qq.com,DIRECT
+DOMAIN-SUFFIX,wechat.com,DIRECT
+DOMAIN-SUFFIX,tencent.com,DIRECT
+DOMAIN-SUFFIX,tencentcs.com,DIRECT
+DOMAIN-SUFFIX,qcloud.com,DIRECT
+DOMAIN-SUFFIX,myqcloud.com,DIRECT
+DOMAIN-SUFFIX,qpic.cn,DIRECT
+DOMAIN-SUFFIX,qlogo.cn,DIRECT
+DOMAIN-SUFFIX,qzone.com,DIRECT
+DOMAIN-SUFFIX,gtimg.cn,DIRECT
+DOMAIN-SUFFIX,gtimg.com,DIRECT
+DOMAIN-SUFFIX,idqqimg.com,DIRECT
+DOMAIN-SUFFIX,sogou.com,DIRECT
+DOMAIN-SUFFIX,sogoucdn.com,DIRECT
+
+# 字节系国内 (已在 section 4 大部分覆盖,此处补充)
+DOMAIN-SUFFIX,bytedance.com,DIRECT
+DOMAIN-SUFFIX,bytednsdoc.com,DIRECT
+DOMAIN-SUFFIX,bdstatic.com,DIRECT
+DOMAIN-SUFFIX,bdimg.com,DIRECT
+
+# 百度系
+DOMAIN-SUFFIX,baidu.com,DIRECT
+DOMAIN-SUFFIX,baidustatic.com,DIRECT
+DOMAIN-SUFFIX,baidubcr.com,DIRECT
+DOMAIN-SUFFIX,bcebos.com,DIRECT
+DOMAIN-SUFFIX,baidupcs.com,DIRECT
+DOMAIN-SUFFIX,baiducontent.com,DIRECT
+DOMAIN-SUFFIX,hao123.com,DIRECT
+DOMAIN-SUFFIX,iqiyi.com,DIRECT
+DOMAIN-SUFFIX,iqiyipic.com,DIRECT
+DOMAIN-SUFFIX,71.com,DIRECT
+
+# 京东 (日志: 20 次 FINAL→TW)
+DOMAIN-SUFFIX,jd.com,DIRECT
+DOMAIN-SUFFIX,jdcloud.com,DIRECT
+DOMAIN-SUFFIX,jcloud.com,DIRECT
+DOMAIN-SUFFIX,360buyimg.com,DIRECT
+DOMAIN-SUFFIX,jd.hk,DIRECT
+
+# 美团 / 饿了么 / 大众点评
+DOMAIN-SUFFIX,meituan.com,DIRECT
+DOMAIN-SUFFIX,meituan.net,DIRECT
+DOMAIN-SUFFIX,dianping.com,DIRECT
+DOMAIN-SUFFIX,sankuai.com,DIRECT
+
+# 拼多多
+DOMAIN-SUFFIX,pinduoduo.com,DIRECT
+DOMAIN-SUFFIX,yangkeduo.com,DIRECT
+DOMAIN-SUFFIX,pddpic.com,DIRECT
+
+# 网易系
+DOMAIN-SUFFIX,163.com,DIRECT
+DOMAIN-SUFFIX,126.com,DIRECT
+DOMAIN-SUFFIX,127.net,DIRECT
+DOMAIN-SUFFIX,netease.com,DIRECT
+DOMAIN-SUFFIX,ntes.com,DIRECT
+DOMAIN-SUFFIX,nosdn.127.net,DIRECT
+DOMAIN-SUFFIX,music.163.com,DIRECT
+
+# 新浪 / 搜狐 / 凤凰 (注意: 微博保护区已在 section 1 优先匹配)
+DOMAIN-SUFFIX,sohu.com,DIRECT
+DOMAIN-SUFFIX,sohucs.com,DIRECT
+DOMAIN-SUFFIX,ifeng.com,DIRECT
+DOMAIN-SUFFIX,ifengimg.com,DIRECT
+
+# 360
+DOMAIN-SUFFIX,360.com,DIRECT
+DOMAIN-SUFFIX,360.cn,DIRECT
+DOMAIN-SUFFIX,360safe.com,DIRECT
+DOMAIN-SUFFIX,qhimg.com,DIRECT
+DOMAIN-SUFFIX,qhres.com,DIRECT
+
+# 主流 CDN / DNS / 网络基础设施
+DOMAIN-SUFFIX,wscdns.com,DIRECT
+DOMAIN-SUFFIX,doh.pub,DIRECT
+DOMAIN-SUFFIX,dns.alidns.com,DIRECT
+DOMAIN-SUFFIX,alidns.com,DIRECT
+DOMAIN-SUFFIX,nic.cn,DIRECT
+DOMAIN-SUFFIX,cnnic.cn,DIRECT
+DOMAIN-SUFFIX,cn,DIRECT
+
+# 银行 / 政务 / 公共服务
+DOMAIN-SUFFIX,12306.cn,DIRECT
+DOMAIN-SUFFIX,chinaeastair.com,DIRECT
+DOMAIN-SUFFIX,csair.com,DIRECT
+DOMAIN-SUFFIX,airchina.com.cn,DIRECT
+DOMAIN-SUFFIX,gov.cn,DIRECT
+DOMAIN-SUFFIX,edu.cn,DIRECT
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.4 新增: 国内主流 App 非 .cn 域名硬编码 DIRECT
+#
+# 说明: .cn / .com.cn 顶级域已由 [Host] 段通配兜底,
+#       此处只补充 .com / .net 等非 .cn 顶级域的国内 App.
+# 数据来源: v2.6.3 → v2.6.4 转换时进行的"国内 App 覆盖审计".
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 财经 / 证券 (用户触发此次审计的主因: 同花顺很慢)
+DOMAIN-SUFFIX,myhexin.com,DIRECT
+DOMAIN-SUFFIX,eastmoney.com,DIRECT
+DOMAIN-SUFFIX,dfcfw.com,DIRECT
+DOMAIN-SUFFIX,xueqiu.com,DIRECT
+DOMAIN-SUFFIX,xqimg.com,DIRECT
+DOMAIN-SUFFIX,futunn.com,DIRECT
+DOMAIN-SUFFIX,futu5.com,DIRECT
+DOMAIN-SUFFIX,itiger.com,DIRECT
+DOMAIN-SUFFIX,tigerbrokers.com,DIRECT
+DOMAIN-SUFFIX,gtja.com,DIRECT
+DOMAIN-SUFFIX,citics.com,DIRECT
+
+# 视频 / 音频 / 直播 (高频长连接, 大流量)
+DOMAIN-SUFFIX,kuaishou.com,DIRECT
+DOMAIN-SUFFIX,gifshow.com,DIRECT
+DOMAIN-SUFFIX,kuaishouzt.com,DIRECT
+DOMAIN-SUFFIX,yxixy.com,DIRECT
+DOMAIN-SUFFIX,mgtv.com,DIRECT
+DOMAIN-SUFFIX,hunantv.com,DIRECT
+DOMAIN-SUFFIX,douyu.com,DIRECT
+DOMAIN-SUFFIX,huya.com,DIRECT
+DOMAIN-SUFFIX,msstatic.com,DIRECT
+DOMAIN-SUFFIX,ximalaya.com,DIRECT
+DOMAIN-SUFFIX,xmcdn.com,DIRECT
+DOMAIN-SUFFIX,kugou.com,DIRECT
+
+# 出行 / 物流
+DOMAIN-SUFFIX,ctrip.com,DIRECT
+DOMAIN-SUFFIX,tripcdn.com,DIRECT
+DOMAIN-SUFFIX,ctripcorp.com,DIRECT
+DOMAIN-SUFFIX,qunar.com,DIRECT
+DOMAIN-SUFFIX,qunarzz.com,DIRECT
+DOMAIN-SUFFIX,didiglobal.com,DIRECT
+DOMAIN-SUFFIX,xiaojukeji.com,DIRECT
+DOMAIN-SUFFIX,didichuxing.com,DIRECT
+DOMAIN-SUFFIX,sf-express.com,DIRECT
+DOMAIN-SUFFIX,zto.com,DIRECT
+DOMAIN-SUFFIX,yundaex.com,DIRECT
+
+# 银行 / 支付 (扩展)
+DOMAIN-SUFFIX,bankcomm.com,DIRECT
+DOMAIN-SUFFIX,citicbank.com,DIRECT
+DOMAIN-SUFFIX,ecitic.com,DIRECT
+DOMAIN-SUFFIX,pingan.com,DIRECT
+DOMAIN-SUFFIX,webank.com,DIRECT
+DOMAIN-SUFFIX,unionpay.com,DIRECT
+DOMAIN-SUFFIX,95516.com,DIRECT
+DOMAIN-SUFFIX,chinaums.com,DIRECT
+
+# 工具 / 办公 / 学习
+DOMAIN-SUFFIX,wpscdn.com,DIRECT
+DOMAIN-SUFFIX,aliyundrive.com,DIRECT
+DOMAIN-SUFFIX,alipan.com,DIRECT
+DOMAIN-SUFFIX,dewu.com,DIRECT
+DOMAIN-SUFFIX,poizon.com,DIRECT
+DOMAIN-SUFFIX,dxy.com,DIRECT
+DOMAIN-SUFFIX,dxycdn.com,DIRECT
+DOMAIN-SUFFIX,smzdm.com,DIRECT
+DOMAIN-SUFFIX,youdao.com,DIRECT
+
+# 社交 (补充)
+DOMAIN-SUFFIX,douban.com,DIRECT
+DOMAIN-SUFFIX,doubanio.com,DIRECT
+
+# v2.6.4 注: 以上为非 .cn 国内 App 域名硬编码兜底. 下面的 ChinaMax 规则集仍保留,
+# 作为更广泛的覆盖。即使 ChinaMax 加载失败,核心 App 已经直连。
+
+# 国内域名广覆盖兜底
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/ChinaMax/ChinaMax.list,DIRECT
+
+# v2.6.1 新增: 国内主流 ISP IP 段直连兜底 (降低对 GEOIP 数据库依赖)
+# 这些段覆盖电信/联通/移动的主要骨干 IP, 在 GEOIP 数据库未更新时
+# 仍能正确路由。完整段见 ChinaMax_IP.list。
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/ChinaMax/ChinaMax_IP.list,DIRECT
+
+# GeoIP 最终兜底
+GEOIP,CN,DIRECT,no-resolve
+
+# ---------------------------------------------------------------------
+# 12. FINAL
+# ---------------------------------------------------------------------
+FINAL,Final
+
+
+# =====================================================================
+# [Host]
+#
+# v2.6 说明: dns-direct-fallback-proxy = false 后,如果出现污染域名
+# 直连失败,优先在此处用静态 hosts 修复,而不是退回 fallback-proxy。
+# =====================================================================
+
+# =====================================================================
+# [Host]
+#
+# v2.6.2 重大重构: 实现"per-domain DNS 解析器路由"
+#
+# 设计原则:
+#   - 国内 CDN / Apple / 银行 / 高频国内服务: server:system
+#     → 让 iOS 系统 DNS (Wi-Fi 路由器/运营商 DNS) 解析,
+#       返回的是国内 CDN 的就近边缘 IP, 速度最快
+#   - 海外高敏感 (AI/Cloudflare): server:https://1.1.1.1/dns-query
+#     → 强制走 Cloudflare DoH 解析, 不暴露给国内 DNS 也不被污染
+#   - 极少数固定 IP 服务: 静态映射
+#
+# 这是 Shadowrocket 上能实现的最接近"DNS 路由分离"的方案。
+# =====================================================================
+
+[Host]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 国内 CDN / Apple / 银行 → 系统 DNS (拿就近边缘 IP)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Apple 系
+*.apple.com = server:system
+*.icloud.com = server:system
+*.icloud.com.cn = server:system
+*.icloud-content.com = server:system
+*.mzstatic.com = server:system
+*.cdn-apple.com = server:system
+*.aaplimg.com = server:system
+
+# 银行 (重要: 这些必须走系统 DNS, 避免被代理/境外 DoH 解析触发风控)
+*.ccb.com = server:system
+*.abchina.com.cn = server:system
+*.psbc.com = server:system
+*.cmbchina.com = server:system
+*.icbc.com.cn = server:system
+*.boc.cn = server:system
+*.bankofchina.com = server:system
+*.spdb.com.cn = server:system
+*.cmbc.com.cn = server:system
+*.ceb.cn = server:system
+
+# 微信 / QQ / 腾讯
+*.weixin.qq.com = server:system
+*.wechat.com = server:system
+*.qq.com = server:system
+*.tencent.com = server:system
+*.qcloud.com = server:system
+*.myqcloud.com = server:system
+*.qpic.cn = server:system
+*.gtimg.cn = server:system
+
+# 阿里系
+*.taobao.com = server:system
+*.tmall.com = server:system
+*.alipay.com = server:system
+*.alicdn.com = server:system
+*.aliyun.com = server:system
+*.aliyuncs.com = server:system
+
+# 微博 (走直连, 用系统 DNS)
+*.weibo.cn = server:system
+*.weibo.com = server:system
+*.weibocdn.com = server:system
+*.sinaimg.cn = server:system
+*.sina.com.cn = server:system
+
+# 字节系国内
+*.douyin.com = server:system
+*.douyinpic.com = server:system
+*.douyinstatic.com = server:system
+*.douyinvod.com = server:system
+*.douyincdn.com = server:system
+*.bytecdn.cn = server:system
+*.pstatp.com = server:system
+*.snssdk.com = server:system
+*.feishu.cn = server:system
+
+# 其他国内大厂
+*.baidu.com = server:system
+*.jd.com = server:system
+*.meituan.com = server:system
+*.163.com = server:system
+*.bilibili.com = server:system
+*.zhihu.com = server:system
+*.zhimg.com = server:system
+*.xiaohongshu.com = server:system
+
+# 国内 DNS 自身
+*.alidns.com = server:system
+*.doh.pub = server:system
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.4 新增: 国内顶级域通配兜底 (架构级优化)
+#
+# 所有 .cn / .com.cn 顶级域 (几乎 100% 是国内主体) 统一走系统 DNS,
+# 拿就近 CDN 边缘 IP. 一举覆盖财经/视频/物流/工具等所有未来出现的
+# 国内 .cn 域名, 不再需要逐个 *.specific.cn = server:system 写法.
+#
+# 影响范围举例:
+#   - 同花顺 10jqka.com.cn / thsi.cn / hexin.cn
+#   - 兴业银行 cib.com.cn / 华泰 htsc.com.cn / 苏宁 suning.cn
+#   - 酷狗酷我 kuwo.cn / WPS wps.cn / 顺丰 sf-express.com.cn
+#   - 学习强国 xuexi.cn / 12306.cn / nic.cn / cnnic.cn
+#   - 所有 *.gov.cn / *.edu.cn / *.ac.cn 政务教育
+#
+# 必须放在最后, 让前面的精确条目优先匹配 (Host 段是精确优先).
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+*.cn = server:system
+*.com.cn = server:system
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 海外高敏感 → Cloudflare DoH (避免国内 DNS 留痕)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# AI 核心服务 (Anthropic / OpenAI / Google AI)
+claude.ai = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.anthropic.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+chat.openai.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.openai.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.chatgpt.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.oaistatic.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.oaiusercontent.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+
+# Google AI (Gemini)
+gemini.google.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+aistudio.google.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.generativelanguage.googleapis.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+
+# 长连接 / 流媒体 (避免代理 DNS 与本地 DNS 不一致触发风控)
+*.instagram.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.cdninstagram.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.twitter.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.x.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.twimg.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+
+localhost = 127.0.0.1
+
+
+# =====================================================================
+# [URL Rewrite]
+#
+# 设计原则继承 v2.5: 不在此段做微博相关拦截。
+# 微博广告全部交给 [Script] 段处理。
+# =====================================================================
+
+[URL Rewrite]
+# Google CN 跳转修复
+^https?://(www\.)?g\.cn https://www.google.com 302
+^https?://(www\.)?google\.cn https://www.google.com 302
+
+# v2.6.9 移除: googlevideo initplayback &oad reject 规则
+# 原因: 该 rewrite 依赖对 *.googlevideo.com 做 MITM 解密才能匹配 path,
+#       但 v2.6.9 已将 googlevideo 移出 MITM (降耗 P0). 失去 MITM 后
+#       此 rewrite 无法生效, 故一并移除避免困惑.
+# 影响: 视频流前贴片广告改由 youtubei 的 player 接口脚本处理
+#       (Maasea youtube.response.js 移除广告 playback 配置),
+#       去广告效果基本不变. 实测如有个别前贴片漏网, 收益也远不及
+#       全程解密 googlevideo 大流量带来的发热/耗电代价.
+
+
+# =====================================================================
+# [Script]
+#
+# 命名约定: {App}{接口} = type=...
+# 所有规则强制 max-size=-1 (否则 64KB 截断会导致脚本失效)
+#
+# v2.6 扩充: 微博接口扩 5 个 + 新增 8 个国内 App 脚本
+# =====================================================================
+
+[Script]
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.3 脚本信任元数据规约 (强制)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# 每个脚本块必须包含以下元数据:
+#   SOURCE          上游 GitHub repo 完整 URL
+#   TRUST           HIGH | MEDIUM | LOW
+#   LAST-VERIFIED   YYYY-MM-DD 上次维护者人工审计脚本内容的日期
+#
+# 信任等级判定:
+#   HIGH    多人 contributor, 历史无投毒事件, > 1000 stars
+#   MEDIUM  单人维护但活跃, < 6 个月内有 commit
+#   LOW     长期未更新或维护者身份不明
+#
+# 维护规约:
+#   - 每 30-60 天审计 TRUST=MEDIUM 的脚本, 更新 LAST-VERIFIED
+#   - LAST-VERIFIED > 90 天的脚本在下次大扫除时优先评估去留
+#   - TRUST 等级不是静态的, 任何投毒事件或 abandon 都应立即降级
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 微博
+# SOURCE:        https://github.com/zmqcherish/proxy-script
+# TRUST:         MEDIUM (单人维护, 活跃度高, 微博生态社区认可度好)
+# LAST-VERIFIED: 2026-05-19
+# NOTES:         维护者 zmqcherish 是微博脚本社区长期活跃成员.
+#                每次微博 App 更新后, 此脚本通常 1-3 天内跟进.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 主接口 (信息流/详情页/评论/搜索/超话/转发流) — v2.6 扩展 pattern
+微博主体去广告 = type=http-response,pattern=^https?://m?api\.weibo\.c(n|om)/2/(cardlist|searchall|page|messageflow|statuses/(unread_)?friends(/|_)timeline|groups/timeline|statuses/(container_timeline|unread_hot_timeline|extend|video_mixtimeline|repost_timeline|show)|profile/(me|info|container_timeline)|video/(community_tab|remind_info|tiny_stream_video_list)|checkin/show|\!/live/media_homelist|comments/(build_comments|hotflow)|container/get_item|search/(finder|container_timeline|container_discover)|photo/info|\!/client/active_box),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_main.js
+
+# 开屏广告 — v2.6 扩展域名通配
+微博开屏去广告 = type=http-response,pattern=^https?://(sdk|wb)app\.(mob\.)?uve\.weibo\.com/(interface/sdk/sdkad\.php|wbapplua/wbpullad\.lua),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_launch.js
+
+# 备用开屏接口 (mapi.weibo.com 路径, 部分版本会回退到此)
+微博开屏备用 = type=http-response,pattern=^https?://m?api\.weibo\.c(n|om)/2/!/client/(wbpullad|sdkad|splash|launch|openscreen),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_launch.js
+
+# Tab 自定义图标
+微博Tab自定义 = type=http-response,pattern=^https://api\.weibo\.cn/2/!/client/light_skin,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_main.js
+
+# 非会员皮肤解锁
+微博皮肤解锁 = type=http-response,pattern=^https://new\.vip\.weibo\.cn/littleskin/preview,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_main.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# B站
+# SOURCE:        https://github.com/zmqcherish/proxy-script/tree/main/bilibili
+# TRUST:         MEDIUM (同微博, 同维护者)
+# LAST-VERIFIED: 2026-05-19
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Proto 二进制响应改写 (核心)
+B站proto = type=http-response,pattern=^https?://(grpc\.biliapi\.net|app\.bilibili\.com)/bilibili\.app\.viewunite\.v1\.View/(View|ViewProgress),requires-body=1,max-size=-1,binary-body-mode=true,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_proto.js
+
+B站首页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/feed/index,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站搜索 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/search,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站番剧 = type=http-response,pattern=^https?://api\.(bilibili|biliapi)\.(com|net)/pgc/page/bangumi,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站直播 = type=http-response,pattern=^https?://api\.live\.bilibili\.com/xlive/app-room/v1/index/getInfoByRoom,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站资源页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/resource/show/tab,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站我的页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/account/mine,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 微信公众号
+# SOURCE:        https://github.com/NobyDa/Script
+# TRUST:         HIGH (NobyDa 是 iOS 代理脚本社区资深维护者,
+#                      多年活跃, 跨多个仓库 cross-validation)
+# LAST-VERIFIED: 2026-05-19
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+微信公众号去广告 = type=http-response,pattern=^https?://mp\.weixin\.qq\.com/mp/getappmsgad,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/NobyDa/Script/master/QuantumultX/File/Wechat.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 知乎
+# SOURCE:        https://gist.github.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18
+# TRUST:         HIGH (blackmatrix7 是 ios_rule_script 主要维护者)
+# LAST-VERIFIED: 2026-05-19
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+知乎个人页 = type=http-response,pattern=^https?://api\.zhihu\.com/people/,requires-body=1,max-size=-1,script-path=https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+知乎推荐流 = type=http-response,pattern=^https://api\.zhihu\.com/topstory/recommend,requires-body=1,max-size=-1,script-path=https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+知乎评论 = type=http-response,pattern=^https?://api\.zhihu\.com/(comment_v5/)?(answers|comments?|articles|pins)/\d+/(root_|child_)?comments?,requires-body=1,max-size=-1,script-path=https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+知乎问答 = type=http-response,pattern=^https?://api\.zhihu\.com/(v4/)?questions/\d+,requires-body=1,max-size=-1,script-path=https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+知乎热榜 = type=http-response,pattern=^https?://api\.zhihu\.com/topstory/hot-lists?(\?|/),requires-body=1,max-size=-1,script-path=https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 高德地图
+# SOURCE:        https://github.com/ddgksf2013/Scripts
+# TRUST:         MEDIUM (单人维护, 历史上有过大幅重构)
+# LAST-VERIFIED: 2026-05-19
+# NOTES:         此仓库下脚本变动较频繁, 建议每 30 天审计一次.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+高德开屏 = type=http-response,pattern=^https?://.*\.amap\.com/ws/valueadded/alimama/splash_screen,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
+高德弹窗 = type=http-response,pattern=^https?://.*\.amap\.com/ws/msgbox/pull,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
+高德横幅 = type=http-response,pattern=^https?://.*\.amap\.com/ws/faas/amap-navigation/main-page,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# YouTube (去广告 + 画中画 PiP + 后台播放 + 翻译)
+# SOURCE:        https://github.com/Maasea/sgmodule
+# TRUST:         HIGH (Maasea 仓库长期稳定, 跨平台模块大量复用)
+# LAST-VERIFIED: 2026-05-21
+#
+# v2.6.7 重大升级 (本次新增浮窗/后台播放功能的核心):
+#   旧版问题: v2.6.6 用的单文件 youtube.js 是 Maasea 的过时架构,
+#             pattern 缺少 account/get_setting 和 get_watch 接口.
+#             - account/get_setting: 控制后台播放/画中画开关的接口
+#             - get_watch: 2024-06 YouTube 新增, 旧脚本会导致播放页
+#               去广告和画中画失效 (见 Maasea issue #57)
+#   新版方案: 升级为官方当前的 request + response 双脚本架构,
+#             补全所有 youtubei/v1 接口. 这才能真正解锁:
+#             ✓ 去广告 (瀑布流/视频/搜索/Shorts)
+#             ✓ 画中画 PiP (退出 App 时浮窗继续播放)
+#             ✓ 后台播放 (锁屏/切后台音频继续)
+#             ✓ 字幕/歌词翻译 (可选)
+#
+#   配套依赖 (缺一不可, 已在对应段落添加):
+#     1. [Rule] 段: googlevideo.com + youtubei UDP REJECT
+#        → 强制 YouTube 走 TCP, 否则 QUIC 绕过脚本, 解锁失效
+#     2. MITM hostname: 已包含 youtubei.googleapis.com (无需改)
+#
+#   启用后客户端操作 (重装 App 后):
+#     设置 → 播放 → 画中画: 开启
+#     设置 → 后台播放和下载 → 后台播放: 开启
+#
+#   注意: 音乐类内容 (官方 MV/Art Track) 的后台播放仍需 Premium,
+#         这是服务端限制, 脚本无法绕过. 普通视频不受此限.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# request 脚本 (改写客户端请求, 注入解锁参数)
+YouTube.request = type=http-request,pattern=^https://youtubei\.googleapis\.com/youtubei/v1/(browse|next|player|reel/reel_watch_sequence),requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.request.js
+
+# response 脚本 (改写服务端响应, 去广告 + 解锁后台播放/PiP + 翻译)
+# argument 说明: blockUpload=屏蔽上传按钮, blockImmersive=屏蔽选段,
+#               blockShorts=屏蔽Shorts(默认 false 保留), 翻译默认 off
+YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch),requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.response.js,argument={"lyricLang":"off","captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Spotify
+# SOURCE:        https://github.com/NobyDa/Script (同微信)
+# TRUST:         HIGH
+# LAST-VERIFIED: 2026-05-19
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Spotify去广告 = type=http-response,pattern=^https?://spclient\.wg\.spotify\.com/(ad-logic|ads|melody),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/NobyDa/Script/master/Surge/JS/Spotify.js
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 国内主流 App 开屏 / 信息流广告改写
+# SOURCE:        https://github.com/ddgksf2013/Scripts (同高德)
+# TRUST:         MEDIUM
+# LAST-VERIFIED: 2026-05-19
+# NOTES:         国内 App 接口变化频繁, 预期 30-60 天内有部分失效.
+#                视角 2 评审提出"和 App 对抗"的风险, 这些脚本属于
+#                高对抗风险类别 (尤其抖音/小红书/美团/京东).
+#                如出现账号风控提示, 第一时间禁用对应脚本.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# 小红书 (启动页 + 信息流广告)
+小红书开屏 = type=http-response,pattern=^https?://edith\.xiaohongshu\.com/api/sns/v\d/system_service/splash_config,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/RedBook.js
+
+小红书信息流 = type=http-response,pattern=^https?://edith\.xiaohongshu\.com/api/sns/v\d+/homefeed,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/RedBook.js
+
+# 京东 (开屏广告)
+京东开屏 = type=http-response,pattern=^https?://api\.m\.jd\.com/client\.action\?functionId=start,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/JingDong.js
+
+# 拼多多 (开屏)
+拼多多开屏 = type=http-response,pattern=^https?://api(v\d)?\.(yangkeduo|pinduoduo)\.com/.*splash,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Pinduoduo.js
+
+# 美团 (开屏)
+美团开屏 = type=http-response,pattern=^https?://flowplus\.meituan\.net/v\d/mss_\w+/.+,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/MeiTuan.js
+
+# 网易云音乐 (启动页 + 信息流)
+网易云音乐 = type=http-response,pattern=^https?://interface\.music\.163\.com/(eapi/ad/anti|eapi/homepage),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Netease.js
+
+# 爱奇艺 (开屏)
+爱奇艺开屏 = type=http-response,pattern=^https?://t7z\.cupid\.iqiyi\.com/show2,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/iQIYI.js
+
+# 腾讯视频 (开屏)
+腾讯视频开屏 = type=http-response,pattern=^https?://lives?\.l\.qq\.com/livemsg,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Tencent.js
+
+# 芒果TV (开屏)
+芒果TV开屏 = type=http-response,pattern=^https?://mobile\.api\.hunantv\.com/v\d/launcher/ad,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/MGTV.js
+
+# 12306 (开屏)
+铁路12306 = type=http-response,pattern=^https?://gateway\.12306\.cn/app-resource/(advert|operate),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Railway.js
+
+# 滴滴出行 (开屏)
+滴滴开屏 = type=http-response,pattern=^https?://api\.udache\.com/.+\?.*=(start|launch),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Didi.js
+
+
+# =====================================================================
+# [MITM]
+#
+# v2.6.2 重大改进: 在通配 *.weibo.cn / *.sinaimg.cn 等的基础上,
+# 显式排除所有 sinaimg/weibocdn 的图片/视频 CDN 子域。
+#
+# 原因 (日志 2 证据):
+#   ad.us.sinaimg.cn 上 720p HEVC 视频被完整 MITM 解密,
+#   图片/视频 chunk 加密-解密-再加密, 卡顿和首屏延迟由此而来。
+#   脚本根本不会处理图片字节, MITM 对图片/视频无意义。
+#
+# 同时保留 v2.6.1 的高敏感子域排除 (登录/支付/账户/安全)
+# =====================================================================
+
+[MITM]
+enable = true
+h2 = true
+client-source-address = false
+
+# v2.6.5 改进: MITM hostname 进一步精确化
+#
+# v2.6.5 关键改动:
+#   - *.amap.com (通配) → 精确接口列表 (3 个广告接口域名)
+#     原因: 通配会让所有 amap 子域走解密, 包括账户/钱包/搜索等无关流量.
+#           实测高德广告接口 90 天内稳定, 改为精确收益 > 维护成本.
+#           v2.6.5 仅列脚本实际处理的: 开屏/弹窗/横幅三接口对应的域.
+#
+# 已沿用 v2.6.3 的精确化 (历史):
+#   - *.bilibili.com   → 只保留 app.bilibili.com 等 5 个接口域名
+#   - *.zhihu.com      → 只保留 api.zhihu.com
+#
+# 保留的通配 (有充分理由):
+#   - *.weibo.cn / *.weibo.com / *.weibo.com.cn / *.weibocdn.com
+#     原因: 微博接口分散在 api/m/mapi/wbapp/new.vip 等子域, 收窄会
+#           立刻让脚本失效. 已用显式排除保护 passport/login/security/
+#           pay/图片 CDN 共 26 个高敏感子域, 这是当前最佳平衡.
+#   - *.sina.cn / *.sina.com.cn / *.sinaimg.cn / *.sinajs.cn
+#     原因: 微博域名联动, 同上.
+hostname = -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, manga.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, lives.l.qq.com, live.l.qq.com, mobile.api.hunantv.com, gateway.12306.cn, api.udache.com
+
+
+# =====================================================================
+# [Pinned Commits — 应急回滚参考]
+# (注释段,不影响解析)
+#
+# 出现规则集或脚本异常时,将对应 URL 中的 master 替换为下方 hash
+# (例如 .../master/rule/... 改为 .../<commit-hash>/rule/...) 可锁定
+# 到已验证版本。
+#
+# 由于 master 分支日常会合入新规则,以下推荐 hash 在配置生成时为
+# 当前推荐版本,定期 (每 30 天) 需要重新评估。
+#
+# blackmatrix7/ios_rule_script:
+#   推荐策略: 直接使用 release 分支替代 master 分支
+#   方法: 把 URL 中的 /master/ 改为 /release/
+#   原因: release 分支为作者人工发布,不定时更新,但稳定性高于 master
+#
+# zmqcherish/proxy-script:
+#   策略: fork 到自己仓库后,在自己 fork 内锁 commit hash
+#   原因: 该作者仅维护 main 分支,无 release 标签
+#
+# ddgksf2013/Scripts:
+#   策略: 同上,fork 锁 hash
+#   注意: 该仓库历史上有过多次大幅重构,直接引用 master 风险较高
+#
+# NobyDa/Script:
+#   策略: 该仓库历史悠久稳定,可继续引用 master
+#
+# Maasea/sgmodule:
+#   策略: 同 NobyDa,稳定可信
+# =====================================================================

@@ -1,0 +1,376 @@
+#############################################
+# 配置版本: B 派 v5.1.6 - Quora 修复 + 拦截规则显式化
+#
+# v5.1.5 → v5.1.6 改动:
+#   1. [修复] 删除报错的 Quora.list 远程订阅 (bm7 仓库无此目录, 404).
+#      改用 filter_local 本地手写规则覆盖 quora.com / quoracdn.net,
+#      走社交阅读组. 本地规则立即生效, 不依赖远程, 更可靠.
+#   2. [明确化] Privacy / BlockHttpDNS 显式 force-policy=reject.
+#      理由: 拦截类规则集的语义就是"拒绝", reject 让连接直接失败,
+#      不影响 App 主功能, 但掐断追踪上报 / 私有 DNS 绕过.
+#
+# ===== 以下为 v5.1.5 原始说明 =====
+# 配置版本: B 派 v5.1.5 - 社交阅读站加速 (A+B 方向)
+#
+# v5.1.4 → v5.1.5 改动 (LinkedIn/Quora/Tumblr/Reddit 慢的修复):
+#   诊断: 这四站原走兜底策略, 慢的原因有三:
+#     (1) DNS 走阿里/腾讯, 海外站解析慢或调度到错误 CDN
+#     (2) LinkedIn 部分域名被 ChinaMax 判国内 → 路径分裂(部分直连
+#         国际版导致极慢)
+#     (3) 自动选择按延迟挑节点, 但低延迟≠对这些站高吞吐
+#
+#   方向A (DNS): [dns] 新增四站及其 CDN 的 Cloudflare DoH 防污染.
+#     CDN 域名 (licdn/quoracdn/redditstatic 等) 必须一起加, 否则
+#     主域名解析对了但图片/资源仍走老路, 页面照样卡.
+#
+#   方向B (策略+规则):
+#     - [policy] 新增 static=社交阅读, 默认美国节点 (源站在美, 吞吐最好)
+#       复用现有地区组, 不新建测速组 → 零能耗增加
+#     - [filter_remote] 四站 bm7 原生规则, force-policy=社交阅读
+#     - 关键: 放在 ChinaMax 之前, 根治 LinkedIn 路径分裂
+#       (即便被判国内, 也先被社交阅读规则拦截走代理)
+#
+#   三维影响:
+#     功能: 显著正面 (路径分裂根治 + DNS 加速 + 可手选优质节点)
+#     安全: 持平偏正面 (DNS 走 Cloudflare 加密; 不涉 MITM/证书)
+#     能耗: 接近零 (复用现有地区组不新建测速组; DNS 多匹配纳秒级;
+#           filter 多 4 条订阅但 7 天更新, 日均增量可忽略)
+#
+# ===== 以下为 v5.1.4 原始说明 =====
+# 配置版本: B 派 v5.1.4 - 三向专家会审能耗加固版
+#
+# v5.1.3 → v5.1.4 改动:
+#   1. [修 BUG] filter_local 的 geoip CN 补上 no-resolve
+#      病灶: 缺 no-resolve 时, 每个国内纯 IP 包都触发一次 DNS 反查,
+#            既增加延迟又拉高基带唤醒能耗 (与降耗目标直接矛盾).
+#      修复: geoip, CN, direct, no-resolve
+#
+#   2. [安全] skip_validating_cert: true → false
+#      病灶: 全局放弃上游证书校验, 公共 WiFi 钓鱼/骨干网劫持时
+#            可被无感知中间人攻击.
+#      影响: 绝大多数 rewrite 在 false 下正常工作.
+#
+#   3. [能耗] 远程规则 update-interval 分级拉长:
+#            广告/隐私/ChinaMax: 1天 → 3天 (259200)
+#            AI/流媒体/社交:     1天 → 7天 (604800)
+#      理由: bm7 规则集变化极慢, 每天 18 次后台握手 + 解析数万条
+#            规则写闪存是不必要的 CPU/IO 唤醒.
+#
+#   4. [效率] filter_local 国内硬编码分级清理:
+#            删除: 视频/出行/工具类 (偶尔绕路无伤大雅, 交给 ChinaMax)
+#            保留: 财经/证券类 (cert-pinning 长连接, 最怕 ChinaMax
+#                  加载失败时绕路, 作为离线降级保险)
+#
+# ⚠️ 会审报告中两条被否决的建议 (避免引入新问题):
+#   - 否决"将整个 qq.com 设 direct": qq.com 是泛域名, gdt.qq.com
+#     等腾讯广告/追踪域名会因此绕过广告拦截. 微信通话的直连靠
+#     geoip CN + fallback_udp_policy=direct 已足够.
+#   - 否决"删光全部国内硬编码": 财经类保留作离线保险 (见上).
+#
+# 继承自 v5.1.x 的核心防护 (100% 保留):
+#   - 微信语音 UDP 双重保护 (geoip CN + fallback_udp_policy)
+#   - AI 服务境外 DoH 防污染
+#   - IG/Twitter 900s 稳定池防风控漂移
+#   - 银行/支付 MITM 排除清单
+#   - 策略组类型严格分层 (static 嵌套 / url-latency 纯节点)
+#
+# 更新时间: 2026-05-23
+#############################################
+
+[general]
+server_check_url=http://cp.cloudflare.com/generate_204
+server_check_timeout=3000
+
+profile_img_url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/author/fmz200-01.png
+
+# 银行/券商域名: 不走 QX DoH, 用系统 DNS, 避免 cert-pinning 风控
+dns_exclusion_list=*.cmpassport.com, *.jegotrip.com.cn, *.icitymobile.mobi, id6.me, *.pingan.com.cn, *.cmbchina.com, *.ccb.com, *.icbc.com.cn, *.boc.cn, *.abchina.com.cn, *.myhexin.com, *.eastmoney.com
+
+geo_location_checker=http://ip-api.com/json/?lang=zh-CN, https://raw.githubusercontent.com/fmz200/wool_scripts/main/QuantumultX/scripts/server_location.js
+
+resource_parser_url=https://fastly.jsdelivr.net/gh/KOP-XIAO/QuantumultX@master/Scripts/resource-parser.js
+
+excluded_routes=192.168.0.0/16, 172.16.0.0/12, 100.64.0.0/10, 10.0.0.0/8, 239.255.255.250/32
+
+fallback_udp_policy=direct
+
+
+# =====================================
+# [dns] - 继承 v5.1.3 (大幅收敛, 仅 AI 强制境外 DoH)
+# =====================================
+[dns]
+no-ipv6
+prefer-doh3
+
+# 主 DoH: 国内双供应商
+doh-server=https://dns.alidns.com/dns-query, https://doh.pub/dns-query
+
+# AI 服务: 强制境外 DoH (防国内 DNS 间歇污染)
+doh-server=/*.openai.com/https://1.1.1.1/dns-query
+doh-server=/*.chatgpt.com/https://1.1.1.1/dns-query
+doh-server=/*.oaistatic.com/https://1.1.1.1/dns-query
+doh-server=/*.oaiusercontent.com/https://1.1.1.1/dns-query
+doh-server=/*.anthropic.com/https://1.1.1.1/dns-query
+doh-server=/*.claude.ai/https://1.1.1.1/dns-query
+doh-server=/gemini.google.com/https://1.1.1.1/dns-query
+doh-server=/*.generativelanguage.googleapis.com/https://1.1.1.1/dns-query
+doh-server=/aistudio.google.com/https://1.1.1.1/dns-query
+
+# v5.1.5 新增: 社交阅读站 + 其 CDN 走境外 DoH (防污染/防错误调度)
+# LinkedIn
+doh-server=/*.linkedin.com/https://1.1.1.1/dns-query
+doh-server=/*.licdn.com/https://1.1.1.1/dns-query
+# Quora
+doh-server=/*.quora.com/https://1.1.1.1/dns-query
+doh-server=/*.quoracdn.net/https://1.1.1.1/dns-query
+# Tumblr
+doh-server=/*.tumblr.com/https://1.1.1.1/dns-query
+# Reddit
+doh-server=/*.reddit.com/https://1.1.1.1/dns-query
+doh-server=/*.redd.it/https://1.1.1.1/dns-query
+doh-server=/*.redditstatic.com/https://1.1.1.1/dns-query
+doh-server=/*.redditmedia.com/https://1.1.1.1/dns-query
+
+# 国内高频服务: 强制系统 DNS (拿就近 CDN)
+server=/*.apple.com/system
+server=/*.icloud.com/system
+server=/*.icloud-content.com/system
+server=/*.mzstatic.com/system
+server=/*.aaplimg.com/system
+
+server=/*.taobao.com/system
+server=/*.tmall.com/system
+server=/*.alipay.com/system
+server=/*.alicdn.com/system
+server=/*.aliyuncs.com/system
+server=/*.jd.com/system
+server=/*.qq.com/system
+server=/*.weixin.qq.com/system
+server=/*.bilibili.com/system
+server=/*.douyin.com/system
+server=/*.douyincdn.com/system
+server=/*.xiaohongshu.com/system
+server=/*.weibo.cn/system
+server=/*.weibo.com/system
+server=/*.weibocdn.com/system
+server=/*.sinaimg.cn/system
+
+# 国内 Google 代理
+server=/dl.google.com/119.29.29.29
+server=/dl.l.google.com/119.29.29.29
+server=/update.googleapis.com/119.29.29.29
+server=/*.dl.playstation.net/119.29.29.29
+
+# 路由器/局域网
+server=/amplifi.lan/system
+server=/router.synology.com/system
+server=/router.asus.com/system
+server=/routerlogin.net/system
+server=/orbilogin.com/system
+server=/myrouter.local/system
+server=/miwifi.com/system
+server=/www.miwifi.com/system
+server=/mediarouter.home/system
+server=/tplogin.cn/system
+server=/tplinklogin.net/system
+server=/melogin.cn/system
+server=/falogin.cn/system
+
+
+# =====================================
+# [policy] - 继承 v5.1.3 (防抖优化 + 稳定池)
+# =====================================
+[policy]
+
+# ---------- 场景组 (static) ----------
+static=兜底策略, 自动选择, 稳定选择, 香港节点, 狮城节点, 日本节点, 台湾节点, 美国节点, 韩国节点, direct, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
+
+static=人工智能, 狮城节点, 日本节点, 美国节点, 台湾节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT3.png
+
+static=Spotify, 狮城节点, 日本节点, 香港节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
+
+static=电报消息, 狮城稳定, 日本稳定, 美国稳定, 狮城节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_01.png
+
+static=谷歌服务, 狮城节点, 日本节点, 香港节点, 美国节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Google.png
+
+static=海外抖音, 日本节点, 台湾节点, 韩国节点, 美国节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok_2.png
+
+static=大陆抖音, direct, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Tiktok_06.png
+
+static=苹果服务, direct, 自动选择, 香港节点, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/Apple.png
+
+static=Netflix, 狮城节点, 香港节点, 日本节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
+static=Disney+, 香港节点, 日本节点, 美国节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Disney+.png
+static=YouTube, 谷歌服务, 狮城节点, 香港节点, 日本节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+
+# 长连接业务专用 (Instagram / Twitter / Threads) - 防风控漂移
+static=Instagram, 美国稳定, 日本稳定, 狮城稳定, 兜底策略, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Instagram.png
+
+static=推特, 美国稳定, 日本稳定, 狮城稳定, 兜底策略, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Twitter_01.png
+
+# v5.1.5 新增: 社交阅读站专用 (LinkedIn/Quora/Tumblr/Reddit)
+# 默认美国节点 (源站在美吞吐最好), 复用现有地区组 → 零能耗增加
+static=社交阅读, 美国节点, 日本节点, 狮城节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
+
+static=Github, 自动选择, 狮城节点, 日本节点, 美国节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/github_01.png
+
+static=美国服务, 美国节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Googlevoice_03.png
+
+
+# ---------- 地区组 (url-latency-benchmark) ----------
+url-latency-benchmark=自动选择, server-tag-regex=^(?!.*(剩余|套餐|官网|流量|过期|更新|失联|网址|备用|测试|GB|MB)).*$, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto.png
+
+url-latency-benchmark=香港节点, server-tag-regex=港|HK|Hong|🇭🇰, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/HK.png
+url-latency-benchmark=台湾节点, server-tag-regex=台|TW|Taiwan|🇹🇼, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/tw.png
+url-latency-benchmark=美国节点, server-tag-regex=美|US|States|American|🇺🇸, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/US.png
+url-latency-benchmark=日本节点, server-tag-regex=日|JP|Japan|🇯🇵, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/JP.png
+url-latency-benchmark=韩国节点, server-tag-regex=韩|KR|Korea|🇰🇷, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/KR.png
+url-latency-benchmark=狮城节点, server-tag-regex=新加坡|狮|獅|SG|🇸🇬, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/SG.png
+
+# 稳定地区池 (IG/Twitter 长连接专用, interval=900 防漂移)
+url-latency-benchmark=美国稳定, server-tag-regex=美|US|States|American|🇺🇸, check-interval=900, tolerance=300, alive-checking=true
+url-latency-benchmark=日本稳定, server-tag-regex=日|JP|Japan|🇯🇵, check-interval=900, tolerance=300, alive-checking=true
+url-latency-benchmark=狮城稳定, server-tag-regex=新加坡|狮|獅|SG|🇸🇬, check-interval=900, tolerance=300, alive-checking=true
+
+# 稳定选择降级链 (static 类型, 可嵌套策略组)
+static=稳定选择, 自动选择, 狮城稳定, 日本稳定, 美国稳定, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
+
+
+[server_local]
+
+
+[server_remote]
+https://YOUR_AIRPORT/subscribe?token=__REDACTED__, tag=良心云, update-interval=172800, opt-parser=false, enabled=true
+
+
+# =====================================
+# [filter_local] - v5.1.4 分级清理 + no-resolve 修复
+# =====================================
+[filter_local]
+# 局域网保护
+host-suffix, local, direct
+
+# ---------- 高频重试源熔断 (QX 原生 reject) ----------
+host, umc.danuoyi.alicdn.com, reject
+host-suffix, mum.alibabachengdun.com, reject
+host-suffix, siftscience.com, reject
+host-keyword, pangolin-sdk-toutiao, reject
+host-suffix, ctobsnssdk.com, reject
+host-suffix, px.ucweb.com, reject
+host-keyword, umeng, reject
+host-keyword, adsdk, reject
+host-suffix, xz.fbcdn.net, reject
+host-suffix, xy.fbcdn.net, reject
+
+# ---------- 微博保护区 (最先匹配, 避免被广告规则集误命中) ----------
+host-suffix, weibo.cn, direct
+host-suffix, weibo.com, direct
+host-suffix, weibocdn.com, direct
+host-suffix, sinaimg.cn, direct
+host-suffix, sina.cn, direct
+host-suffix, sina.com.cn, direct
+host-suffix, sinajs.cn, direct
+
+# ---------- v5.1.4 保留: 财经/证券硬编码 (离线降级保险) ----------
+# 理由: cert-pinning 长连接行情, 最怕 ChinaMax 远程加载失败时绕路.
+# 视频/出行/工具类已删除, 交由 ChinaMax 兜底 (偶尔绕路无伤大雅).
+host-suffix, myhexin.com, direct
+host-suffix, eastmoney.com, direct
+host-suffix, dfcfw.com, direct
+host-suffix, xueqiu.com, direct
+host-suffix, futunn.com, direct
+host-suffix, itiger.com, direct
+host-suffix, gtja.com, direct
+host-suffix, citics.com, direct
+
+# ---------- v5.1.6 新增: Quora 本地规则 (bm7 无 Quora 目录, 改本地覆盖) ----------
+# 走社交阅读组, 立即生效不依赖远程订阅
+host-suffix, quora.com, 社交阅读
+host-suffix, quoracdn.net, 社交阅读
+
+# ---------- v5.1.4 修复: 国内 IP 兜底 (微信 VOIP / 纯 IP UDP) ----------
+# 病灶修复: 补上 no-resolve, 避免对每个国内 IP 触发多余的 DNS 反查
+# (既降延迟又降基带唤醒能耗). 与 fallback_udp_policy=direct 双重保护.
+geoip, CN, direct, no-resolve
+
+# 兜底
+final, 兜底策略
+
+
+# =====================================
+# [filter_remote] - v5.1.4 能耗优化: update-interval 分级拉长
+#   广告/隐私/ChinaMax: 3天 (259200)
+#   AI/流媒体/社交:     7天 (604800)
+# =====================================
+[filter_remote]
+# 广告与隐私 (3天)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Advertising/Advertising.list, tag=广告拦截, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/advertising.png, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Privacy/Privacy.list, tag=隐私保护, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/privacy.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/BlockHttpDNS/BlockHttpDNS.list, tag=BlockHttpDNS, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
+
+# 苹果系统更新屏蔽 (默认关)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/BlockAppleOTA/BlockAppleOTA.list, tag=苹果屏蔽更新, update-interval=259200, opt-parser=false, enabled=false
+
+# AI 分流 (7天, 服务域名变化极慢)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/OpenAI/OpenAI.list, tag=OpenAI, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Claude/Claude.list, tag=Claude, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Gemini/Gemini.list, tag=Gemini, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Copilot/Copilot.list, tag=Copilot, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+
+# 社交与海外流媒体 (7天)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/TikTok/TikTok.list, tag=TikTok, force-policy=海外抖音, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Telegram/Telegram.list, tag=Telegram, force-policy=电报消息, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Instagram/Instagram.list, tag=Instagram, force-policy=Instagram, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Twitter/Twitter.list, tag=Twitter, force-policy=推特, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Apple/Apple.list, tag=Apple, force-policy=苹果服务, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Google/Google.list, tag=Google, force-policy=谷歌服务, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/YouTube/YouTube.list, tag=YouTube, force-policy=YouTube, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Spotify/Spotify.list, tag=Spotify, force-policy=Spotify, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Netflix/Netflix.list, tag=Netflix, force-policy=Netflix, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Disney/Disney.list, tag=Disney+, force-policy=Disney+, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/GitHub/GitHub.list, tag=GitHub, force-policy=Github, update-interval=604800, opt-parser=false, enabled=true
+
+# v5.1.5 新增: 社交阅读站 (必须在 ChinaMax 之前, 根治 LinkedIn 路径分裂)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/LinkedIn/LinkedIn.list, tag=LinkedIn, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Tumblr/Tumblr.list, tag=Tumblr, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Reddit/Reddit.list, tag=Reddit, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+
+# 大陆大盘二道兜底 (3天)
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/ChinaMax/ChinaMax.list, tag=中国大陆, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/ChinaIPs/ChinaIPs.list, tag=ChinaIP, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
+
+
+[rewrite_local]
+
+
+# =====================================
+# [rewrite_remote] - v5.1.4 能耗: 3天更新
+# =====================================
+[rewrite_remote]
+https://github.com/chavyleung/scripts/raw/master/box/rewrite/boxjs.rewrite.quanx.conf, tag=BoxJs, update-interval=259200, opt-parser=false, enabled=true
+https://github.com/sub-store-org/Sub-Store/raw/master/config/QX.snippet, tag=Sub-Store, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-hub.beta.qx.conf, tag=Script-Hub, update-interval=259200, opt-parser=false, enabled=true
+# Spotify VIP 解锁 (灰色功能, 用户自行评估)
+https://raw.githubusercontent.com/app2smile/rules/master/module/spotify.conf, tag=Spotify音乐VIP, update-interval=259200, opt-parser=false, enabled=true
+
+
+[task_local]
+# 提示: 若非常用, 可在 App 内将非刚需项勾选 Disabled 进一步降耗
+event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/streaming-ui-check.js, tag=流媒体-解锁查询, img-url=checkmark.seal.system, enabled=true
+event-interaction https://raw.githubusercontent.com/I-am-R-E/Functional-Store-Hub/Master/NodeLinkCheck/Script/NodeLinkCheck.js, tag=链路检测, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Stack.png, enabled=true
+event-interaction https://raw.githubusercontent.com/fmz200/wool_scripts/main/QuantumultX/scripts/server_info.js, tag=节点详情查询, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ipInfo.png, enabled=true
+event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/traffic-check.js, tag=策略流量查询, img-url=arrow.up.arrow.down.circle.system, enabled=true
+event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/server-info-plus.js, tag=节点信息查询, img-url=tag.circle.system, enabled=true
+
+
+[http_backend]
+
+
+# =====================================
+# [mitm] - v5.1.4 安全加固: 关闭全局证书豁免
+# =====================================
+[mitm]
+hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com
+skip_validating_cert = false
+;passphrase =
+;p12 =
