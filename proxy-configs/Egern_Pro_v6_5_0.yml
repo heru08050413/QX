@@ -585,6 +585,21 @@ dns:
         match: tiktokcdn.com
         value: Foreign-DoH
 
+    # ── 层 0.5f: AI 整集用 proxy_rule_set 钉 Foreign-DoH (v6.5.2, 放大 Egern 长处) ──
+    #   Egern 独有能力: 把规则集本身当 DNS 分流条件. 上面 0.5b 是手写根域,
+    #   这里用 bm7 OpenAI/Gemini 整集兜住手写漏掉的子域, 且【在国内规则
+    #   (1a *.cn / 1b ChinaMax)之前】, 防 AI 子域被误判国内 → 拿污染 IP.
+    #   收益: 中等(主要是抗清单滞后 + 抗误命中); 成本: 2 次规则集拉取/天.
+    #   注: Gemini 清单仅 master 提供(release 404, 经核验), 故 Gemini 用 master.
+    - proxy_rule_set:
+        match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Surge/OpenAI/OpenAI.list
+        value: Foreign-DoH
+        update_interval: 86400
+    - proxy_rule_set:
+        match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/Gemini/Gemini.list
+        value: Foreign-DoH
+        update_interval: 86400
+
     # ── 层 0.5c: Apple 服务域 → 国内 DoH(修 ls/push 解析失败) ──
     #   Apple 在华本地节点(世纪互联/Akamai)用国内 DoH 可拿有效就近 IP.
     #   注: 已移除 aaplimg.com — 该泛域国内外均有边缘, 强制国内 DoH 反
@@ -1163,6 +1178,42 @@ rules:
   - domain:
       match: youtubei.googleapis.com
       policy: YouTube
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 0.65 代理侧 AI(Gemini/Google AI)禁 QUIC → 强制 TCP (v6.5.2, 放大长处)
+  #
+  # 依据: 这些 AI 域走代理出口. 隧道内 HTTP/3(QUIC) 的收益基本被代理这一跳
+  #   抵消(瓶颈在节点, 非源站协议), 而大量机场节点对 UDP/QUIC 转发支持弱
+  #   → QUIC 会卡顿/超时. 用与 YouTube 0.6 同款的 and(domain+quic)→REJECT
+  #   触发客户端 happy-eyeballs 回落 TCP, 提升 Gemini 连通稳定性.
+  # 性质: 节点无关的稳定性改进; 不全局动 block_quic(其余直连流量 HTTP/3 不变).
+  # 边界: 客户端均支持 QUIC 失败回落 TCP(与 YouTube 同机制), 不会断服务.
+  #   若你的节点 UDP 转发良好且更看重 HTTP/3, 可删除本段三条.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - and:
+      match:
+        - domain_suffix:
+            match: gemini.google.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: Gemini 禁 QUIC (强制 TCP, 代理侧稳定)
+  - and:
+      match:
+        - domain_suffix:
+            match: aistudio.google.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: AI Studio 禁 QUIC (强制 TCP)
+  - and:
+      match:
+        - domain_suffix:
+            match: generativelanguage.googleapis.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: Gemini API 禁 QUIC (强制 TCP)
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.7 YouTube 广告流 / 统计信标拦截 (v6.3.0, url_regex 精确匹配)
