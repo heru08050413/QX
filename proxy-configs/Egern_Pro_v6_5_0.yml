@@ -2199,12 +2199,15 @@ widgets:
 
 
 # =====================================================================
-# Modules — 按用户选择"全部保留"(功耗换全面覆盖)
+# Modules — 去广告模块已去重(v6.5.1, 对齐 CLAUDE.md §二 Egern)
 # ---------------------------------------------------------------------
-# ⚠️ 取舍提示: 国内 App 去广告有四套覆盖重叠(Daily / blockAds /
-#   小红书专项 / NobyDa). 模块越多, MITM 注入的 host 越多, 解密+JS 唤醒
-#   开销越大, 与"低功耗"相悖. 你已明确选择全保留以换全面覆盖. 若日后想
-#   省电, 优先关掉重叠最重的 Daily 或 NobyDa(blockAds 覆盖最广可留).
+# v6.5.1 [功耗/去重] 关闭重叠最重的 Daily 与 NobyDa 两个整合包.
+#   背景: 国内 App 去广告原有四套覆盖重叠(Daily / blockAds / 小红书专项
+#   / NobyDa). 模块越多, MITM 注入 host 越多, 解密+JS 唤醒开销越大, 与
+#   "低功耗"相悖. 按 CLAUDE.md 要求去重: 保 blockAds(覆盖最广)+ 小红书
+#   专项 + B站 BiliUniverse + 微博 zmqcherish; 关 Daily / NobyDa.
+#   预期: 功耗↓、MITM 注入面↓, 去广告覆盖几乎不减(blockAds 已覆盖最广).
+#   如发现个别 App 广告回潮, 可单独重开对应模块定位.
 #
 # 回滚: 规则集/脚本异常时, 把 URL 里的 /master/ 改 /release/(blackmatrix7)
 #   或 fork 后锁 commit hash(zmqcherish/ddgksf2013).
@@ -2294,8 +2297,9 @@ modules:
     enabled: false
 
   # limbopro NobyDa 整合包(微博/Netflix 评分/知乎/扫描全能王等)
+  # v6.5.1 去重: 关闭(与 blockAds/Daily 重叠重). 如需其评分/知乎等特性可单开.
   - url: https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/NobyDa.sgmodule
-    enabled: true
+    enabled: false
 
   # BiliUniverse ADBlock(B 站去广告事实标准; 开屏/推荐/搜索/直播)
   - url: https://github.com/BiliUniverse/ADBlock/releases/latest/download/BiliBili.ADBlock.sgmodule
@@ -2306,8 +2310,9 @@ modules:
     enabled: false
 
   # ddgksf2013 Daily(国内 App 开屏广告; 与 blockAds 部分重叠, 实现不同)
+  # v6.5.1 去重: 关闭(与 blockAds 重叠且该仓库历史频繁重构, 维护风险高).
   - url: https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Module/Daily.sgmodule
-    enabled: true
+    enabled: false
 
   # fmz200 blockAds(730+ 国内 App/小程序广告; 覆盖最广)
   - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
