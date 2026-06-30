@@ -15,7 +15,9 @@
 
 文件清单
 - CLAUDE.md                  项目规则(安全基线 / 各 App 分工 / 禁止项)
-- shadowrocket_v2_6_11.lsr   Shadowrocket(原文件,无 token)
-- quantumult_B_v5_1.6        Quantumult X(token 已脱敏)
-- Egern_Pro_v6_5_0.yml       Egern(NextDNS ID 保留)
-- Loon_v2.2                  Loon(token 已脱敏)
+- shadowrocket_V26.00.lsr    Shadowrocket(原文件,无 token)
+- quantumult_B_V26.00        Quantumult X(token 已脱敏)
+- Egern_Pro_V26.00.yml       Egern(NextDNS ID 保留)
+- Loon_V26.00                Loon(token 已脱敏)
+
+(四套配置版本号已统一对齐为 V26.00)

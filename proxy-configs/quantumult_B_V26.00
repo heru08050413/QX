@@ -1,5 +1,5 @@
 #############################################
-# 配置版本: B 派 v5.1.6 - Quora 修复 + 拦截规则显式化
+# 配置版本: V26.00 (四套配置统一版本号; B 派, 历史沿革见下方 v5.1.x 日志)
 #
 # v5.1.5 → v5.1.6 改动:
 #   1. [修复] 删除报错的 Quora.list 远程订阅 (bm7 仓库无此目录, 404).
@@ -106,7 +106,7 @@ prefer-doh3
 doh-server=https://dns.alidns.com/dns-query, https://doh.pub/dns-query
 
 # AI 服务: 强制境外 DoH (防国内 DNS 间歇污染)
-# v5.1.7 [安全] 补 Cloudflare 次要 IP 1.0.0.1 冗余 (对齐 SR v2.6.9):
+# V26.00 [安全] 补 Cloudflare 次要 IP 1.0.0.1 冗余 (对齐 SR v2.6.9):
 #   单一 1.1.1.1 端点被阻断时, 可 fallback 到 1.0.0.1, 避免回退系统 DNS
 #   拿污染 IP. 与 SR 同款做法.
 doh-server=/*.openai.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
@@ -266,7 +266,7 @@ host-suffix, xz.fbcdn.net, reject
 host-suffix, xy.fbcdn.net, reject
 
 # ---------- 微博保护区 (最先匹配, 避免被广告规则集误命中) ----------
-# v5.1.7 [一致性] 补 weibo.com.cn / miaopai.com, 对齐 SR/Egern 保护区覆盖.
+# V26.00 [一致性] 补 weibo.com.cn / miaopai.com, 对齐 SR/Egern 保护区覆盖.
 host-suffix, weibo.cn, direct
 host-suffix, weibo.com, direct
 host-suffix, weibo.com.cn, direct
@@ -378,7 +378,7 @@ event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/
 event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/Scripts/server-info-plus.js, tag=节点信息查询, img-url=tag.circle.system, enabled=true
 
 # ───────────────────────────────────────────────────────────────────
-# v5.1.7 [能力] cron 定时任务 (落地 QX 独有强项, 对齐 CLAUDE.md §二)
+# V26.00 [能力] cron 定时任务 (落地 QX 独有强项, 对齐 CLAUDE.md §二)
 # ───────────────────────────────────────────────────────────────────
 # QX cron 语法: <分> <时> <日> <月> <周> <script-url>, tag=..., enabled=...
 # ⚠️ 以下三条默认 enabled=false: 它们依赖你机场专属脚本 / 你的账号,

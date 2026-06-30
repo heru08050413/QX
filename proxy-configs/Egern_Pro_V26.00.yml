@@ -1,5 +1,6 @@
 # =====================================================================
-# Egern Pro Master Configuration — v6.5.0  (TUN Mode + NextDNS)
+# Egern Pro Master Configuration — V26.00  (TUN Mode + NextDNS)
+# (四套配置统一版本号 V26.00; 历史沿革见下方 v6.x 修订日志)
 # Generated: 2026-05-27
 # ---------------------------------------------------------------------
 # ┌─ v6.5.0 改动 (TUN 模式 + 境外用 NextDNS, 解决 DNS 隐私) ─────────┐
@@ -250,7 +251,7 @@ dns:
       - https://cloudflare-dns.com/dns-query
 
   forward:
-    # ── 层 0.05: .local (mDNS/Bonjour) → system (v6.5.1) ──
+    # ── 层 0.05: .local (mDNS/Bonjour) → system (V26.00) ──
     #   配合 hosts 段删除 '*.local': 192.168.1.1. 局域网设备(AirPlay/
     #   Chromecast/打印机/NAS).local 名称必须交系统 mDNS 解析, 不能落到
     #   兜底 '*' → Foreign-DoH(那会解析失败/绕路).
@@ -270,7 +271,7 @@ dns:
         match: www.gstatic.com
         value: bootstrap
 
-    # ── 层 0.08: 机场节点域名 → bootstrap (v6.5.1, 需用户手动填) ──
+    # ── 层 0.08: 机场节点域名 → bootstrap (V26.00, 需用户手动填) ──
     #   ⚠️ TUN(vif_only)+ 境外DoH经代理 的固有风险: 若机场节点用【域名】
     #   寻址(非 IP 字面量), 该域名会落到兜底 '*' → Foreign-DoH, 而境外 DoH
     #   又要先有代理 → 启动期解析循环依赖 / 死锁. 节点域名必须用 bootstrap
@@ -585,7 +586,7 @@ dns:
         match: tiktokcdn.com
         value: Foreign-DoH
 
-    # ── 层 0.5f: AI 整集用 proxy_rule_set 钉 Foreign-DoH (v6.5.2, 放大 Egern 长处) ──
+    # ── 层 0.5f: AI 整集用 proxy_rule_set 钉 Foreign-DoH (V26.00, 放大 Egern 长处) ──
     #   Egern 独有能力: 把规则集本身当 DNS 分流条件. 上面 0.5b 是手写根域,
     #   这里用 bm7 OpenAI/Gemini 整集兜住手写漏掉的子域, 且【在国内规则
     #   (1a *.cn / 1b ChinaMax)之前】, 防 AI 子域被误判国内 → 拿污染 IP.
@@ -642,7 +643,7 @@ dns:
     # Apple 国内 CDN(金山云加速)
     iosapps.itunes.apple.com: iosapps.itunes.apple.com.download.ks-cdn.com
     localhost: 127.0.0.1
-    # v6.5.1 [可用性] 删除 '*.local': 192.168.1.1
+    # V26.00 [可用性] 删除 '*.local': 192.168.1.1
     #   原写法把所有 *.local (mDNS/Bonjour) 硬映射到单一网关 IP, 会破坏
     #   AirPlay / Chromecast / 打印机 / NAS 的 .local 设备发现 (它们并不
     #   都在 192.168.1.1). .local 应交给系统 mDNS 解析 — 见 DNS forward
@@ -1180,7 +1181,7 @@ rules:
       policy: YouTube
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # 0.65 代理侧 AI(Gemini/Google AI)禁 QUIC → 强制 TCP (v6.5.2, 放大长处)
+  # 0.65 代理侧 AI(Gemini/Google AI)禁 QUIC → 强制 TCP (V26.00, 放大长处)
   #
   # 依据: 这些 AI 域走代理出口. 隧道内 HTTP/3(QUIC) 的收益基本被代理这一跳
   #   抵消(瓶颈在节点, 非源站协议), 而大量机场节点对 UDP/QUIC 转发支持弱
@@ -1318,7 +1319,7 @@ rules:
   - domain_suffix:
       match: e.qq.com
       policy: REJECT-DROP
-  # v6.5.1 [可用性] 移除 egernlicense.com 的 REJECT-DROP.
+  # V26.00 [可用性] 移除 egernlicense.com 的 REJECT-DROP.
   #   该域是 Egern 自身的授权/License 服务器, 静默丢包它有触发授权异常/
   #   掉授权的风险, 而拦截它的收益不明确. 不属于"高频重试广告源", 不应留
   #   在熔断段. 如确认它纯为遥测且不影响授权, 可再单独加回.
@@ -2250,9 +2251,9 @@ widgets:
 
 
 # =====================================================================
-# Modules — 去广告模块已去重(v6.5.1, 对齐 CLAUDE.md §二 Egern)
+# Modules — 去广告模块已去重(V26.00, 对齐 CLAUDE.md §二 Egern)
 # ---------------------------------------------------------------------
-# v6.5.1 [功耗/去重] 关闭重叠最重的 Daily 与 NobyDa 两个整合包.
+# V26.00 [功耗/去重] 关闭重叠最重的 Daily 与 NobyDa 两个整合包.
 #   背景: 国内 App 去广告原有四套覆盖重叠(Daily / blockAds / 小红书专项
 #   / NobyDa). 模块越多, MITM 注入 host 越多, 解密+JS 唤醒开销越大, 与
 #   "低功耗"相悖. 按 CLAUDE.md 要求去重: 保 blockAds(覆盖最广)+ 小红书
@@ -2348,7 +2349,7 @@ modules:
     enabled: false
 
   # limbopro NobyDa 整合包(微博/Netflix 评分/知乎/扫描全能王等)
-  # v6.5.1 去重: 关闭(与 blockAds/Daily 重叠重). 如需其评分/知乎等特性可单开.
+  # V26.00 去重: 关闭(与 blockAds/Daily 重叠重). 如需其评分/知乎等特性可单开.
   - url: https://raw.githubusercontent.com/limbopro/Adblock4limbo/main/NobyDa.sgmodule
     enabled: false
 
@@ -2361,7 +2362,7 @@ modules:
     enabled: false
 
   # ddgksf2013 Daily(国内 App 开屏广告; 与 blockAds 部分重叠, 实现不同)
-  # v6.5.1 去重: 关闭(与 blockAds 重叠且该仓库历史频繁重构, 维护风险高).
+  # V26.00 去重: 关闭(与 blockAds 重叠且该仓库历史频繁重构, 维护风险高).
   - url: https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Module/Daily.sgmodule
     enabled: false
 

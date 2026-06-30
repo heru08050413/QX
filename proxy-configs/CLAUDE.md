@@ -4,10 +4,12 @@
 策略不是合并成一套,而是**安全层求同、能力层存异**——每个 App 发挥自身独有架构能力。
 
 文件:
-- `shadowrocket_v2_6_11.lsr` — Shadowrocket
-- `quantumult_B_v5_1.6` — Quantumult X
-- `Egern_Pro_v6_5_0.yml` — Egern(YAML)
-- `Loon_v2.2` — Loon
+- `shadowrocket_V26.00.lsr` — Shadowrocket
+- `quantumult_B_V26.00` — Quantumult X
+- `Egern_Pro_V26.00.yml` — Egern(YAML)
+- `Loon_V26.00` — Loon
+
+> 版本号:四套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x)保留作为沿革记录。
 
 ---
 

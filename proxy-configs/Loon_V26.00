@@ -1,5 +1,6 @@
 # =====================================================================
-# Loon Pro Configuration — Revision 2.2
+# Loon Pro Configuration — V26.00
+# (四套配置统一版本号 V26.00; 历史沿革见下方 Revision 2.x 修订日志)
 # Codename: "UDP Safety Net"
 # Generated: 2026-05-21 (v2.1 → v2.2 微信通话预防性修复 + UDP 路径加固)
 # ---------------------------------------------------------------------
@@ -244,7 +245,7 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 # [Remote Proxy] 订阅链接
 # ⚠️ 安全提示: token 属于敏感信息, 不要公开分享或上传至公开云存储
 #
-# v2.2.1 [安全] skip-cert-verify=true → false (2 处)
+# V26.00 [安全] skip-cert-verify=true → false (2 处)
 #   病灶: 关闭节点 TLS 证书校验, 客户端到机场节点这段链路可被无感知
 #         中间人 (公共 WiFi / 骨干网劫持). 与 CLAUDE.md 安全基线及 QX
 #         v5.1.4 的同类修复 (skip_validating_cert false) 直接冲突.

@@ -1,5 +1,6 @@
 # =====================================================================
-# Shadowrocket Master Configuration — Revision 2.6.11
+# Shadowrocket Master Configuration — V26.00
+# (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "Pinterest Unblock"
 # Generated: 2026-05-30 (v2.6.10 → v2.6.11 Pinterest 漏网修复)
 # Predecessor: v2.6.10 (WeChat DNS Rescue)
@@ -1695,7 +1696,7 @@ RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/
 
 # v2.6.1 新增: 国内主流 ISP IP 段直连兜底 (降低对 GEOIP 数据库依赖)
 # 这些段覆盖电信/联通/移动的主要骨干 IP, 在 GEOIP 数据库未更新时仍能正确路由。
-# v2.6.12 [修复死链] 原 URL 指向 ChinaMax/ChinaMax_IP.list, 该路径在 bm7
+# V26.00 [修复死链] 原 URL 指向 ChinaMax/ChinaMax_IP.list, 该路径在 bm7
 #   仓库 master 与 release 上均 404 (经核验) —— 即此条 IP 段兜底自 v2.6.1
 #   起从未真正加载. 更正为 bm7 实际提供的 ChinaIPs/ChinaIPs.list (国内
 #   IP-CIDR 清单, 与 QX 配置同源), 恢复设计预期的 CIDR 兜底.
@@ -2119,7 +2120,7 @@ client-source-address = false
 #   - *.sina.cn / *.sina.com.cn / *.sinaimg.cn / *.sinajs.cn
 #     原因: 微博域名联动, 同上.
 #
-# v2.6.12 [一致性] 显式排除 银行/支付/icloud, 对齐安全基线(CLAUDE.md §一.1)
+# V26.00 [一致性] 显式排除 银行/支付/icloud, 对齐安全基线(CLAUDE.md §一.1)
 #   与 QX/Loon/Egern 一致. SR 的 hostname 本是白名单, 这些域当前不在
 #   includes 故本就不解密; 显式 -exclude 是防御纵深: 未来若有人放宽某条
 #   include 通配, 这些高敏感域仍被钉死不解密. 零功能风险.
