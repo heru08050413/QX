@@ -250,6 +250,14 @@ dns:
       - https://cloudflare-dns.com/dns-query
 
   forward:
+    # ── 层 0.05: .local (mDNS/Bonjour) → system (v6.5.1) ──
+    #   配合 hosts 段删除 '*.local': 192.168.1.1. 局域网设备(AirPlay/
+    #   Chromecast/打印机/NAS).local 名称必须交系统 mDNS 解析, 不能落到
+    #   兜底 '*' → Foreign-DoH(那会解析失败/绕路).
+    - domain_suffix:
+        match: local
+        value: system
+
     # ── 层 0: 测速/连通性检查域名 → bootstrap(系统 DNS 直解, 切断死锁) ──
     #   仅精确域名, 不用后缀, 避免误伤需走代理的同域资源.
     - domain:
@@ -605,7 +613,11 @@ dns:
     # Apple 国内 CDN(金山云加速)
     iosapps.itunes.apple.com: iosapps.itunes.apple.com.download.ks-cdn.com
     localhost: 127.0.0.1
-    '*.local': 192.168.1.1
+    # v6.5.1 [可用性] 删除 '*.local': 192.168.1.1
+    #   原写法把所有 *.local (mDNS/Bonjour) 硬映射到单一网关 IP, 会破坏
+    #   AirPlay / Chromecast / 打印机 / NAS 的 .local 设备发现 (它们并不
+    #   都在 192.168.1.1). .local 应交给系统 mDNS 解析 — 见 DNS forward
+    #   层 0.05 新增的 'local → system' 钉死.
     # 境外 DoH 服务器域名 → 硬编码官方 IP (v6.5.0)
     #   作用: 备用境外 DoH 是域名形式(dns.google/cloudflare-dns.com),
     #   若靠 bootstrap(国内DNS)解析它们的域名, 可能被污染成错误IP →
