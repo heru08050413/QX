@@ -310,40 +310,45 @@ final, 兜底策略
 # =====================================
 [filter_remote]
 # 广告与隐私 (3天)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Advertising/Advertising.list, tag=广告拦截, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/advertising.png, update-interval=259200, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Privacy/Privacy.list, tag=隐私保护, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/privacy.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/BlockHttpDNS/BlockHttpDNS.list, tag=BlockHttpDNS, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Advertising/Advertising.list, tag=广告拦截, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/advertising.png, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Privacy/Privacy.list, tag=隐私保护, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/privacy.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/BlockHttpDNS/BlockHttpDNS.list, tag=BlockHttpDNS, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 
 # 苹果系统更新屏蔽 (默认关)
+# ⚠️ 死链: 此 BlockAppleOTA.list 路径在 bm7 仓库 master 与 release 上均 404
+#    (经核验), 属原配置遗留的失效 URL. 因 enabled=false 一直未暴露.
+#    保留 master 仅为不臆造路径; 若要启用此功能, 需先找到有效的上游源
+#    (bm7 当前无此 QuantumultX 清单), 否则保持禁用或删除本条.
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/BlockAppleOTA/BlockAppleOTA.list, tag=苹果屏蔽更新, update-interval=259200, opt-parser=false, enabled=false
 
 # AI 分流 (7天, 服务域名变化极慢)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/OpenAI/OpenAI.list, tag=OpenAI, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Claude/Claude.list, tag=Claude, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/OpenAI/OpenAI.list, tag=OpenAI, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Claude/Claude.list, tag=Claude, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+# 注: Gemini 仅 master 分支提供 (release 上 404), 故此条保留 master.
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Gemini/Gemini.list, tag=Gemini, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Copilot/Copilot.list, tag=Copilot, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Copilot/Copilot.list, tag=Copilot, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
 
 # 社交与海外流媒体 (7天)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/TikTok/TikTok.list, tag=TikTok, force-policy=海外抖音, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Telegram/Telegram.list, tag=Telegram, force-policy=电报消息, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Instagram/Instagram.list, tag=Instagram, force-policy=Instagram, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Twitter/Twitter.list, tag=Twitter, force-policy=推特, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Apple/Apple.list, tag=Apple, force-policy=苹果服务, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Google/Google.list, tag=Google, force-policy=谷歌服务, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/YouTube/YouTube.list, tag=YouTube, force-policy=YouTube, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Spotify/Spotify.list, tag=Spotify, force-policy=Spotify, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Netflix/Netflix.list, tag=Netflix, force-policy=Netflix, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Disney/Disney.list, tag=Disney+, force-policy=Disney+, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/GitHub/GitHub.list, tag=GitHub, force-policy=Github, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/TikTok/TikTok.list, tag=TikTok, force-policy=海外抖音, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Telegram/Telegram.list, tag=Telegram, force-policy=电报消息, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Instagram/Instagram.list, tag=Instagram, force-policy=Instagram, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Twitter/Twitter.list, tag=Twitter, force-policy=推特, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Apple/Apple.list, tag=Apple, force-policy=苹果服务, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Google/Google.list, tag=Google, force-policy=谷歌服务, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/YouTube/YouTube.list, tag=YouTube, force-policy=YouTube, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Spotify/Spotify.list, tag=Spotify, force-policy=Spotify, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Netflix/Netflix.list, tag=Netflix, force-policy=Netflix, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Disney/Disney.list, tag=Disney+, force-policy=Disney+, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/GitHub/GitHub.list, tag=GitHub, force-policy=Github, update-interval=604800, opt-parser=false, enabled=true
 
 # v5.1.5 新增: 社交阅读站 (必须在 ChinaMax 之前, 根治 LinkedIn 路径分裂)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/LinkedIn/LinkedIn.list, tag=LinkedIn, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Tumblr/Tumblr.list, tag=Tumblr, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Reddit/Reddit.list, tag=Reddit, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/LinkedIn/LinkedIn.list, tag=LinkedIn, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Tumblr/Tumblr.list, tag=Tumblr, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Reddit/Reddit.list, tag=Reddit, force-policy=社交阅读, update-interval=604800, opt-parser=false, enabled=true
 
 # 大陆大盘二道兜底 (3天)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/ChinaMax/ChinaMax.list, tag=中国大陆, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/ChinaIPs/ChinaIPs.list, tag=ChinaIP, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/ChinaMax/ChinaMax.list, tag=中国大陆, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/ChinaIPs/ChinaIPs.list, tag=ChinaIP, force-policy=direct, update-interval=259200, opt-parser=false, enabled=true
 
 
 [rewrite_local]
