@@ -2118,7 +2118,12 @@ client-source-address = false
 #           pay/图片 CDN 共 26 个高敏感子域, 这是当前最佳平衡.
 #   - *.sina.cn / *.sina.com.cn / *.sinaimg.cn / *.sinajs.cn
 #     原因: 微博域名联动, 同上.
-hostname = -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, manga.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, lives.l.qq.com, live.l.qq.com, mobile.api.hunantv.com, gateway.12306.cn, api.udache.com
+#
+# v2.6.12 [一致性] 显式排除 银行/支付/icloud, 对齐安全基线(CLAUDE.md §一.1)
+#   与 QX/Loon/Egern 一致. SR 的 hostname 本是白名单, 这些域当前不在
+#   includes 故本就不解密; 显式 -exclude 是防御纵深: 未来若有人放宽某条
+#   include 通配, 这些高敏感域仍被钉死不解密. 零功能风险.
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, manga.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, lives.l.qq.com, live.l.qq.com, mobile.api.hunantv.com, gateway.12306.cn, api.udache.com
 
 
 # =====================================================================
