@@ -243,10 +243,18 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 # =====================================================================
 # [Remote Proxy] 订阅链接
 # ⚠️ 安全提示: token 属于敏感信息, 不要公开分享或上传至公开云存储
+#
+# v2.2.1 [安全] skip-cert-verify=true → false (2 处)
+#   病灶: 关闭节点 TLS 证书校验, 客户端到机场节点这段链路可被无感知
+#         中间人 (公共 WiFi / 骨干网劫持). 与 CLAUDE.md 安全基线及 QX
+#         v5.1.4 的同类修复 (skip_validating_cert false) 直接冲突.
+#   修复: 两个节点均改为 skip-cert-verify=false, 强制校验上游证书.
+#   注: 若改后某节点连不上, 是该节点证书本身有问题, 应找机场修,
+#       不要靠全局关校验掩盖. 此项请勿改回 true.
 # =====================================================================
 [Remote Proxy]
-27bf3dfb10d0669e = https://YOUR_AIRPORT_1/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=true,enabled=true,flexible-sni=false
-0f2304f2a4b69e1d = https://YOUR_AIRPORT_2/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=true,enabled=true,flexible-sni=false
+27bf3dfb10d0669e = https://YOUR_AIRPORT_1/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
+0f2304f2a4b69e1d = https://YOUR_AIRPORT_2/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
 
 
 # =====================================================================
