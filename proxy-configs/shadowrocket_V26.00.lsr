@@ -842,9 +842,16 @@ dns-direct-fallback-proxy = false
 icmp-auto-reply = true
 always-reject-url-rewrite = false
 
-# ---------- QUIC 策略 (v2.6.6 修正) ----------
+# ---------- QUIC 策略 (v2.6.6 修正; V26.00 统一策略注记) ----------
 # v2.6.5: REJECT 会让节点 UDP 不通时直接丢包, 影响微信 VOIP 等业务
 # v2.6.6: DIRECT 让 UDP fallback 走系统直连, 与 GEOIP CN 兜底协同
+#
+# ⚠️ V26.00 诚实勘误: 本文件历史注释对 block-quic=auto 的语义描述前后
+#   矛盾 (v2.6.5 段说"代理走TCP/直连留QUIC", v2.6.0 段说"代理留QUIC/
+#   直连阻断"), 且官方无权威公开文档可裁决. 统一 QUIC 策略 (CLAUDE.md
+#   §一.6) 因此【不依赖 auto 的语义】: 所有 MITM 去广告依赖的域名,
+#   已在 [Rule] 0.55 段用确定性 AND(域名+UDP)REJECT 强制走 TCP —
+#   无论 auto 实际行为如何, 去广告链路都有保障. auto 保留作大盘默认.
 udp-policy-not-supported-behaviour = DIRECT
 block-quic = auto
 
@@ -1011,6 +1018,26 @@ IP-CIDR6,fc00::/7,DIRECT,no-resolve
 # ---------------------------------------------------------------------
 AND,((DOMAIN-SUFFIX,googlevideo.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN,youtubei.googleapis.com),(PROTOCOL,UDP)),REJECT
+
+# ---------------------------------------------------------------------
+# 0.55 MITM 依赖域强制 TCP (V26.00 统一 QUIC 策略, CLAUDE.md §一.6)
+#
+# 原理: MITM 只能解密 TCP/TLS, QUIC(UDP 443) 流量 = 去广告盲区.
+#   若这些 App 的 API 走 HTTP/3, 脚本改写全部失效且无任何报错.
+#   对 MITM hostname 覆盖的 API 域, 用与 YouTube 同款的确定性
+#   AND(域名+UDP)REJECT 拦掉 QUIC, 客户端 happy-eyeballs 自动回落
+#   TCP/HTTP2, 无功能损失 (微信 VOIP 走高位 UDP 端口且此处仅精确域
+#   mp.weixin.qq.com, 不受影响). 不依赖 block-quic=auto 的模糊语义.
+# ---------------------------------------------------------------------
+AND,((DOMAIN-SUFFIX,weibo.cn),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,bilibili.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,biliapi.net),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,zhihu.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,amap.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,xiaohongshu.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,mp.weixin.qq.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-KEYWORD,spclient),(PROTOCOL,UDP)),REJECT
 
 # ---------------------------------------------------------------------
 # 0.6 被墙境外站点显式代理 (v2.6.8 修复 FINAL=DIRECT 漏网)
@@ -2000,9 +2027,9 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 # NOTES:         此仓库下脚本变动较频繁, 建议每 30 天审计一次.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-高德开屏 = type=http-response,pattern=^https?://.*\.amap\.com/ws/valueadded/alimama/splash_screen,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
-高德弹窗 = type=http-response,pattern=^https?://.*\.amap\.com/ws/msgbox/pull,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
-高德横幅 = type=http-response,pattern=^https?://.*\.amap\.com/ws/faas/amap-navigation/main-page,requires-body=1,max-size=-1,script-path=https://github.com/ddgksf2013/Scripts/raw/master/amap.js
+高德开屏 = type=http-response,pattern=^https?://.*\.amap\.com/ws/valueadded/alimama/splash_screen,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/amap.js
+高德弹窗 = type=http-response,pattern=^https?://.*\.amap\.com/ws/msgbox/pull,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/amap.js
+高德横幅 = type=http-response,pattern=^https?://.*\.amap\.com/ws/faas/amap-navigation/main-page,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/amap.js
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # YouTube (去广告 + 画中画 PiP + 后台播放 + 翻译)
