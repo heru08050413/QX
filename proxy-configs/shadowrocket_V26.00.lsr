@@ -773,6 +773,12 @@
 #
 # 4. 安装本配置 → 节点信息手动填入 → 验证策略组
 #
+# 4.5 [V26.00 新增, 国内 App 去广告主力] 配置 → 模块 → 添加:
+#     https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+#     (730+ 国内 App/小程序去广告; 原配置内 10 条 ddgksf2013 脚本因上游
+#      重构已全部失效并移除, 由此模块接管且覆盖更广)
+#     可选: B 站增强 → 同处添加 BiliUniverse ADBlock 模块 (见 [Script] B站段注释)
+#
 # 5. 杀掉微博 App → 设置 → 通用 → iPhone 储存空间 → 微博 →
 #    卸载 App (保留数据) → 重新下载 → 重新登录
 #    (清除本地广告缓存。这一步不做,广告仍会从缓存兜底显示)
@@ -1871,6 +1877,12 @@ localhost = 127.0.0.1
 ^https?://(www\.)?g\.cn https://www.google.com 302
 ^https?://(www\.)?google\.cn https://www.google.com 302
 
+# V26.00 新增: Spotify 去广告配套改写 (001ProMax 方案移植, 与 [Script] 协同)
+# ① pendragon = 广告/投放接口, 直接拒绝 (reject-dict 返回空 JSON, App 不重试)
+^https://(\w+-spclient|spclient\.wg)\.spotify\.com(:443)?/pendragon/ - reject-dict
+# ② artistview 平台参数 iphone→ipad, 恢复歌手页正常展示 (上游同款 header 改写)
+^https://(\w+-spclient|spclient\.wg)\.spotify\.com(:443)?/artistview/v1/artist/(.*)&platform=iphone https://spclient.wg.spotify.com/artistview/v1/artist/$3&platform=ipad header
+
 # v2.6.9 移除: googlevideo initplayback &oad reject 规则
 # 原因: 该 rewrite 依赖对 *.googlevideo.com 做 MITM 解密才能匹配 path,
 #       但 v2.6.9 已将 googlevideo 移出 MITM (降耗 P0). 失去 MITM 后
@@ -1940,18 +1952,22 @@ localhost = 127.0.0.1
 # B站
 # SOURCE:        https://github.com/zmqcherish/proxy-script/tree/main/bilibili
 # TRUST:         MEDIUM (同微博, 同维护者)
-# LAST-VERIFIED: 2026-05-19
+# LAST-VERIFIED: 2026-06-30
+#
+# V26.00 换源修复 (死链巡检发现):
+#   上游已大幅重构: bilibili_proto.js / bilibili_json.js 均已删除 (404),
+#   原 6 条脚本 (proto/首页/搜索/番剧/直播/资源页/我的页) 自上游重构起
+#   全部静默失效. 上游现行仅提供【单接口单脚本】: /x/v2/feed/index
+#   首页流去广告 → bilibili/bilibili.js (已核验 200), pattern 按上游
+#   现行 bilibili.conf 同步 (新增 app.biliapi.net 域, 已同步 MITM).
+#   其余 5 个接口为上游主动放弃, 无同源替代, 不臆造.
+#
+#   ⚠️ B 站去广告主力已在 Egern (BiliUniverse ADBlock 模块, 事实标准).
+#   SR 侧如需更强 B 站去广告: App 内 [配置 → 模块] 添加
+#   https://github.com/BiliUniverse/ADBlock/releases/latest/download/BiliBili.ADBlock.sgmodule
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# Proto 二进制响应改写 (核心)
-B站proto = type=http-response,pattern=^https?://(grpc\.biliapi\.net|app\.bilibili\.com)/bilibili\.app\.viewunite\.v1\.View/(View|ViewProgress),requires-body=1,max-size=-1,binary-body-mode=true,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_proto.js
-
-B站首页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/feed/index,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
-B站搜索 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/search,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
-B站番剧 = type=http-response,pattern=^https?://api\.(bilibili|biliapi)\.(com|net)/pgc/page/bangumi,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
-B站直播 = type=http-response,pattern=^https?://api\.live\.bilibili\.com/xlive/app-room/v1/index/getInfoByRoom,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
-B站资源页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/resource/show/tab,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
-B站我的页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/account/mine,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili_json.js
+B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibili\.com)/x/v2/feed/index,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili.js
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 微信公众号
@@ -2020,65 +2036,60 @@ B站我的页 = type=http-response,pattern=^https?://app\.bilibili\.com/x/v2/acc
 #         这是服务端限制, 脚本无法绕过. 普通视频不受此限.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# request 脚本 (改写客户端请求, 注入解锁参数)
-YouTube.request = type=http-request,pattern=^https://youtubei\.googleapis\.com/youtubei/v1/(browse|next|player|reel/reel_watch_sequence),requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.request.js
-
+# V26.00 换源修复 (死链巡检发现):
+#   上游 Maasea 已回归【单 response 脚本】架构, youtube.request.js 已删除
+#   (404, 原 request 行自上游删除起静默失效). 现行 YouTube.Enhance.sgmodule
+#   (已核验) 仅含 response 脚本; pattern 与 argument 按上游现行同步.
 # response 脚本 (改写服务端响应, 去广告 + 解锁后台播放/PiP + 翻译)
 # argument 说明: blockUpload=屏蔽上传按钮, blockImmersive=屏蔽选段,
 #               blockShorts=屏蔽Shorts(默认 false 保留), 翻译默认 off
-YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch),requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.response.js,argument={"lyricLang":"off","captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.response.js,argument={"lyricLang":"off","captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Spotify
-# SOURCE:        https://github.com/NobyDa/Script (同微信)
-# TRUST:         HIGH
-# LAST-VERIFIED: 2026-05-19
+# SOURCE:        https://github.com/001ProMax/Surge (上游作者 app2smile/001ProMax)
+# TRUST:         MEDIUM (社区现行方案, Loon 侧已在用同源 plugin 且实测有效)
+# LAST-VERIFIED: 2026-06-30
+#
+# V26.00 换源修复 (死链巡检发现):
+#   原 NobyDa/Script/.../Surge/JS/Spotify.js 已被上游删除 (404, 同仓库
+#   其他文件仍 200, 系删文件非迁移), 原脚本静默失效. 换用 Loon 配置里
+#   已在用且已核验 200 的 001ProMax 方案, 按 SR 语法移植三件套:
+#   ① pendragon 广告/投放接口 → URL Rewrite reject-dict (见 [URL Rewrite])
+#   ② artistview 平台参数改写恢复歌手页 → URL Rewrite header (同上)
+#   ③ bootstrap/user-customization protobuf 改写 → 下方脚本
+#   argument 说明: [true,true] = [移除底栏创建按钮, 启用Apple设备接力],
+#   为 Loon plugin 参数模板展开后的等价字面量.
+#   MITM 需含 *-spclient.spotify.com 与 spclient.wg.spotify.com (已同步).
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Spotify去广告 = type=http-response,pattern=^https?://spclient\.wg\.spotify\.com/(ad-logic|ads|melody),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/NobyDa/Script/master/Surge/JS/Spotify.js
+Spotify去广告 = type=http-response,pattern=^https://(?:\w+-spclient|spclient\.wg)\.spotify\.com(?::443)?/(?:bootstrap|user-customization-service),requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/001ProMax/Surge/refs/heads/main/Script/Spotify.Crack.Dev.js,argument=[true,true]
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 国内主流 App 开屏 / 信息流广告改写
-# SOURCE:        https://github.com/ddgksf2013/Scripts (同高德)
-# TRUST:         MEDIUM
-# LAST-VERIFIED: 2026-05-19
-# NOTES:         国内 App 接口变化频繁, 预期 30-60 天内有部分失效.
-#                视角 2 评审提出"和 App 对抗"的风险, 这些脚本属于
-#                高对抗风险类别 (尤其抖音/小红书/美团/京东).
-#                如出现账号风控提示, 第一时间禁用对应脚本.
+# SOURCE:        (原 ddgksf2013/Scripts/master/Filter/*, 已整库重构失效)
+# TRUST:         —
+# LAST-VERIFIED: 2026-06-30 (死链巡检)
+#
+# V26.00 换源修复 (死链巡检发现, 本段为最大一处静默失效):
+#   原 10 条脚本 (小红书×2/京东/拼多多/美团/网易云/爱奇艺/腾讯视频/
+#   芒果TV/12306/滴滴) 的上游 ddgksf2013/Scripts/master/Filter/ 目录已
+#   整体重构删除 (逐条核验 404; 讽刺的是配置注释早预警过该仓库"多次
+#   大幅重构,直接引用 master 风险较高"). 这 10 条自上游重构起全部
+#   静默失效 — 即国内 App 开屏去广告实际早已不工作.
+#
+#   ★ 换源方案 (净升级, 覆盖从 10 App → 730+ App):
+#   SR 支持 Surge 模块. 请在 App 内 [配置 → 模块] 添加 fmz200 blockAds
+#   (活跃维护, 已核验 200, Loon/Egern 侧同源且用户实测有效):
+#     https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+#   模块会自动注入所需 MITM hostname (%APPEND%), 无需改本配置.
+#
+#   为什么不在配置里逐条重写: ① 上游新路径不存在/自托管域无法核验,
+#   逐条臆造 pattern 必然再次腐坏; ② 模块化后升级由上游统一维护,
+#   根治"配置内散装脚本静默腐坏"这一类问题(本次巡检 13 处死链的教训).
+#   对应的 12 个无脚本 MITM hostname 已从本配置移除(避免无效解密耗电),
+#   启用模块后由模块自带 hostname 接管.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# 小红书 (启动页 + 信息流广告)
-小红书开屏 = type=http-response,pattern=^https?://edith\.xiaohongshu\.com/api/sns/v\d/system_service/splash_config,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/RedBook.js
-
-小红书信息流 = type=http-response,pattern=^https?://edith\.xiaohongshu\.com/api/sns/v\d+/homefeed,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/RedBook.js
-
-# 京东 (开屏广告)
-京东开屏 = type=http-response,pattern=^https?://api\.m\.jd\.com/client\.action\?functionId=start,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/JingDong.js
-
-# 拼多多 (开屏)
-拼多多开屏 = type=http-response,pattern=^https?://api(v\d)?\.(yangkeduo|pinduoduo)\.com/.*splash,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Pinduoduo.js
-
-# 美团 (开屏)
-美团开屏 = type=http-response,pattern=^https?://flowplus\.meituan\.net/v\d/mss_\w+/.+,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/MeiTuan.js
-
-# 网易云音乐 (启动页 + 信息流)
-网易云音乐 = type=http-response,pattern=^https?://interface\.music\.163\.com/(eapi/ad/anti|eapi/homepage),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Netease.js
-
-# 爱奇艺 (开屏)
-爱奇艺开屏 = type=http-response,pattern=^https?://t7z\.cupid\.iqiyi\.com/show2,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/iQIYI.js
-
-# 腾讯视频 (开屏)
-腾讯视频开屏 = type=http-response,pattern=^https?://lives?\.l\.qq\.com/livemsg,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Tencent.js
-
-# 芒果TV (开屏)
-芒果TV开屏 = type=http-response,pattern=^https?://mobile\.api\.hunantv\.com/v\d/launcher/ad,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/MGTV.js
-
-# 12306 (开屏)
-铁路12306 = type=http-response,pattern=^https?://gateway\.12306\.cn/app-resource/(advert|operate),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Railway.js
-
-# 滴滴出行 (开屏)
-滴滴开屏 = type=http-response,pattern=^https?://api\.udache\.com/.+\?.*=(start|launch),requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Filter/Didi.js
 
 
 # =====================================================================
@@ -2124,7 +2135,11 @@ client-source-address = false
 #   与 QX/Loon/Egern 一致. SR 的 hostname 本是白名单, 这些域当前不在
 #   includes 故本就不解密; 显式 -exclude 是防御纵深: 未来若有人放宽某条
 #   include 通配, 这些高敏感域仍被钉死不解密. 零功能风险.
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, manga.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, lives.l.qq.com, live.l.qq.com, mobile.api.hunantv.com, gateway.12306.cn, api.udache.com
+# V26.00 hostname 同步 (随脚本换源):
+#   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
+#   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
+#     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
@@ -2148,11 +2163,14 @@ hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.i
 #   原因: 该作者仅维护 main 分支,无 release 标签
 #
 # ddgksf2013/Scripts:
-#   策略: 同上,fork 锁 hash
-#   注意: 该仓库历史上有过多次大幅重构,直接引用 master 风险较高
+#   [V26.00 更新] 预警成真: 该仓库已再次整库重构, Filter/ 目录下 10 个
+#   脚本全部 404. 本配置已移除全部引用 (国内 App 去广告改由 fmz200
+#   blockAds 模块承担), 仅存 amap.js (仍 200, 继续观察).
 #
 # NobyDa/Script:
-#   策略: 该仓库历史悠久稳定,可继续引用 master
+#   [V26.00 更新] Surge/JS/Spotify.js 已被上游删除 (404), Spotify 已
+#   换源 001ProMax. Wechat.js 仍 200. "历史悠久=稳定"的假设已被证伪,
+#   一并纳入死链巡检.
 #
 # Maasea/sgmodule:
 #   策略: 同 NobyDa,稳定可信
