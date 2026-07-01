@@ -1217,6 +1217,175 @@ rules:
       name: Gemini API 禁 QUIC (强制 TCP)
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # 0.68 MITM 依赖域强制 TCP (V26.00 统一 QUIC 策略, CLAUDE.md §一.6)
+  #
+  # 原理: MITM 只解密 TCP/TLS; QUIC(HTTP/3) = 去广告盲区, 且失效无报错.
+  #   对 mitm.includes 覆盖的全部【脚本/模块改写域】用与 0.6 同款的
+  #   and(域名+quic)REJECT 强制回落 TCP. 客户端 happy-eyeballs 自动降级,
+  #   无功能损失; 微信 VOIP(高位 UDP 端口, 非 QUIC)不受影响.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  - and:
+      match:
+        - domain_suffix:
+            match: weibo.cn
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 微博 API 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: weibo.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 微博 API 禁 QUIC (com)
+  - and:
+      match:
+        - domain_suffix:
+            match: bilibili.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: B站 API 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: biliapi.net
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: B站 gRPC 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: mp.weixin.qq.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 公众号 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: zhihu.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 知乎 API 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: amap.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 高德 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: xiaohongshu.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 小红书 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: youtube.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube 信标 禁 QUIC
+  - and:
+      match:
+        - domain_keyword:
+            match: spclient
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: Spotify API 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: api.m.jd.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 京东 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: api.pinduoduo.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 拼多多 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: apiv4.yangkeduo.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 拼多多2 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: flowplus.meituan.net
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 美团 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: interface.music.163.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 网易云 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: t7z.cupid.iqiyi.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 爱奇艺 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: l.qq.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 腾讯视频广告 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: mobile.api.hunantv.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 芒果TV 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: gateway.12306.cn
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 12306 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: api.udache.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 滴滴 禁 QUIC
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.7 YouTube 广告流 / 统计信标拦截 (v6.3.0, url_regex 精确匹配)
   #
   # 对齐 Maasea 模块的 URL 拦截清单(经核验模块源码), 用官方 url_regex
@@ -1521,12 +1690,10 @@ rules:
   - domain:
       match: testflight.apple.com
       policy: Proxy
-  - rule_set:
-      name: AppleIntelligence
-      match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Surge/AppleIntelligence/AppleIntelligence.list
-      policy: Apple
-      update_interval: 86400
-      disabled: false
+  # V26.00 [清理] 原 AppleIntelligence rule_set 已删除: 其 .list 在 bm7
+  #   master 与 release 均 404 (经核验, 自加入起静默失效—本仓库查实的
+  #   第 4 处历史死链). Apple 相关域名由第 10 段 Apple rule_set + 兜底
+  #   覆盖; 如需单独分流 Apple 智能域, 先找到有效上游清单再加回.
 
   # ── 5. 字节系国内 → 直连(必在 TikTok 规则集前) ──
   - domain_suffix:
@@ -2088,6 +2255,12 @@ mitm:
       - ww2.sinaimg.cn
       - ww3.sinaimg.cn
       - ww4.sinaimg.cn
+      # V26.00 [一致性] 补 tvax1-4 图片 CDN 排除, 对齐 SR (性能项, 避免
+      #   对图片流做无谓解密再加密)
+      - tvax1.sinaimg.cn
+      - tvax2.sinaimg.cn
+      - tvax3.sinaimg.cn
+      - tvax4.sinaimg.cn
       - us.sinaimg.cn
       - video.weibocdn.com
       # 银行/支付(绝对禁止 MITM)
@@ -2342,11 +2515,9 @@ modules:
   - url: https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule
     enabled: true
 
-  # Maasea Adblock4limbo(网页/搜索/影视/漫画/成人站去广告)
-  #   注入大量境外站 host 到 MITM. 默认禁用: 仅当你常访问这类网站再开,
-  #   否则纯增加 CPU 无收益.
-  - url: https://raw.githubusercontent.com/Maasea/sgmodule/master/Adblock4limbo.sgmodule
-    enabled: false
+  # V26.00 [清理] 原 Maasea Adblock4limbo 模块引用已删除: 该 sgmodule
+  #   已被上游移除 (404, 经核验). 原本就默认禁用, 未造成功能损失;
+  #   删引用防止将来"重新启用"时踩死链. 同类需求可评估 limbopro 分支.
 
   # limbopro NobyDa 整合包(微博/Netflix 评分/知乎/扫描全能王等)
   # V26.00 去重: 关闭(与 blockAds/Daily 重叠重). 如需其评分/知乎等特性可单开.
@@ -2361,10 +2532,9 @@ modules:
   - url: https://raw.githubusercontent.com/app2smile/rules/master/module/bilibili.sgmodule
     enabled: false
 
-  # ddgksf2013 Daily(国内 App 开屏广告; 与 blockAds 部分重叠, 实现不同)
-  # V26.00 去重: 关闭(与 blockAds 重叠且该仓库历史频繁重构, 维护风险高).
-  - url: https://raw.githubusercontent.com/ddgksf2013/Scripts/master/Module/Daily.sgmodule
-    enabled: false
+  # V26.00 [清理] 原 ddgksf2013 Daily 模块引用已删除: 该 sgmodule 已随
+  #   上游整库重构消失 (404, 经核验; 上轮去重恰好先把它禁用, 侥幸未成
+  #   静默死模块). 国内 App 开屏去广告由 blockAds (fmz200, 仍 200) 承担.
 
   # fmz200 blockAds(730+ 国内 App/小程序广告; 覆盖最广)
   - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
