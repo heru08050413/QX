@@ -94,6 +94,15 @@ excluded_routes=192.168.0.0/16, 172.16.0.0/12, 100.64.0.0/10, 10.0.0.0/8, 239.25
 
 fallback_udp_policy=direct
 
+# V26.00 [统一 QUIC 策略, CLAUDE.md §一.6] 排除 UDP 428-443 端口段:
+#   QX 无协议级规则 (不能像 SR/Egern 写 AND(域名+QUIC)REJECT), 阻断
+#   QUIC 的架构内唯一手段是 udp_whitelist (官方样例注释即此写法, 不在
+#   名单的 UDP 端口被丢弃并回 ICMP 端口不可达). 效果: UDP 443
+#   (QUIC/HTTP3) 全局阻断→客户端回落 TCP, 保证 MITM/rewrite 去广告
+#   链路不被 HTTP/3 绕过; DNS(53)、微信 VOIP/游戏/FaceTime (高位端口,
+#   均在 444-65535) 不受影响.
+udp_whitelist=53, 80-427, 444-65535
+
 
 # =====================================
 # [dns] - 继承 v5.1.3 (大幅收敛, 仅 AI 强制境外 DoH)
@@ -105,34 +114,25 @@ prefer-doh3
 # 主 DoH: 国内双供应商
 doh-server=https://dns.alidns.com/dns-query, https://doh.pub/dns-query
 
-# AI 服务: 强制境外 DoH (防国内 DNS 间歇污染)
-# V26.00 [安全] 补 Cloudflare 次要 IP 1.0.0.1 冗余 (对齐 SR v2.6.9):
-#   单一 1.1.1.1 端点被阻断时, 可 fallback 到 1.0.0.1, 避免回退系统 DNS
-#   拿污染 IP. 与 SR 同款做法.
-doh-server=/*.openai.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.chatgpt.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.oaistatic.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.oaiusercontent.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.anthropic.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.claude.ai/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/gemini.google.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/*.generativelanguage.googleapis.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-doh-server=/aistudio.google.com/https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
-
-# v5.1.5 新增: 社交阅读站 + 其 CDN 走境外 DoH (防污染/防错误调度)
-# LinkedIn
-doh-server=/*.linkedin.com/https://1.1.1.1/dns-query
-doh-server=/*.licdn.com/https://1.1.1.1/dns-query
-# Quora
-doh-server=/*.quora.com/https://1.1.1.1/dns-query
-doh-server=/*.quoracdn.net/https://1.1.1.1/dns-query
-# Tumblr
-doh-server=/*.tumblr.com/https://1.1.1.1/dns-query
-# Reddit
-doh-server=/*.reddit.com/https://1.1.1.1/dns-query
-doh-server=/*.redd.it/https://1.1.1.1/dns-query
-doh-server=/*.redditstatic.com/https://1.1.1.1/dns-query
-doh-server=/*.redditmedia.com/https://1.1.1.1/dns-query
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# V26.00 [勘误] 删除 v5.1.3~v5.1.5 累积的 18 行 per-domain DoH
+#   (doh-server=/域名/URL 形态: AI 9 行 + LinkedIn/Quora/Tumblr/Reddit 9 行)
+#
+# 原因 (经 QX 官方全语法样例 KOP-XIAO/QuantumultX_Profiles.conf 与
+#   DivineEngine QX DNS 教程双重核实): QX 的 per-domain DNS 仅支持
+#   明文形态 server=/域名/IP; doh-server 只有全局形态, 不存在
+#   doh-server=/域名/URL 语法. 这 18 行为无效指令, "AI 强制境外 DoH
+#   防污染"与 v5.1.5 修 LinkedIn/Quora 的"方向A"自引入起从未生效.
+#
+# 为什么功能一直正常: 这些域名被 [filter_remote] 规则送入代理后由
+#   节点【远端解析】, 连通不依赖本地解析. 实际损失仅隐私面——
+#   国内 DoH (阿里/腾讯) 能看到你查询过这些域名 (仅域名, 非内容).
+#
+# 架构结论 (实事求是): QX 无 Fake-IP、无 per-domain DoH, 在 QX 内
+#   无法实现"境外域名加密境外解析". 替代写法 server=/域名/8.8.8.8
+#   是明文 UDP:53, 在国内必被污染, 比无效更糟, 不采用. 若在意
+#   "查询记录不落国内 DoH", 请用 Loon/Egern (架构支持) 承担该场景.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 国内高频服务: 强制系统 DNS (拿就近 CDN)
 server=/*.apple.com/system
@@ -314,12 +314,9 @@ https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Quan
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Privacy/Privacy.list, tag=隐私保护, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/privacy.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/BlockHttpDNS/BlockHttpDNS.list, tag=BlockHttpDNS, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 
-# 苹果系统更新屏蔽 (默认关)
-# ⚠️ 死链: 此 BlockAppleOTA.list 路径在 bm7 仓库 master 与 release 上均 404
-#    (经核验), 属原配置遗留的失效 URL. 因 enabled=false 一直未暴露.
-#    保留 master 仅为不臆造路径; 若要启用此功能, 需先找到有效的上游源
-#    (bm7 当前无此 QuantumultX 清单), 否则保持禁用或删除本条.
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/BlockAppleOTA/BlockAppleOTA.list, tag=苹果屏蔽更新, update-interval=259200, opt-parser=false, enabled=false
+# V26.00 [清理] 原"苹果系统更新屏蔽"条目已删除: 其 BlockAppleOTA.list
+#   在 bm7 仓库 master/release 均 404 (原配置遗留死链, 因 enabled=false
+#   长期未暴露). 如需屏蔽 iOS OTA, 先另寻有效上游源再加回.
 
 # AI 分流 (7天, 服务域名变化极慢)
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/OpenAI/OpenAI.list, tag=OpenAI, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
@@ -409,7 +406,8 @@ event-interaction https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/master/
 # [mitm] - v5.1.4 安全加固: 关闭全局证书豁免
 # =====================================
 [mitm]
-hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com
+# V26.00 [一致性] 补 -security.weibo.cn / -account.zhihu.com, 对齐四套基线
+hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com
 skip_validating_cert = false
 ;passphrase =
 ;p12 =
