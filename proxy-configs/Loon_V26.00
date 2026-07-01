@@ -144,6 +144,8 @@
 # [H] 不采纳的"专家"建议 (与三份高级配置一致的取舍)
 #   ❌ 单 DNS 无 fallback: 移动端切网必卡顿
 #   ❌ 全局 block-quic: 大流量场景 (YouTube/Google) 受损
+#      (V26.00 注: 此立场正确; 故本版移除了节点级 block-quic=true —
+#       它等价于全局 block-quic 且对直连去广告无用, 详见 [Remote Proxy])
 #   ❌ 砍 GeoIP 兜底: 加载失败时绕路严重
 #
 # 预期效果:
@@ -191,7 +193,18 @@ bypass-tun = 10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,1
 #     可能存在劫持; 通过 [Host] 段为关键国内域名固定 IP 即可)
 doh-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query
 
-# 常规 DNS 兜底 (仅 DoH 全部不可用时使用)
+# V26.00 [加固] 新增 DoQ (DNS over QUIC) 并发冗余
+#   核实 Loon 官方 DNS 文档: 无 dot-server 键, 加密 DNS 支持 doh/doq/doh3.
+#   阿里公共 DNS 官方支持 DoT/DoQ(853). 与 doh-server 一同作为"加密 DNS",
+#   Loon 并发查询取最快. 意义: 多一路独立加密通道, 降低"所有加密 DNS
+#   失效→回落明文 dns-server(见下)"这一最危险场景的触发概率.
+doq-server = quic://223.5.5.5:853, quic://223.6.6.6:853
+
+# 常规 DNS 兜底 (仅【全部】加密 DNS 不可用时才使用)
+# ⚠️ 安全注记: 此为明文 UDP:53, 会被污染/劫持. 触发条件(加密DNS全灭)
+#   恰是网络受审查时最易发生的场景. 上面的 doh+doq 双加密冗余即为尽量
+#   避免落到这一行. Loon 架构无法彻底移除明文兜底(移动端切网需要它),
+#   只能降低触发面.
 dns-server = 223.5.5.5, 223.6.6.6, 119.29.29.29, 119.28.28.28
 
 interface-mode = auto
@@ -252,10 +265,20 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 #   修复: 两个节点均改为 skip-cert-verify=false, 强制校验上游证书.
 #   注: 若改后某节点连不上, 是该节点证书本身有问题, 应找机场修,
 #       不要靠全局关校验掩盖. 此项请勿改回 true.
+#
+# V26.00 [统一 QUIC 策略] 移除两节点的 block-quic=true (2 处)
+#   依据: ① block-quic 是【节点参数】, 只影响过节点的【代理】流量;
+#   而去广告 MITM 域名多为【直连】(不过节点), 故它对直连域去广告
+#   毫无帮助. ② 它唯一实际效果是掐掉代理侧 YouTube/Google 的 HTTP/3,
+#   正是本配置 line146 明确"不采纳"的全局 block-quic 之实. ③ Loon 内建
+#   "QUIC SNI 命中 MITM 列表域名即自动 reject"(见官方规则文档), 去广告
+#   域的 QUIC 本就被自动挡掉强制 TCP, 无需 block-quic 兜. 移除后 YouTube
+#   HTTP/3 恢复, 去广告不受影响.
+#   ⚠️ 真机验证: 导入后确认 ①微博/B站广告仍被拦 ②YouTube 播放正常.
 # =====================================================================
 [Remote Proxy]
-27bf3dfb10d0669e = https://YOUR_AIRPORT_1/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
-0f2304f2a4b69e1d = https://YOUR_AIRPORT_2/subscribe?token=__REDACTED__,udp=true,block-quic=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
+27bf3dfb10d0669e = https://YOUR_AIRPORT_1/subscribe?token=__REDACTED__,udp=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
+0f2304f2a4b69e1d = https://YOUR_AIRPORT_2/subscribe?token=__REDACTED__,udp=true,fast-open=default,vmess-aead=true,skip-cert-verify=false,enabled=true,flexible-sni=false
 
 
 # =====================================================================
@@ -728,7 +751,7 @@ https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-
 [Mitm]
 # 高敏感子域排除 (登录/支付/银行/图片视频 CDN)
 # Loon 的 - 前缀表示该 hostname 不进行 MITM 解密
-hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -security.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, *.weibo.cn, *.weibo.com, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, mobile.api.hunantv.com, boxjs.com, boxjs.net, sub.store, script.hub
+hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -security.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, mobile.api.hunantv.com, boxjs.com, boxjs.net, sub.store, script.hub
 
 ca-p12 = 
 ca-passphrase = 
