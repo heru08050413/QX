@@ -20,8 +20,13 @@
 3. **熔断**:高频重试源用 `REJECT-DROP`(静默丢包),不是 `REJECT`。
 4. **配置文件绝不内嵌订阅 token**(见禁止项)。
 5. **Final 默认 `DIRECT`**。
+6. **统一 QUIC 策略(V26.00 起)**:凡 MITM 去广告依赖的域名,必须强制走 TCP(MITM 无法解密 QUIC/HTTP3,QUIC = 去广告盲区且失效无报错)。**各 App 用自己架构内的确定性手段实现,不依赖模糊的全局开关**:
+   - **SR**:`[Rule]` 段 `AND,((DOMAIN-SUFFIX,x),(PROTOCOL,UDP)),REJECT`(§0.55);`block-quic=auto` 语义无权威文档,不作依赖。
+   - **Egern**:`rules` 段 `and:[domain_suffix + protocol:quic]→REJECT`(§0.68);全局 `block_quic:false` 保留 HTTP/3。
+   - **QX**:无协议级规则,用 `udp_whitelist=53, 80-427, 444-65535` 掐掉 UDP 443(官方样例写法)。
+   - **Loon**:无 `AND` 复合规则,但**内建"QUIC SNI 命中 MITM 列表即自动 reject"**;故**移除节点级 `block-quic`**(它只影响代理流量、对直连去广告无用且掐 HTTP/3)。
 
-> 改动前后都跑一遍这 5 条。这一层不参与差异化。
+> 改动前后都跑一遍这 6 条。这一层不参与差异化。
 
 ---
 
@@ -88,7 +93,9 @@
    - SR `rule/Shadowrocket/ChinaMax/ChinaMax_IP.list` —— master/release 皆 404(见下)。
    改之前对每个 URL 跑一次 `curl -o /dev/null -w "%{http_code}"`,只切返回 200 的;其余保留 master 并注明原因。
 
-2. **远程 URL 死链巡检(发现 2 处历史死链)。**
+2. **远程 URL 死链巡检 —— 已脚本化为 `scripts/url-health-sweep.sh`,每次大改必跑。**
+   累计四轮审查查实 **17+ 处静默死链**(iOS 代理 App 对 404 是静默失败,去广告悄悄失效无报错),其中绝大多数集中在"个人维护脚本/整库重构"(ddgksf2013 Filter 目录整删、zmqcherish/Maasea/NobyDa 各自删文件)。教训:**"写了就生效""历史悠久=稳定"都被证伪**。运行 `bash scripts/url-health-sweep.sh`,退出码非 0 即有死链;`⚠ WARN` 项(自托管域/releases-latest/DoH 端点/gist,在受限出口会假阳)需真机人工核实。
+   历史查实死链存档:
    审查发现两个**自始就失效、却因 enabled=false 或无报错而长期隐藏**的远程源:
    - QX `BlockAppleOTA/BlockAppleOTA.list` —— bm7 QuantumultX 目录无此清单(master/release 皆 404),`enabled=false` 掩盖。
    - SR `ChinaMax/ChinaMax_IP.list` —— 路径写错(正确为 `ChinaIPs/ChinaIPs.list`),且该 RULE-SET **启用且无开关**,故"国内 ISP CIDR 兜底"自 v2.6.1 起从未真正加载。已更正。
