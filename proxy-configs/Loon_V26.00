@@ -528,6 +528,19 @@ URL-REGEX,"\.log\.",REJECT
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DOMAIN-KEYWORD,haijiao,美国节点
 
+# V26.00 谷歌翻译"连不上网"修复 (同 SR/Egern):
+#   核心 API translate-pa.googleapis.com 重度用 QUIC; 走代理但节点若不
+#   转发 UDP, udp-fallback-mode=DIRECT 会回落直连→被 GFW 拦→连不上.
+#   Loon 支持 AND 逻辑规则(3.1.7+)+ PROTOCOL,QUIC: 强制 QUIC→TCP,
+#   客户端回落 TCP 经代理走. 再显式钉谷歌服务组(先于 [Remote Rule]).
+#   注: 不加入 MITM 列表(Google API 有证书锁定, MITM 反而会断).
+AND,((DOMAIN,translate-pa.googleapis.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN-SUFFIX,translate.googleapis.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN-SUFFIX,translate.google.com),(PROTOCOL,QUIC)),REJECT
+DOMAIN,translate-pa.googleapis.com,谷歌服务
+DOMAIN-SUFFIX,translate.googleapis.com,谷歌服务
+DOMAIN-SUFFIX,translate.google.com,谷歌服务
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 5. 国内主流 App 硬编码直连 (v2.0 新增, 借鉴 SR v2.6.4 审计)
 # 避免远程 GeoIP_CN.list 加载失败时灾难性绕路

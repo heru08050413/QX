@@ -294,6 +294,15 @@ host-suffix, citics.com, direct
 host-suffix, quora.com, 社交阅读
 host-suffix, quoracdn.net, 社交阅读
 
+# ---------- V26.00: 谷歌翻译"连不上网"修复 ----------
+# QUIC 陷阱本身已由 [general] udp_whitelist 全局挡 UDP443 解决(强制 TCP);
+# 此处再显式钉谷歌服务组, 先于远程 Google 列表, 防其加载失败漏到兜底.
+# 注: QX 无 per-domain 加密 DNS(架构限制), translate 解析走主 DoH,
+#     经代理由节点远端解析, 不泄露/不污染.
+host, translate-pa.googleapis.com, 谷歌服务
+host-suffix, translate.googleapis.com, 谷歌服务
+host-suffix, translate.google.com, 谷歌服务
+
 # ---------- v5.1.4 修复: 国内 IP 兜底 (微信 VOIP / 纯 IP UDP) ----------
 # 病灶修复: 补上 no-resolve, 避免对每个国内 IP 触发多余的 DNS 反查
 # (既降延迟又降基带唤醒能耗). 与 fallback_udp_policy=direct 双重保护.

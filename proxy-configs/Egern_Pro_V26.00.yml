@@ -522,6 +522,16 @@ dns:
     - domain_suffix:
         match: generativelanguage.googleapis.com
         value: Foreign-DoH
+    # -- 谷歌翻译 (V26.00: 钉境外 DoH, 防污染; 配合 rules 谷歌翻译修复) --
+    - domain:
+        match: translate-pa.googleapis.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: translate.googleapis.com
+        value: Foreign-DoH
+    - domain_suffix:
+        match: translate.google.com
+        value: Foreign-DoH
     # -- 其他 AI --
     - domain_suffix:
         match: perplexity.ai
@@ -1215,6 +1225,44 @@ rules:
             match: quic
       policy: REJECT
       name: Gemini API 禁 QUIC (强制 TCP)
+
+  # V26.00 谷歌翻译"连不上网"修复 (同 SR 0.56):
+  #   核心 API translate-pa.googleapis.com 重度用 QUIC; 走代理组但节点若
+  #   不转发 UDP, 会回落直连→被 GFW 拦→连不上. 强制 QUIC→TCP + 显式路由
+  #   Google 组 (DNS 已在 forward 层 0.5f2 钉 Foreign-DoH).
+  - and:
+      match:
+        - domain:
+            match: translate-pa.googleapis.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 谷歌翻译 API 禁 QUIC (强制 TCP)
+  - and:
+      match:
+        - domain_suffix:
+            match: translate.googleapis.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 谷歌翻译 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: translate.google.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 谷歌翻译网页 禁 QUIC
+  - domain:
+      match: translate-pa.googleapis.com
+      policy: Google
+  - domain_suffix:
+      match: translate.googleapis.com
+      policy: Google
+  - domain_suffix:
+      match: translate.google.com
+      policy: Google
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.68 MITM 依赖域强制 TCP (V26.00 统一 QUIC 策略, CLAUDE.md §一.6)
