@@ -1040,6 +1040,27 @@ AND,((DOMAIN,mp.weixin.qq.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-KEYWORD,spclient),(PROTOCOL,UDP)),REJECT
 
 # ---------------------------------------------------------------------
+# 0.56 谷歌翻译"连不上网"修复 (V26.00)
+#
+# 根因: 谷歌翻译核心 API translate-pa.googleapis.com 重度用 QUIC(UDP443).
+#   它被路由到"谷歌服务"代理组, 但若节点不支持 UDP 转发, 会因
+#   udp-policy-not-supported-behaviour=DIRECT 回落【直连】→ 该域被 GFW
+#   拦截 → 连不上. 症状=时通时断/长期连不上.
+# 修复三层:
+#   ① 强制 QUIC→TCP (下面 AND-UDP-REJECT): 客户端回落 TCP 经代理走, 通.
+#   ② 显式钉"谷歌服务"组 (先于 Google.list, 防规则集加载失败时漏到
+#      FINAL=DIRECT).
+#   ③ DNS 钉境外 DoH (见 [Host]), 防解析被污染.
+# 注: translate.google.cn 是国内可直连的旧域, 保持不动(不在此).
+# ---------------------------------------------------------------------
+AND,((DOMAIN,translate-pa.googleapis.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,translate.googleapis.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN-SUFFIX,translate.google.com),(PROTOCOL,UDP)),REJECT
+DOMAIN,translate-pa.googleapis.com,谷歌服务
+DOMAIN-SUFFIX,translate.googleapis.com,谷歌服务
+DOMAIN-SUFFIX,translate.google.com,谷歌服务
+
+# ---------------------------------------------------------------------
 # 0.6 被墙境外站点显式代理 (v2.6.8 修复 FINAL=DIRECT 漏网)
 #
 # 问题: Tumblr / Quora 等被 GFW 封锁的境外站没有任何分流规则覆盖,
@@ -1881,6 +1902,11 @@ chat.openai.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 gemini.google.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 aistudio.google.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.generativelanguage.googleapis.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+
+# Google 翻译 (V26.00: 钉境外 DoH, 防解析污染; 配合 [Rule] 0.56)
+translate-pa.googleapis.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+translate.googleapis.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+translate.google.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 
 # 长连接 / 流媒体 (避免代理 DNS 与本地 DNS 不一致触发风控)
 *.instagram.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
