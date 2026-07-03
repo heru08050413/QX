@@ -1,0 +1,514 @@
+# ============================================================
+#  Stash 配置 — V26.00 (纳入四套统一版本体系; 前身 v4.0)
+#
+#  V26.00 修复 (2026-07-03 审查, 依据见 git log / CLAUDE.md):
+#    [H1] 台湾组 filter 去掉 🇨🇳 与单字"台|湾":
+#         🇨🇳 是机场回国/国内中转节点常用标记, 单字"台"会命中"台州中转"
+#         等国内节点 → 国内节点混入台湾池 → Bahamut(锁台湾IP)直接死.
+#         对齐四套已规避的写法(台北|新北|彰化, 无单字无🇨🇳).
+#    [M1] GEOIP,CN,DIRECT 补 no-resolve: 原写法强制用国内 DoH(无 fallback)
+#         解析未命中域名, 被污染域名可能拿国内 IP → 误判 CN → 直连死.
+#         补后未解析域跳过 GEOIP 落 MATCH(默认代理)更安全; 纯 IP 连接
+#         (微信 VOIP UDP)不受影响.
+#    [M2] fake-ip-filter 补路由器/NAS 管理域: 否则拿 fake-ip 后真实解析
+#         走公共 DoH 返回厂商公网导航 IP, 路由器后台打不开.
+#    [M3] url-test interval 300→600 / tolerance 100→200: 四套真实日志
+#         实证 5 分钟高频测速+低容差会致长连接漂移风控且费电.
+#    [L1] rules 顶部补 qq.com.cn / teg.tencent-cloud.net 直连保护:
+#         qq.com 不是 qq.com.cn 的后缀(四套微信 loading 血案的同款盲区),
+#         dns.weixin.qq.com.cn 原本靠 GEOIP 解析兜底, 现显式保护.
+#    [L3] 显式声明 enhanced-mode: fake-ip / ipv6: false (原隐式默认);
+#         台湾组图标 China.png → Taiwan.png.
+#  供应链注记: 27 个规则源全部来自 Coldvvater/Mononoke 单一个人仓库,
+#    已纳入 scripts/url-health-sweep.sh 巡检(2026-07-03 全 200, Reject
+#    实测不含微信/微博功能域). 若该仓库重构, 巡检会报警.
+#
+#  ── 以下为 v4.0 原始说明 ──
+#  改动:
+#    - benchmark-url: gstatic(国内被墙) -> cp.cloudflare.com
+#    - 地区组从 select套三策略 拍平为直接 url-test (修手动测速无反应)
+#    - 删除全部 fallback/load-balance (修 IP 跳动导致的时连时断)
+#    - 保留全部业务分组
+#  换机场只改: proxy-providers.Subscribe.url
+# ============================================================
+
+mode: rule
+log-level: info
+# V26.00 [L3] 显式关闭 IPv6 (对齐四套: 双栈解析翻倍且家用 IPv6 质量差)
+ipv6: false
+dns:
+  # V26.00 [L3] 显式声明 fake-ip 模式 (原依赖 Stash 默认, 隐式默认将来读不懂)
+  enhanced-mode: fake-ip
+  ipv6: false
+  default-nameserver:
+  - 223.5.5.5
+  - 119.29.29.29
+  nameserver:
+  - https://dns.alidns.com/dns-query
+  - https://doh.pub/dns-query
+  fake-ip-filter:
+  - '*'
+  - +.lan
+  - +.local
+  - +.cmpassport.com
+  - id6.me
+  - open.e.189.cn
+  - mdn.open.wo.cn
+  - opencloud.wostore.cn
+  - auth.wosms.cn
+  - +.10099.com.cn
+  - +.msftconnecttest.com
+  - +.msftncsi.com
+  - lancache.steamcontent.com
+  - time.apple.com
+  - time.windows.com
+  - time.android.com
+  - pool.ntp.org
+  - +.ntp.org
+  # V26.00 [M2] 路由器/NAS 管理域必须拿真实(内网)IP, 不能进 fake-ip
+  - +.miwifi.com
+  - +.tplogin.cn
+  - +.tplinkwifi.net
+  - +.tplinklogin.net
+  - +.routerlogin.net
+  - +.orbilogin.com
+  - +.melogin.cn
+  - +.falogin.cn
+  - router.asus.com
+  - router.synology.com
+proxy-providers:
+  Subscribe:
+    url: 在此粘贴你的机场订阅链接
+    interval: 86400
+    benchmark-url: http://cp.cloudflare.com/generate_204
+    benchmark-timeout: 5
+proxy-groups:
+- name: 节点选择
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Rocket.png
+  proxies:
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+  - DIRECT
+- name: 国外网站
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: AI
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ChatGPT.png
+  proxies:
+  - 美国节点
+  - 日本节点
+  - 狮城节点
+  - 台湾节点
+  - 节点选择
+  - 全部节点
+- name: YouTube
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: Netflix
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: Disney+
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Disney.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: TikTok
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok.png
+  proxies:
+  - 节点选择
+  - 日本节点
+  - 台湾节点
+  - 美国节点
+  - 狮城节点
+  - 香港节点
+  - 全部节点
+- name: Emby
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Emby.png
+  use:
+  - Subscribe
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - DIRECT
+- name: Spotify
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - DIRECT
+- name: bilibili
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili_3.png
+  proxies:
+  - DIRECT
+  - 香港节点
+  - 台湾节点
+- name: 网易音乐
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netease_Music.png
+  proxies:
+  - DIRECT
+  - 香港节点
+  - 台湾节点
+  - 节点选择
+- name: 国际媒体
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Streaming.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: Telegram
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram_X.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: Twitter
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/X.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: 谷歌服务
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google_Search.png
+  proxies:
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - DIRECT
+- name: 微软服务
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png
+  proxies:
+  - DIRECT
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+- name: 苹果服务
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_1.png
+  proxies:
+  - DIRECT
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+- name: 游戏平台
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Game.png
+  proxies:
+  - DIRECT
+  - 节点选择
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+- name: 漏网之鱼
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
+  proxies:
+  - 节点选择
+  - DIRECT
+  - 香港节点
+  - 台湾节点
+  - 日本节点
+  - 狮城节点
+  - 美国节点
+  - 全部节点
+- name: 香港节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  filter: (?i)🇭🇰|香港|港|\bHK\b|\bHong ?Kong\b
+- name: 台湾节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  # V26.00 [H1] 去掉 🇨🇳(机场回国节点常用标记)与单字"台|湾"(会命中
+  # "台州中转"等国内节点), 否则国内节点混入台湾池, Bahamut 直接死.
+  filter: (?i)🇹🇼|台湾|台灣|台北|新北|彰化|\bTWN?\b|\bTaiwan\b
+- name: 日本节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  filter: (?i)🇯🇵|日本|日|东京|大阪|\bJP\b|\bJapan\b
+- name: 狮城节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  filter: (?i)🇸🇬|新加坡|狮城|狮|坡|\bSG\b|\bSingapore\b
+- name: 美国节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  filter: (?i)🇺🇸|🇺🇲|美国|美|洛杉矶|圣何塞|西雅图|\bUS\b|\bUnited ?States\b|\bAmerica\b
+- name: 全部节点
+  type: url-test
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Airport.png
+  url: http://cp.cloudflare.com/generate_204
+  interval: 600
+  tolerance: 200
+  lazy: true
+  include-all: true
+  filter: ^(?=.*(.))(?!.*((?i)群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|(\b(USE|USED|TOTAL|Traffic|Expire|EMAIL|Panel|Channel|Author)\b|(\d{4}-\d{2}-\d{2}|\d+G)))).*$
+rule-providers:
+  Direct:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Direct.list
+  Reject:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Reject.list
+  AI:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/AI.list
+  YouTube:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/YouTube.list
+  Netflix:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Netflix.list
+  Disney+:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Disney.list
+  Emby:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Emby.list
+  TikTok:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/TikTok.list
+  Bahamut:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Bahamut.list
+  BiliIntl:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/BiliBiliIntl.list
+  bilibili:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/bilibili.list
+  Spotify:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Spotify.list
+  NetEaseMusic:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/NetEaseMusic.list
+  ProxyMedia:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/ProxyMedia.list
+  WeChat:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/WeChat.list
+  Telegram:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Telegram.list
+  GitHub:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Github.list
+  Twitter:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Twitter.list
+  Google:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Google.list
+  Microsoft:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Microsoft.list
+  Games:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Game.list
+  ProxyGFW:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/ProxyGFW.list
+  AppleCN:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/AppleCN.list
+  AppleServers:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/AppleServers.list
+  CN_Mainland:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/ChinaDomain.list
+  LAN:
+    behavior: classical
+    format: text
+    interval: 86400
+    url: https://raw.githubusercontent.com/Coldvvater/Mononoke/master/Stash/Rules/Lan.list
+rules:
+# V26.00 [L1] 微信 .com.cn 保护区 (最先匹配, 对齐四套安全基线 §一.2):
+#   qq.com 不是 qq.com.cn 的后缀 — dns.weixin.qq.com.cn (微信自研 DNS)
+#   原本不被任何域名规则命中, 靠 GEOIP 解析兜底. 显式直连, 省解析且
+#   防上游列表未来变化 (四套"微信 loading 血案"的同款盲区).
+- DOMAIN-SUFFIX,qq.com.cn,DIRECT
+- DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+- RULE-SET,Direct,DIRECT
+- RULE-SET,Reject,REJECT
+- RULE-SET,AI,AI
+- RULE-SET,YouTube,YouTube
+- RULE-SET,Netflix,Netflix
+- RULE-SET,Disney+,Disney+
+- RULE-SET,Emby,Emby
+- RULE-SET,TikTok,TikTok
+- RULE-SET,Bahamut,台湾节点
+- RULE-SET,BiliIntl,国际媒体
+- RULE-SET,bilibili,bilibili
+- RULE-SET,Spotify,Spotify
+- RULE-SET,NetEaseMusic,网易音乐
+- RULE-SET,ProxyMedia,国际媒体
+- RULE-SET,WeChat,DIRECT
+- RULE-SET,Telegram,Telegram
+- RULE-SET,Twitter,Twitter
+- RULE-SET,GitHub,国外网站
+- RULE-SET,Google,谷歌服务
+- RULE-SET,Microsoft,微软服务
+- RULE-SET,Games,游戏平台
+- RULE-SET,ProxyGFW,国外网站
+- RULE-SET,AppleCN,DIRECT
+- RULE-SET,AppleServers,苹果服务
+- RULE-SET,CN_Mainland,DIRECT
+- RULE-SET,LAN,DIRECT
+# V26.00 [M1] 补 no-resolve: 不为 GEOIP 匹配强制解析域名 (仅国内 DoH 无
+#   fallback, 被污染域名可能拿国内 IP → 误判 CN → 直连死). 未解析域名
+#   跳过本条落 MATCH(默认代理)更安全; 纯 IP 连接(微信 VOIP)不受影响.
+- GEOIP,CN,DIRECT,no-resolve
+- MATCH,漏网之鱼

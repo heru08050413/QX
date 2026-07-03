@@ -19,7 +19,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 
-FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00)
+FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_V26.00.yaml)
 TIMEOUT=20
 fail=0; warn=0; ok=0
 

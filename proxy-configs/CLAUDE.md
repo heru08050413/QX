@@ -8,8 +8,10 @@
 - `quantumult_B_V26.00` — Quantumult X
 - `Egern_Pro_V26.00.yml` — Egern(YAML)
 - `Loon_V26.00` — Loon
+- `Stash_V26.00.yaml` — Stash(2026-07 纳入;Clash 系语法,fake-ip + 纯分流轻量定位,无 MITM/脚本层;规则源为 Coldvvater/Mononoke 单一个人仓库,已入巡检)
 
-> 版本号:四套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x)保留作为沿革记录。
+> 版本号:五套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
+> Stash 与安全基线的适用性:无 MITM 段 → 基线 1/6 不适用;基线 2(保护区)以本地 `qq.com.cn`/`teg` 规则实现;基线 5 例外——Stash 采用 `MATCH→漏网之鱼(默认代理)+ CN 白名单` 的 fail-closed 哲学,与四套 Final=DIRECT 是两种自洽取舍,不强行对齐。
 
 ---
 
