@@ -22,6 +22,11 @@
 #  供应链注记: 27 个规则源全部来自 Coldvvater/Mononoke 单一个人仓库,
 #    已纳入 scripts/url-health-sweep.sh 巡检(2026-07-03 全 200, Reject
 #    实测不含微信/微博功能域). 若该仓库重构, 巡检会报警.
+#    [Stash 3.4.0 缓解] 该版更新日志"Improved remote resource loading and
+#    fixed cases where failed downloads returned 0": 修复了规则源拉取失败
+#    时静默返回 0 条(分类静默失效)的问题 —— 官方层面把本仓库最担心的
+#    "供应链静默死链"风险降了一档. 但仍不替代巡检(仓库整库重构/改路径
+#    仍需 url-health-sweep.sh 发现). 升级到 3.4.0+ 后重新导入以刷新缓存.
 #
 #  ── 以下为 v4.0 原始说明 ──
 #  改动:
