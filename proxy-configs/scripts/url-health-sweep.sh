@@ -52,7 +52,7 @@ echo "巡检 ${#URLS[@]} 个 URL (含 ${#EXTRA_URLS[@]} 个外部去广告模块
 for u in "${URLS[@]}"; do
   code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time "$TIMEOUT" "$u" 2>/dev/null)
   case "$u" in
-    */dns-query|quic://*|*gist.githubusercontent.com*|*/releases/latest/*|*jsdelivr*|*kelee.one*|*ddgksf2013.top*|https://github.com/*/raw/*)
+    */dns-query|quic://*|*gist.githubusercontent.com*|*/releases/latest/*|*jsdelivr*|*clashios.app*|*kelee.one*|*ddgksf2013.top*|https://github.com/*/raw/*)
       if [ "$code" = "200" ]; then ok=$((ok+1)); else echo "⚠  $code  $u  (自托管/跳转/IP端点, 人工核实)"; warn=$((warn+1)); fi ;;
     *)
       if [ "$code" = "200" ]; then ok=$((ok+1)); else echo "✗  $code  $u"; fail=$((fail+1)); fi ;;

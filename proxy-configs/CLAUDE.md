@@ -106,6 +106,8 @@
 
 3. **基线"逐字一致"是目标而非现状。** 本轮才把 SR 的银行/支付/icloud MITM 排除补齐(原仅其余三套有)。新增/修改安全基线项时,务必四套同步,并跑一次跨文件 diff 确认。
 
+4. **远程源优先 `raw.githubusercontent.com`,避开 jsDelivr / 第三方镜像站。** 用户实测 `fastly.jsdelivr.net`、`cdn.jsdelivr.net`、`clashios.app` 在国内均 000(被墙/污染)——这是 Stash "Scripts Not Downloaded" 的真正根因,也曾潜伏在我们自己的 Loon(GeoIP/ASN 库)、QX(resource-parser)里,V26.00 已全部切回 raw。规律:这些配置走代理,`raw.githubusercontent.com` 经代理稳定可达,而 jsDelivr 的公共 CDN 反而不稳。新增远程源时选 raw 原始地址,不要图"加速"用 jsDelivr。
+
 ---
 
 ## 七、需用户手动跟进清单(配置无法自动完成)

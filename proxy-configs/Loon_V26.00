@@ -232,9 +232,12 @@ hijack-dns = *:53,8.8.8.8:53,1.1.1.1:53,8.8.4.4:53,1.0.0.1:53
 # > Sub-Store 资源解析器
 resource-parser = https://github.com/sub-store-org/Sub-Store/releases/latest/download/sub-store-parser.loon.min.js
 
-# > GeoIP / ASN 数据库 (使用 jsDelivr CDN 加速)
-geoip-url = https://cdn.jsdelivr.net/gh/Masaiki/GeoIP2-CN@release/Country.mmdb
-ipasn-url = https://cdn.jsdelivr.net/gh/P3TERX/GeoLite.mmdb@download/GeoLite2-ASN.mmdb
+# > GeoIP / ASN 数据库
+# V26.00 [连通性] cdn.jsdelivr → raw.githubusercontent: jsDelivr CDN
+#   (fastly/cdn 两线)在国内频繁被墙/污染, 是"资源下载失败"的常见根因
+#   (用户实测 fastly/cdn.jsdelivr 均 000). raw 走代理更稳(已验证 200).
+geoip-url = https://raw.githubusercontent.com/Masaiki/GeoIP2-CN/release/Country.mmdb
+ipasn-url = https://raw.githubusercontent.com/P3TERX/GeoLite.mmdb/download/GeoLite2-ASN.mmdb
 
 
 # =====================================================================
