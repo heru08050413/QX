@@ -28,6 +28,8 @@ EXTRA_URLS=(
   "https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule"
   "https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule"
   "https://github.com/BiliUniverse/ADBlock/releases/latest/download/BiliBili.ADBlock.sgmodule"
+  "https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-hub.stash.stoverride"
+  "https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/Rewrite-Parser.js"
 )
 TIMEOUT=20
 fail=0; warn=0; ok=0
