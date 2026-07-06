@@ -66,6 +66,7 @@ http:
     - "api.pinduoduo.com"
     - "api.yangkeduo.com"
     - "acs.m.goofish.com"
+    - "xyst.yuanfudao.com"
   url-rewrite:
     # 京东
     - >-
@@ -267,3 +268,6 @@ http:
       ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.item\.buy\.feeds - reject-dict
     - >-
       ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlecommerce\.splash\.ads - reject-dict
+    # 猿辅导
+    - >-
+      ^https?:\/\/xyst\.yuanfudao\.com\/iphone\/splashesV\d - reject-200
