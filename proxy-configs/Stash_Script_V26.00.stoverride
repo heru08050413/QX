@@ -1,0 +1,133 @@
+name: "信息流去广告脚本 V26.00 (知乎/小红书)"
+desc: "脚本级去广告:知乎(首页推广/热榜广告/详情页推广)+ 小红书(搜索/开屏/信息流广告,附带去水印、解除下载限制)。JS 已镜像进本仓库 scripts/,script-providers 只引自己的 raw 链接=无第三方死链。需开 MITM 并信任证书。上游作者 @fmz200(fmz200/wool_scripts),逻辑未改动。注:脚本靠 App 的广告标记字段工作,App 大改接口后需同步上游更新。"
+
+http:
+  mitm:
+    - "api.zhihu.com"
+    - "page-info.zhihu.com"
+    - "www.zhihu.com"
+    - "appcloud2.zhihu.com"
+    - "m-cloud.zhihu.com"
+    - "edith.xiaohongshu.com"
+    - "so.xiaohongshu.com"
+    - "rec.xiaohongshu.com"
+    - "www.xiaohongshu.com"
+  script:
+    # 知乎
+    - match: ^https:\/\/(?:api|page-info)\.zhihu\.com\/(?:answers|articles)\/v2\/\d+
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/commercial_api\/app_float_layer
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/feed\/render\/tab\/config\?
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/(?:moments_v3|topstory\/hot-lists\/total|topstory\/recommend)
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/root\/tab
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/v2\/topstory\/hot-lists\/everyone-seeing\?
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/bazaar\/vip_tab\/header\?
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/next-(?:bff|data|render)
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/api\.zhihu\.com\/questions\/\d+(?:\/answers|\/feeds|\?include=)
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/www\.zhihu\.com\/api\/v4\/(?:articles|answers)\/\d+\/recommendations?\?
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/appcloud2\.zhihu\.com\/v3\/config
+      name: "zhihu"
+      type: response
+      require-body: true
+    - match: ^https:\/\/m-cloud\.zhihu\.com\/api\/cloud\/config\/all\?
+      name: "zhihu"
+      type: response
+      require-body: true
+    # 小红书
+    - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/(banner|hot)_list
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/(hint|trending)\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(so|edith)\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/notes\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/system_service\/config\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/system_service\/splash_config
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/widgets
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/(imagefeed|live_photo\/save)
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/v\d+\/(followfeed|homefeed)\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/(v2\/note\/feed|v3\/note\/videofeed)\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/(v4\/note\/videofeed|v10\/note\/video\/save)\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/(v5\/note\/comment\/list|v3\/note\/comment\/sub_comments)\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v1\/interaction\/comment\/video\/download\?
+      name: "xiaohongshu"
+      type: response
+      require-body: true
+      timeout: 60
+
+script-providers:
+  "zhihu":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/zhihu.js
+    interval: 86400
+  "xiaohongshu":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/xiaohongshu.js
+    interval: 86400
