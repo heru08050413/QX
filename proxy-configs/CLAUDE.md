@@ -17,6 +17,7 @@
   > 架构关键(避免重蹈"Scripts Not Downloaded"):脚本 JS **全部镜像进本仓库 `scripts/`**、`.stoverride` 的 `script-providers.url` 只引**自己仓库的 raw 链接**——第三方死链风险归零,只剩"App 改接口→标记字段变"的逻辑腐坏(用得多的 App 社区盯得紧,同步上游即可)。上游源 @fmz200(wool_scripts)/@yichahucha(微博 wb_ad)/@zirawell(R-Store),13 个上游 URL 已入巡检 EXTRA_URLS,上游死/大改即回本仓库 diff 同步。
   > 移植时踩到的两个 Stash 兼容点:① **atomic group `(?>...)` Stash 正则不吃**(JS/RE2 均不支持)→ 转 `(?:...)`(此处简单择一, 语义等价);② 爱奇艺有一条 **IP 主机 hook**(`[\d.]+`)无法 MITM, 在 Stash 上失效(域名 hook 已覆盖首页/feed)。全部 JS 过 `node --check`、全部 match 过 `new RegExp` 编译。
   > **不收录**:B站(kokoryh/Sparkle 依赖 `engine=webview`+protobuf, Stash 无 webview)、网易云音乐/百度贴吧/Spotify/YouTube(binary-body-mode protobuf)、银行/政务/证件类(12306/航旅纵横/招商证券/建行生活/买单吧…一律不 MITM)。
+- `Stash_All_V26.00.stoverride` — **三合一总覆写**(上面三份合并, 一个链接全都有)。`rules:` 81 条(网络层 REJECT + App 网络规则)、`http.mitm:` 80 域(两份去重)、`http.url-rewrite:` 94 条、`http.script:` 83 hooks、`script-providers:` 13。①网络层免 MITM 即生效;②③需开 MITM。**三份分文件保留**(便于按需单开某层);总文件供"一键全量"。由 `/tmp/merge.py` 从三份源文件抽段合并生成,177 条 url-rewrite+script 正则全过 `new RegExp` 编译。
 
 > 版本号:五套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
 > Stash 与安全基线的适用性:无 MITM 段 → 基线 1/6 不适用;基线 2(保护区)以本地 `qq.com.cn`/`teg` 规则实现;基线 5 例外——Stash 采用 `MATCH→漏网之鱼(默认代理)+ CN 白名单` 的 fail-closed 哲学,与四套 Final=DIRECT 是两种自洽取舍,不强行对齐。
