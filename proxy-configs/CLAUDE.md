@@ -11,6 +11,8 @@
 - `Stash_V26.00.yaml` — Stash(2026-07 纳入;Clash 系语法,fake-ip + 纯分流轻量定位,无 MITM/脚本层;规则源为 Coldvvater/Mononoke 单一个人仓库,已入巡检)
 - `Stash_AdBlock_V26.00.stoverride` — Stash 去广告覆写(**Override/`.stoverride` YAML 格式** —— Stash 只有 Override/Rewrite/MitM/Script 四入口,**不吃 `.sgmodule`**;纯 `rules:` 网络层 REJECT,覆写数组插到原规则最前、不替换分流,零脚本零 MITM 零腐坏)。信息流/开屏这类需脚本的去广告,指向维护良好的 `.stoverride`(deezertidal 系:微博/微信公众号/知乎/YouTube/去广告合集,原生 Override 格式)。
   > 教训:Stash≠Surge/Loon —— `.sgmodule`(blockAds 等)在 Stash 里导入会报"格式不正确",必须用 `.stoverride`(YAML)。
+- `Stash_AppAdBlock_V26.00.stoverride` — Stash **具体 App 深度去广告**覆写(**需开 MITM 并信任证书**)。从 fmz200/blockAds 精选 14 个消费类 App(京东/淘宝/闲鱼/小红书/拼多多/百度网盘/阿里云盘/高德/有道/汽车之家/钉钉/我要自学网/知乎/联通/电信)的开屏与信息流去广告,把 `[URL Rewrite]` reject + `[Map Local]` 按 Script-Hub 的 Stash 映射折叠进 `http.url-rewrite:`(`reject`/`reject-dict`/`reject-array`/`reject-200`/`reject-img`),**纯静态正则、零外部脚本 = 不会因脚本死链而腐坏**。
+  > 三条硬约束(实事求是):① **不含任何银行/支付/政务/证件类 App**(京东金融/12306/个人所得税/航旅纵横一律不 MITM);② Stash 的 `rules:` **不吃 `URL-REGEX`/`PROTOCOL`**(Script-Hub 自身会把 `URL-REGEX` reject 迁到 url-rewrite),已在转换时剔除以保证导入;③ B站/YouTube 的信息流去广告依赖**特制 payload / 外部脚本**(非简单 reject),不硬转,指向 BiliUniverse/ADBlock 与 Maasea/YouTube.Enhance 维护版,本文件仅收其安全网络规则。
 
 > 版本号:五套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
 > Stash 与安全基线的适用性:无 MITM 段 → 基线 1/6 不适用;基线 2(保护区)以本地 `qq.com.cn`/`teg` 规则实现;基线 5 例外——Stash 采用 `MATCH→漏网之鱼(默认代理)+ CN 白名单` 的 fail-closed 哲学,与四套 Final=DIRECT 是两种自洽取舍,不强行对齐。
