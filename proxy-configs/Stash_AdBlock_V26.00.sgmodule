@@ -11,8 +11,13 @@
 #
 #  ★ 需要脚本才能去的广告(App 信息流/开屏, 需 MITM 改写)请另装以下
 #    【活跃维护】上游模块(2026-07 实测存活; 一键导入 URL, 上游自动更新):
-#    ① 国内 App 综合(京东/淘宝/阿里/拼多多/美团…730+, 正是你坏掉那批的替代):
+#    ① 国内 App 综合(京东/淘宝/阿里/拼多多/美团…500+, 正是你坏掉那批的替代):
 #       https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+#       ⚠️ 安全取舍: blockAds 为去掉【银行 App 内广告】会 MITM 解密银行域
+#          (招行 cmbchina / 工行 icbc.com.cn 等). 虽只针对广告 URL, 但 MITM
+#          开在银行域=证书可见该域全部流量, 违反本项目"银行绝不 MITM"基线.
+#          在意安全 → 不装此模块(用下方 ②③ 的洁净组合); 求全覆盖且接受
+#          此风险 → 装, 但银行 App 建议单独关 HTTPS 解密.
 #    ② 微博: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule
 #    ③ YouTube: https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule
 #    ④ B站(App 内→模块添加, releases 链接):
