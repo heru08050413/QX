@@ -1,6 +1,7 @@
-#!name=去广告后端 V26.00 (网络层 REJECT 基线)
-#!desc=纯网络层广告/追踪域名拦截 + 高频重试源熔断. 无脚本、无 MITM → 永不腐坏、零耗电. 与四套 iOS 配置同源、可被 url-health-sweep.sh 巡检. 脚本类去广告(信息流/开屏)请另装下方维护上游模块.
+#!name=去广告后端+银行护盾 V26.00
+#!desc=网络层广告/追踪域名拦截 + 高频重试源熔断 + 银行护盾(把 blockAds 会 MITM 的 87 个银行/支付/券商域强制排除解密). 配合 blockAds 使用=全覆盖去广告且银行零解密. 脚本类去广告(信息流/开屏)请另装维护上游模块.
 #!category=去广告
+#!author=heru08050413
 #
 # ============================================================
 #  Stash 去广告覆写 — V26.00 (可一键导入)
@@ -115,9 +116,11 @@ DOMAIN-SUFFIX,weibomingzi.com,REJECT
 # ============================================================
 #  [MITM] 银行护盾 —— 强制排除所有银行/支付/券商域, 使其【永不被解密】
 #
-#  用途: 你若同时导入 blockAds(它为去银行App广告而 MITM 了 94 个金融
-#    域), 本段用 %INSERT%(插到 hostname 列表【最前】= 最高优先)把这些
-#    域强制排除. 效果: blockAds 仍去其它 500+ App 的广告, 但银行域不再
+#  用途: 你若同时导入 blockAds(它为去银行App广告而 MITM 了 87 个金融
+#    域), 本段用 %APPEND% 追加 "-" 排除项(MITM 的 "-" 是全局去解密的
+#    deny-list 语义, 不依赖位置)把这些域强制排除. (注: 不用 %INSERT% —
+#    Stash 不支持该修饰符, 会报"格式不正确".) 效果: blockAds 仍去其它
+#    500+ App 的广告, 但银行域不再
 #    被解密 —— 既守住"银行绝不 MITM"安全基线, 又避免 MITM 撞上银行的
 #    证书锁定(cert pinning)把银行 App 弄崩. 代价仅"银行 App 内广告不去".
 #
@@ -129,4 +132,4 @@ DOMAIN-SUFFIX,weibomingzi.com,REJECT
 #    安全基线支付域. 通配 -*.domain 覆盖其全部子域, 且抗 blockAds 更新.
 # ============================================================
 [MITM]
-hostname = %INSERT% -*.cmbchina.com, -*.cmbc.com.cn, -*.icbc.com.cn, -*.ccb.com, -*.abchina.com, -*.abchina.com.cn, -*.boc.cn, -*.bankcomm.com, -*.bankcomm.cn, -*.spdb.com.cn, -*.spdb.com, -*.spdbccc.com.cn, -*.cib.com.cn, -*.citicbank.com, -*.ecitic.com, -*.pingan.com, -*.pingan.com.cn, -*.cebbank.com, -*.hxb.com.cn, -*.psbc.com, -*.95508.com, -*.aibank.com, -*.grcbank.com, -*.z-bank.com, -*.bankofbeijing.com.cn, -*.jsbchina.cn, -*.jlbank.com.cn, -cgbank.oss-cn-shenzhen.aliyuncs.com, -*.cmschina.com, -*.gtja.com, -*.htsc.com, -*.10jqka.com.cn, -*.eastmoney.com, -*.myhexin.com, -*.hexin.cn, -*.citics.com, -*.xueqiu.com, -*.hsbcfts.com.cn, -*.alipay.com, -*.unionpay.com, -*.95516.com, -*.icloud.com
+hostname = %APPEND% -*.cmbchina.com, -*.cmbc.com.cn, -*.icbc.com.cn, -*.ccb.com, -*.abchina.com, -*.abchina.com.cn, -*.boc.cn, -*.bankcomm.com, -*.bankcomm.cn, -*.spdb.com.cn, -*.spdb.com, -*.spdbccc.com.cn, -*.cib.com.cn, -*.citicbank.com, -*.ecitic.com, -*.pingan.com, -*.pingan.com.cn, -*.cebbank.com, -*.hxb.com.cn, -*.psbc.com, -*.95508.com, -*.aibank.com, -*.grcbank.com, -*.z-bank.com, -*.bankofbeijing.com.cn, -*.jsbchina.cn, -*.jlbank.com.cn, -cgbank.oss-cn-shenzhen.aliyuncs.com, -*.cmschina.com, -*.gtja.com, -*.htsc.com, -*.10jqka.com.cn, -*.eastmoney.com, -*.myhexin.com, -*.hexin.cn, -*.citics.com, -*.xueqiu.com, -*.hsbcfts.com.cn, -*.alipay.com, -*.unionpay.com, -*.95516.com, -*.icloud.com
