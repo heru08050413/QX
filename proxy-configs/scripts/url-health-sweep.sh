@@ -33,6 +33,17 @@ EXTRA_URLS=(
   # 信息流脚本的【上游源】—— 本仓库 scripts/ 里的是镜像;盯着上游, 死链/大改即回本仓库同步
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/zhihu/zhihu.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/xiaohongshu/xiaohongshu.js"
+  "https://raw.githubusercontent.com/yichahucha/surge/master/wb_ad.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/myBlockAds.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/jingdong/jingdong.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/cnftp.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/didi/didiAds.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/quark.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/smzdm/Smzdm.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/smzdm/smzdm_ads.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/youdao/dict-youdao-ad.js"
+  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/adrive/adrive.js"
+  "https://raw.githubusercontent.com/zirawell/R-Store/main/Res/Scripts/AntiAd/dianping.js"
 )
 TIMEOUT=20
 fail=0; warn=0; ok=0

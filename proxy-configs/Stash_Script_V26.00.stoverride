@@ -1,5 +1,5 @@
-name: "信息流去广告脚本 V26.00 (知乎/小红书)"
-desc: "脚本级去广告:知乎(首页推广/热榜广告/详情页推广)+ 小红书(搜索/开屏/信息流广告,附带去水印、解除下载限制)。JS 已镜像进本仓库 scripts/,script-providers 只引自己的 raw 链接=无第三方死链。需开 MITM 并信任证书。上游作者 @fmz200(fmz200/wool_scripts),逻辑未改动。注:脚本靠 App 的广告标记字段工作,App 大改接口后需同步上游更新。"
+name: "信息流去广告脚本合集 V26.00"
+desc: "脚本级信息流/开屏去广告。覆盖:知乎·小红书·微博·淘宝·京东·爱奇艺·优酷·芒果TV·什么值得买·滴滴出行·大众点评·夸克·有道词典·阿里云盘。全部脚本已镜像进本仓库 scripts/,script-providers 只引自己 raw 链接=无第三方死链。需开 MITM 并信任证书。上游 @fmz200/@yichahucha/@zirawell,逻辑未改。不含银行/政务/证件类;B站/网易云/YouTube 依赖 webview/protobuf,Stash 跑不了,未收录。"
 
 http:
   mitm:
@@ -12,8 +12,45 @@ http:
     - "so.xiaohongshu.com"
     - "rec.xiaohongshu.com"
     - "www.xiaohongshu.com"
+    - "api.weibo.cn"
+    - "sub.weibo.cn"
+    - "we.weibo.cn"
+    - "guide-acs.m.taobao.com"
+    - "poplayer.template.alibaba.com"
+    - "api.m.jd.com"
+    - "cards.iqiyi.com"
+    - "access.if.iqiyi.com"
+    - "comment-card.iqiyi.com"
+    - "iface2.iqiyi.com"
+    - "search.video.iqiyi.com"
+    - "kjp.cupid.iqiyi.com"
+    - "t7z.cupid.iqiyi.com"
+    - "acs.youku.com"
+    - "un-acs.youku.com"
+    - "push.m.youku.com"
+    - "me.bz.mgtv.com"
+    - "mob-st.bz.mgtv.com"
+    - "dc.bz.mgtv.com"
+    - "dc2.bz.mgtv.com"
+    - "mobile.api.mgtv.com"
+    - "mobile-thor.api.mgtv.com"
+    - "mobileso.bz.mgtv.com"
+    - "*.smzdm.com"
+    - "ct.xiaojukeji.com"
+    - "freight.xiaojukeji.com"
+    - "res.xiaojukeji.com"
+    - "conf.diditaxi.com.cn"
+    - "common.diditaxi.com.cn"
+    - "daijia.kuaidadi.com"
+    - "img.meituan.net"
+    - "ddplus.meituan.net"
+    - "open-cms-api.uc.cn"
+    - "open-cms-api.quark.cn"
+    - "dict.youdao.com"
+    - "api.alipan.com"
+    - "member.alipan.com"
   script:
-    # 知乎
+    # zhihu
     - match: ^https:\/\/(?:api|page-info)\.zhihu\.com\/(?:answers|articles)\/v2\/\d+
       name: "zhihu"
       type: response
@@ -62,7 +99,7 @@ http:
       name: "zhihu"
       type: response
       require-body: true
-    # 小红书
+    # xiaohongshu
     - match: ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/(banner|hot)_list
       name: "xiaohongshu"
       type: response
@@ -123,6 +160,312 @@ http:
       type: response
       require-body: true
       timeout: 60
+    # 微博
+    - match: ^https?:\/\/(?:api|sub|we)\.weibo\.cn\/
+      name: "weibo"
+      type: response
+      require-body: true
+    # 淘宝
+    - match: ^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.(cloudvideo\.video\.query|wireless\.home\.splash\.awesome\.get)
+      name: "myBlockAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/poplayer\.template\.alibaba\.com\/\w+\.json
+      name: "myBlockAds"
+      type: response
+      require-body: true
+      timeout: 60
+    # 京东
+    - match: ^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(deliverLayer|getTabHomeInfo|myOrderInfo|orderTrackBusiness|personinfoBusiness|start|welcomeHome)
+      name: "jingdong"
+      type: response
+      require-body: true
+      timeout: 60
+    # 爱奇艺
+    - match: ^https?:\/\/[\d\.]+\/3f1\/cards\.iqiyi\.com\/(views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/access\.if\.iqiyi\.com\/3f1\/cards\.iqiyi\.com\/(views_category\/3\.0\/category_home|views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/cards\.iqiyi\.com\/views_category\/3\.0\/(category_home|categorylib_content|film_hybrid)\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/cards\.iqiyi\.com\/(views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/cards\.iqiyi\.com\/views_plt\/3\.0\/player_tabs_v2\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/cards\.iqiyi\.com\/views_search\/3\.0\/(hot_query_)?search\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/comment-card\.iqiyi\.com\/views_comment\/3\.0\/long_video_comments\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/iface2\.iqiyi\.com\/aggregate\/3\.0\/getMyMenus\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/iface2\.iqiyi\.com\/control\/3\.0\/init_proxy\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/iface2\.iqiyi\.com\/fusion\/3\.0\/common_switch\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/iface2\.iqiyi\.com\/views\/3\.0\/(bottom_theme|home_top_menu)\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/search\.video\.iqiyi\.com\/q\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/(kjp|t7z)\.cupid\.iqiyi\.com\/mixer\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    # 优酷
+    - match: ^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.columbus\.(gateway\.new\.execute|home\.feed|home\.query|uc\.query|ycp\.query)
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.haidai\.lantern\.appconfig\.get
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.huluwa\.dispatcher\.youthmode\.config2
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.soku\.yksearch
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/push\.m\.youku\.com\/collect-api\/get_push_interval_config_wx\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/un-acs\.youku\.com\/gw\/mtop\.youku\.play\.ups\.appinfo\.get
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    # 芒果TV
+    - match: ^https?:\/\/me\.bz\.mgtv\.com\/v3\/module\/list\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/mob-st\.bz\.mgtv\.com\/odin\/c1\/channel\/index\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/dc2?\.bz\.mgtv\.com\/dynamic\/v1\/channel\/(index|vrsList)\/\w
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/mobile\.api\.mgtv\.com\/mobile\/config\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/mobile\.api\.mgtv\.com\/v10\/video\/info\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/mobile-thor\.api\.mgtv\.com\/v1\/vod\/info\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/mobileso\.bz\.mgtv\.com\/mobile\/recommend\/v2\?
+      name: "cnftp"
+      type: response
+      require-body: true
+      timeout: 60
+    # 什么值得买
+    - match: ^https?:\/\/haojia\.m\.smzdm\.com\/detail_modul\/user_related_modul\?
+      name: "smzdm_ads"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/haojia-api\.smzdm\.com\/ranking_list\/articles\?
+      name: "smzdm_ads"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/s-api\.smzdm\.com\/sou\/filter\/tags\/hot_tags\?
+      name: "smzdm_ads"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/s-api\.smzdm\.com\/sou\/list_v10\?
+      name: "smzdm_ads"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/user-api\.smzdm\.com\/vip\/creator_user_center
+      name: "smzdm_ads"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/user-api\.smzdm\.com\/vip$
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/app-api\.smzdm\.com\/util\/loading
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/app-api\.smzdm\.com\/util\/update
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/user-api\.smzdm\.com\/vip\/bottom_card_list
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/haojia-api\.smzdm\.com\/home\/list
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/homepage-api\.smzdm\.com\/v3\/home
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/article-api\.smzdm\.com\/publish\/get_bubble
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/qianbao\.smzdm\.com\/v\d\/app\/home
+      name: "Smzdm"
+      type: response
+      require-body: true
+      timeout: 60
+    # 滴滴出行
+    - match: ^https?:\/\/ct\.xiaojukeji\.com\/agent\/v3\/feeds
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/freight\.xiaojukeji\.com\/gateway
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/res\.xiaojukeji\.com\/resapi\/activity\/xpget
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/res\.xiaojukeji\.com\/resapi\/activity\/mget
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/conf\.diditaxi\.com\.cn\/homepage\/v\d\/other\/fast
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/conf\.diditaxi\.com\.cn\/dynamic\/conf
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/common\.diditaxi\.com\.cn\/common\/v\d\/usercenter\/me
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/daijia\.kuaidadi\.com\/gateway
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/daijia\.kuaidadi\.com:443\/gateway
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/common\.diditaxi\.com\.cn\/common\/v5
+      name: "didiAds"
+      type: response
+      require-body: true
+      timeout: 60
+    # 大众点评
+    - match: ^https?:\/\/img\.meituan\.net\/(?:dpmobile|goodsawardpic)\/
+      name: "dianping"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https?:\/\/ddplus\.meituan\.net\/v\d\/mss_\w+\/picassovc
+      name: "dianping"
+      type: response
+      require-body: true
+      timeout: 60
+    # 夸克
+    - match: ^https?:\/\/open-cms-api\.(uc|quark)\.cn\/open-cms
+      name: "quark"
+      type: response
+      require-body: true
+      timeout: 60
+    # 网易有道词典
+    - match: ^https?:\/\/dict\.youdao\.com\/(homepage\/promotion|course\/tab\/home|homepage\/tile)
+      name: "dict-youdao-ad"
+      type: response
+      require-body: true
+      timeout: 60
+    # 阿里云盘
+    - match: ^https:\/\/api\.alipan\.com\/apps\/v2\/users\/home\/(news|widgets)
+      name: "adrive"
+      type: response
+      require-body: true
+      timeout: 60
+    - match: ^https:\/\/member\.alipan\.com\/v1\/users\/onboard_list
+      name: "adrive"
+      type: response
+      require-body: true
+      timeout: 60
 
 script-providers:
   "zhihu":
@@ -130,4 +473,37 @@ script-providers:
     interval: 86400
   "xiaohongshu":
     url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/xiaohongshu.js
+    interval: 86400
+  "weibo":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/weibo.js
+    interval: 86400
+  "myBlockAds":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/myBlockAds.js
+    interval: 86400
+  "jingdong":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/jingdong.js
+    interval: 86400
+  "cnftp":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/cnftp.js
+    interval: 86400
+  "smzdm_ads":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/smzdm_ads.js
+    interval: 86400
+  "Smzdm":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/Smzdm.js
+    interval: 86400
+  "didiAds":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/didiAds.js
+    interval: 86400
+  "dianping":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/dianping.js
+    interval: 86400
+  "quark":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/quark.js
+    interval: 86400
+  "dict-youdao-ad":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/dict-youdao-ad.js
+    interval: 86400
+  "adrive":
+    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/adrive.js
     interval: 86400
