@@ -19,9 +19,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 
-FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_V26.00.yaml Stash_AdBlock_V26.00.sgmodule)
+FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_V26.00.yaml Stash_AdBlock_V26.00.stoverride)
 
-# Stash 去广告推荐的外部维护模块(用户在 App 内单独导入, 不在任何配置文件的
+# 外部维护的去广告模块/脚本(被 Loon/Egern/SR 引用, 或供 Stash 用户参考),
 # 生效行里, 故显式列出让本脚本一并盯着 —— 这正是"去广告模块静默失效"的看门狗)
 EXTRA_URLS=(
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module"
