@@ -842,17 +842,24 @@ dns-direct-fallback-proxy = false
 icmp-auto-reply = true
 always-reject-url-rewrite = false
 
-# ---------- QUIC 策略 (v2.6.6 修正; V26.00 统一策略注记) ----------
-# v2.6.5: REJECT 会让节点 UDP 不通时直接丢包, 影响微信 VOIP 等业务
-# v2.6.6: DIRECT 让 UDP fallback 走系统直连, 与 GEOIP CN 兜底协同
+# ---------- QUIC 策略 (v2.6.6 修正; V26.00 稳定性审查修订) ----------
+# 沿革: v2.6.5 REJECT → v2.6.6 DIRECT("保微信 VOIP") → 本次复核改回 REJECT.
 #
-# ⚠️ V26.00 诚实勘误: 本文件历史注释对 block-quic=auto 的语义描述前后
-#   矛盾 (v2.6.5 段说"代理走TCP/直连留QUIC", v2.6.0 段说"代理留QUIC/
+# 【稳定性审查勘误】v2.6.6 的"保微信 VOIP"论据不成立:
+#   本开关只对【已被规则送进代理策略、且该节点不支持 UDP】的流量生效.
+#   微信 UDP 的目标是国内 IP, 在命中任何代理策略之前已被保护区规则/
+#   GEOIP CN 判 DIRECT —— 根本到不了本开关. 真正受影响的是境外 UDP
+#   (Telegram 通话等):
+#     DIRECT = 把这包直连发出境 = 被墙黑洞 = 应用层挂死 60-90s 才超时;
+#     REJECT = 立即失败 = 应用秒切 TCP 通道 (fail-fast, 稳定性优先).
+#
+# ⚠️ V26.00 诚实勘误(保留): 本文件历史注释对 block-quic=auto 的语义描述
+#   前后矛盾 (v2.6.5 段说"代理走TCP/直连留QUIC", v2.6.0 段说"代理留QUIC/
 #   直连阻断"), 且官方无权威公开文档可裁决. 统一 QUIC 策略 (CLAUDE.md
 #   §一.6) 因此【不依赖 auto 的语义】: 所有 MITM 去广告依赖的域名,
 #   已在 [Rule] 0.55 段用确定性 AND(域名+UDP)REJECT 强制走 TCP —
 #   无论 auto 实际行为如何, 去广告链路都有保障. auto 保留作大盘默认.
-udp-policy-not-supported-behaviour = DIRECT
+udp-policy-not-supported-behaviour = REJECT
 block-quic = auto
 
 # ---------- 规则集更新周期 (v2.6.9 新增, 降耗) ----------
@@ -911,7 +918,8 @@ AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect
 Gemini = select, 美国节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 
 # ---------- 流媒体 ----------
-YouTube = select, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+# V26.00 稳定性修复: 首选 YT-Auto (Google 同源探针自愈组, 定义见下方测速区)
+YouTube = select, YT-Auto, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
 Netflix = select, 香港节点, 日本节点, 新加坡节点, 美国节点
 Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
 TikTok = select, 日本节点, 台湾节点, 新加坡节点, 美国节点
@@ -930,7 +938,7 @@ Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 
 # ---------- 大厂 ----------
 苹果服务 = select, DIRECT, 美国节点, 香港节点
-谷歌服务 = select, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+谷歌服务 = select, YT-Auto, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
 微软服务 = select, DIRECT, 美国节点, 香港节点
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
@@ -953,6 +961,18 @@ Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 
 # 主测速组 (用于网页/AI/短交互业务)
 AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+
+# ---------- V26.00 稳定性修复: YouTube/Google 专用自愈组 ----------
+# 根因(真机症状: 后台开着但 YouTube 打不开, 重开/手动切节点才恢复):
+#   全部组的探针都是 cp.cloudflare.com —— 节点"能到 Cloudflare 但到不了
+#   Google"(出口 IP 被 Google 侧封禁/限流是机场常态故障)时, url-test
+#   探针全绿、组永不切换, YouTube 却挂死. 探针必须与业务【同源】.
+# 设计:
+#   • 探针 = Google 自家 gstatic 204 (HTTP 明文, 无 TLS 开销, 探针通
+#     = Google 真可达), 消除"绿灯假象";
+#   • fallback 型 = 当前节点失败才切, 不因延迟抖动漂移 (长视频流友好);
+#   • interval=600 缩短故障自愈窗口 (其余组维持 900 不动, 控住耗电).
+YT-Auto = fallback, url=http://www.gstatic.com/generate_204, interval=600, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
