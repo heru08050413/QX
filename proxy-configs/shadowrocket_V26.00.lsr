@@ -1064,8 +1064,10 @@ AND,((DOMAIN-KEYWORD,spclient),(PROTOCOL,UDP)),REJECT
 #
 # 根因: 谷歌翻译核心 API translate-pa.googleapis.com 重度用 QUIC(UDP443).
 #   它被路由到"谷歌服务"代理组, 但若节点不支持 UDP 转发, 会因
-#   udp-policy-not-supported-behaviour=DIRECT 回落【直连】→ 该域被 GFW
-#   拦截 → 连不上. 症状=时通时断/长期连不上.
+#   udp-policy-not-supported-behaviour=DIRECT(修复当时的取值; 稳定性
+#   审查后全局已改 REJECT)回落【直连】→ 该域被 GFW 拦截 → 连不上.
+#   症状=时通时断/长期连不上. (改 REJECT 后此病根已从全局消除, 本段
+#   ①②③ 仍保留 —— 强制 TCP 是比"快速失败"更优的确定性通路.)
 # 修复三层:
 #   ① 强制 QUIC→TCP (下面 AND-UDP-REJECT): 客户端回落 TCP 经代理走, 通.
 #   ② 显式钉"谷歌服务"组 (先于 Google.list, 防规则集加载失败时漏到
