@@ -124,6 +124,7 @@ proxy-groups:
   type: select
   icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
   proxies:
+  - YT-Auto
   - 节点选择
   - 香港节点
   - 台湾节点
@@ -131,6 +132,22 @@ proxy-groups:
   - 狮城节点
   - 美国节点
   - 全部节点
+# V26.00 稳定性修复: YouTube/Google 专用自愈组 (探针与业务同源).
+#   五套通病: 全部探针 = cp.cloudflare.com, 节点"能到 Cloudflare 但到
+#   不了 Google"时探针全绿不切换, YouTube 挂死只能手动换节点/重开 App.
+#   fallback 型 = 当前成员失败才降级, 不抖动; gstatic 204 = Google 自家
+#   探针, 探针通 = Google 真可达; interval 600 仅此一组.
+- name: YT-Auto
+  type: fallback
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
+  url: http://www.gstatic.com/generate_204
+  interval: 600
+  lazy: true
+  proxies:
+  - 香港节点
+  - 狮城节点
+  - 日本节点
+  - 美国节点
 - name: Netflix
   type: select
   icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
@@ -486,6 +503,12 @@ rules:
 #   防上游列表未来变化 (四套"微信 loading 血案"的同款盲区).
 - DOMAIN-SUFFIX,qq.com.cn,DIRECT
 - DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+# V26.00 稳定性修复: YouTube 强制走 TCP (对齐 SR 1019-1020 / Egern 0.6 /
+#   QX udp_whitelist —— 五套统一 QUIC 策略, 此前唯 Stash 缺失).
+#   机理: 节点 UDP 半死(NAT 超时/机场 UDP 故障)时 TCP 探针查不出,
+#   YouTube 的 QUIC 挂死不报错; 拒其 UDP 后客户端立即回落 TCP 经代理走.
+- AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp)),REJECT
+- AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,udp)),REJECT
 - RULE-SET,Direct,DIRECT
 - RULE-SET,Reject,REJECT
 - RULE-SET,AI,AI
