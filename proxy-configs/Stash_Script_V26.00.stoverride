@@ -469,41 +469,41 @@ http:
 
 script-providers:
   "zhihu":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/zhihu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
     interval: 86400
   "xiaohongshu":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/xiaohongshu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/xiaohongshu.js
     interval: 86400
   "weibo":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/weibo.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/weibo.js
     interval: 86400
   "myBlockAds":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/myBlockAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/myBlockAds.js
     interval: 86400
   "jingdong":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/jingdong.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/jingdong.js
     interval: 86400
   "cnftp":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/cnftp.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/cnftp.js
     interval: 86400
   "smzdm_ads":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/smzdm_ads.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/smzdm_ads.js
     interval: 86400
   "Smzdm":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/Smzdm.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/Smzdm.js
     interval: 86400
   "didiAds":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/didiAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/didiAds.js
     interval: 86400
   "dianping":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/dianping.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dianping.js
     interval: 86400
   "quark":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/quark.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/quark.js
     interval: 86400
   "dict-youdao-ad":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/dict-youdao-ad.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dict-youdao-ad.js
     interval: 86400
   "adrive":
-    url: https://raw.githubusercontent.com/heru08050413/QX/claude/attachment-review-fncr25/proxy-configs/scripts/adrive.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/adrive.js
     interval: 86400
