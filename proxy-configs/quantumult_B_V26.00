@@ -364,6 +364,11 @@ https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Quan
 # =====================================
 # [rewrite_remote] - v5.1.4 能耗: 3天更新
 # =====================================
+# YouTube 去广告/小窗 (V26.00 功能审查注记): QX 不提供 ——
+#   Maasea 方案的核心是 binary-body-mode=1 的 protobuf 响应改写脚本,
+#   QX 改写语法无此参数、上游模块无 QX 适配版, 硬移植会静默损坏播放.
+#   YouTube 去广告+画中画需求请用 SR / Egern / Loon (三套链路完整).
+#   QX 保留: YouTube 分流 + udp_whitelist 强制 TCP (播放稳定性不受影响).
 [rewrite_remote]
 https://github.com/chavyleung/scripts/raw/master/box/rewrite/boxjs.rewrite.quanx.conf, tag=BoxJs, update-interval=259200, opt-parser=false, enabled=true
 https://github.com/sub-store-org/Sub-Store/raw/master/config/QX.snippet, tag=Sub-Store, update-interval=259200, opt-parser=false, enabled=true

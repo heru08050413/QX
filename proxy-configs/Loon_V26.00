@@ -746,6 +746,18 @@ https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/cookies.plugin, enab
 # Loon 完全兼容 Surge .sgmodule 格式, 可直接引用
 https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule, enabled=true
 
+# YouTube 去广告 + 画中画/后台播放 (V26.00 YouTube 功能审查补缺)
+# 此前 Loon 是五套中唯一【无】YouTube 去广告/小窗的 (SR/Egern 均有).
+# 用 Maasea 官方 sgmodule (巡检已盯此 URL), 与 weibo 同款直引先例:
+#   [Script] youtubei 响应改写 (去广告 + 解锁 PiP/后台播放)
+#   [Map Local] googlevideo 广告流 initplayback&oad 拦截
+#   [Rule] googlevideo/youtubei UDP REJECT (与 block-quic=true 协同)
+#   [MITM] 自动并入 *.googlevideo.com + youtubei.googleapis.com
+# 能耗实话: googlevideo 进 MITM 会解密视频流连接, 播放发热略增
+#   (与 Egern v6.3.0 同款取舍: 完整去广告 > 省电; SR 走的是反向取舍).
+# 客户端配套: YouTube App 设置→播放→画中画 开启; 后台播放 开启.
+https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule, policy=油管视频, enabled=true
+
 # 国内 App 广告拦截 (730+ App)
 https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/blockAds.plugin, enabled=true
 
