@@ -37,7 +37,10 @@
    - **QX**:无协议级规则,用 `udp_whitelist=53, 80-427, 444-65535` 掐掉 UDP 443(官方样例写法)。
    - **Loon**:无 `AND` 复合规则,但**内建"QUIC SNI 命中 MITM 列表即自动 reject"**;~~故移除节点级 `block-quic`~~ → **稳定性审查已反转:恢复节点级 `block-quic=true`**。原移除逻辑在去广告视角成立,但 googlevideo 不在 MITM(省电),代理侧 YouTube QUIC 在 Loon 架构内**无任何其它拦截手段**——节点 UDP 半死时 YouTube 挂死且 TCP 探针查不出。按优先级"稳定>低功耗/速度",牺牲代理侧 HTTP/3 换确定性。
    - **Stash**:`AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp)),REJECT`(+youtubei;置于 YouTube 分流之前)。
-7. **探针同源原则(稳定性审查新增)**:健康探针必须与它守护的业务**同源**。全用 `cp.cloudflare.com/generate_204` 的盲区:节点"能到 Cloudflare 但到不了 Google"(出口 IP 被 Google 封禁/限流是机场常态故障)时探针全绿、url-test 永不切换,YouTube 挂死只能手动换节点/重开 App——这正是真机症状的根因。落地:SR/Loon/Stash 均建 `YT-Auto` fallback 组,探针 `http://www.gstatic.com/generate_204`(Google 自家 204,探针通=Google 真可达),interval=600 仅此一组控耗电,`YouTube`/`谷歌服务` 组首选之。**QX**:`server_check_url` 是否支持按组覆盖无权威文档,真机验证前不动;**Egern**:探针 URL 是全局单值(`proxy_latency_test_url`),架构上做不了按组分探针,记录为已知限制。
+7. **探针同源原则(稳定性审查新增;fix2 修正落地方式)**:健康探针必须与它守护的业务**同源**。全用 `cp.cloudflare.com/generate_204` 的盲区:节点"能到 Cloudflare 但到不了 Google"(出口 IP 被 Google 封禁/限流是机场常态故障)时探针全绿、url-test 永不切换,YouTube 挂死只能手动换节点/重开 App。落地:SR/Loon/Stash 均建 `YT-Auto` fallback 组,探针 `http://www.gstatic.com/generate_204`(Google 自家 204),interval=600 仅此一组控耗电。
+   - ⚠️ **fix2 血的教训——`YT-Auto` 成员必须是【地区池】,不能是【裸节点】**:初版 SR 把它写成 `fallback + 仅 policy-regex-filter`,成员=订阅全部节点、按订阅原始顺序,fallback 永远钉在"列表第一个能回 204 的节点"。恶果:① 选点从"全池选最快(url-test)"退化成"随缘第一个"(订阅排序与质量无关);② 204 小包只测【可达】不测【吞吐】,拥挤到卡视频的烂节点照样回 204、永不切走 → **YouTube 反而变差**。正确写法(Loon/Stash 一直是对的):成员=各地区 url-test 池 → 池【内】保最快、池【间】保 Google 可达自愈,两个目标都不牺牲。
+   - ⚠️ **`YT-Auto` 只给 `YouTube`(大流量视频)当默认;`谷歌服务` 默认必须留 `AutoSelect`**:谷歌服务承载 `accounts.google.com`/`googleapis` 等轻流量登录接口(AI 应用的会话续期也走这里),让它默认走 YT-Auto 会把 AI 一起拖进自愈组、拖慢——这是 fix2 里"AI 也变差"的传导路径。YT-Auto 只作谷歌服务的备选。
+   - **QX**:`server_check_url` 是否支持按组覆盖无权威文档,真机验证前不动;**Egern**:探针 URL 是全局单值(`proxy_latency_test_url`),架构上做不了按组分探针,记录为已知限制。
 8. **UDP fail-fast(稳定性审查新增)**:"节点不支持 UDP 时的回落"必须 REJECT 而非 DIRECT(SR `udp-policy-not-supported-behaviour` / Loon `udp-fallback-mode`)。DIRECT 把境外 UDP 直连发出=被墙黑洞=应用挂死 60-90s;REJECT 立即失败=应用秒切 TCP。"保微信 VOIP"论据不成立:国内 UDP 在命中代理策略前已被 GEOIP CN 判 DIRECT,到不了该开关。
 
 > 改动前后都跑一遍这 8 条。这一层不参与差异化。

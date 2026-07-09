@@ -342,7 +342,7 @@ Gemini = select,美国节点,台湾节点,日本节点,狮城节点,自动选择
 苹果服务 = select,DIRECT,香港节点,狮城节点,美国节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_02.png
 
 # 谷歌服务
-谷歌服务 = select,YT-Auto,自动选择,香港节点,狮城节点,美国节点,日本节点,img-url = https://raw.githubusercontent.com/Orz-3/mini/master/Color/Google.png
+谷歌服务 = select,自动选择,YT-Auto,香港节点,狮城节点,美国节点,日本节点,img-url = https://raw.githubusercontent.com/Orz-3/mini/master/Color/Google.png
 
 # 油管视频
 油管视频 = select,YT-Auto,自动选择,香港节点,美国节点,日本节点,韩国节点,狮城节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png

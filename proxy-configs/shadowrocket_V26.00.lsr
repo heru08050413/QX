@@ -938,7 +938,11 @@ Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 
 # ---------- 大厂 ----------
 苹果服务 = select, DIRECT, 美国节点, 香港节点
-谷歌服务 = select, YT-Auto, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+# V26.00-fix2: 默认恢复 AutoSelect(选最快). 谷歌服务承载 accounts/
+#   googleapis 等【轻流量登录/接口】—— 它们要的是"选点快而稳", 不需要
+#   为大流量视频设计的激进自愈; 让它默认走 YT-Auto 会把 AI 登录/接口一起
+#   钉到自愈组、拖慢. YT-Auto 降为备选(Google 侧真封 IP 时用户可手切).
+谷歌服务 = select, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
 微软服务 = select, DIRECT, 美国节点, 香港节点
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
@@ -967,12 +971,18 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #   全部组的探针都是 cp.cloudflare.com —— 节点"能到 Cloudflare 但到不了
 #   Google"(出口 IP 被 Google 侧封禁/限流是机场常态故障)时, url-test
 #   探针全绿、组永不切换, YouTube 却挂死. 探针必须与业务【同源】.
-# 设计:
-#   • 探针 = Google 自家 gstatic 204 (HTTP 明文, 无 TLS 开销, 探针通
-#     = Google 真可达), 消除"绿灯假象";
-#   • fallback 型 = 当前节点失败才切, 不因延迟抖动漂移 (长视频流友好);
-#   • interval=600 缩短故障自愈窗口 (其余组维持 900 不动, 控住耗电).
-YT-Auto = fallback, url=http://www.gstatic.com/generate_204, interval=600, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+#
+# ⚠️ V26.00-fix2 缺陷修正(用户实测 YouTube/AI 反而变差):
+#   初版把 YT-Auto 建成【裸节点池 + 仅过滤器】的 fallback —— 成员=订阅
+#   全部节点、按订阅原始顺序、永远钉在"列表第一个能回 204 的节点".
+#   两个恶果: ① 选点从"全池选最快(url-test)"退化成"随缘第一个"(订阅
+#   排序与质量无关); ② 204 小包只测【可达】不测【吞吐】, 拥挤到卡视频的
+#   烂节点照样回 204、fallback 永不切走. 大流量业务被这盲区坑得最狠.
+# 正确设计(对齐 Loon 版 = 池级 fallback):
+#   成员改为【地区池】(每个地区池内部仍是 url-test 选最快).
+#   于是: 池【内】由 url-test 保"最快", 池【间】由 Google 探针保"可达
+#   且自愈" —— "最快"与"Google 可达"两个目标都不牺牲.
+YT-Auto = fallback, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, url=http://www.gstatic.com/generate_204, interval=600, timeout=3
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
