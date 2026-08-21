@@ -1,10 +1,49 @@
 # =====================================================================
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
-# Codename: "Pinterest Unblock"
-# Generated: 2026-05-30 (v2.6.10 → v2.6.11 Pinterest 漏网修复)
-# Predecessor: v2.6.10 (WeChat DNS Rescue)
+# Codename: "YouTube HA Preserve"
+# Generated: 2026-08-21 (v2.6.11 → v2.6.12 YouTube 高可用与增强保全)
+# Predecessor: v2.6.11 (Pinterest Unblock)
 #
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.12 修订日志 (需求: 保留去广告/PiP, 节点不稳定时自动故障转移)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 目标边界:
+#   Shadowrocket 无法把已建立的 TCP/QUIC 会话迁移到另一出口. 本版通过
+#   Google 同源快速探测 + 同地区优先选优 + 外层地区故障转移, 尽量在
+#   YouTube 播放缓冲耗尽前完成重连, 而不承诺协议层不存在的零丢包迁移.
+#
+# [P0 稳定] 1. YouTube 专用两级高可用池
+#   - 新增 YT-香港/台湾/日本/新加坡/美国 5 个 Google 同源 url-test 池;
+#   - 池内 interval=120 / tolerance=300: 2 分钟发现硬故障, 300ms 公差
+#     阻止正常延迟抖动触发换出口;
+#   - YT-Auto 外层改为 interval=60 的 fallback, 整个地区不可用时快速降级;
+#   - 不嵌入真实节点名/订阅 token, 自动吸收 App 内已有订阅节点.
+#
+# [P0 功能+稳定] 2. YouTube Enhance 保留 response 核心并锁定版本
+#   - 保留 player/account/get_setting/get_watch 等去广告/PiP/后台播放接口;
+#   - 同步上游现行 config 接口, 不接管需 request hook 配合的 log_event;
+#   - response.js 锁定 Maasea commit 65075cdb (2026-07-19 广告判定修复),
+#     防止 master 漂移在播放时引入未审计行为;
+#   - 不启用 youtube.request.js, 不把 *.googlevideo.com 加回 MITM:
+#     视频数据面保持端到端 TLS, 避免持续大流量解密造成发热/卡顿.
+#
+# [P1 路由] 3. YouTube 核心域名本地兜底
+#   youtube/youtubei/googlevideo/ytimg/ggpht/gvt 全部先于远程 RULE-SET
+#   显式钉到同一 YouTube 组. GitHub Raw 首次拉取失败时不再掉到
+#   FINAL=DIRECT, 控制面与视频分段也不会分裂到不同出口.
+#
+# [P1 启动] 4. 节点域名 DNS 兜底
+#   proxy-dns-server=system 专门保证隧道建立前能解析节点域名;
+#   fallback-dns-server 末尾追加 system, 境内 DoH 同时失败时仍可恢复.
+#
+# 真机必做:
+#   - 全局路由保持「配置」并开启「启用回退」;
+#   - 信任 Shadowrocket MITM CA, 否则 youtubei API 会 TLS 失败;
+#   - 在日志确认 youtubei/googlevideo 始终命中 YouTube 组, 并连续播放
+#     4K 30-60 分钟验证缓冲与切换. 节点真实质量无法由仓库离线验证.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # v2.6.11 修订日志 (基于 2026-05-30 11:13 真实日志, 用户报告 Pinterest 无法使用)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -824,7 +863,12 @@ bypass-tun = 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/
 #     国内 App 解析速度不受影响
 #
 dns-server = https://1.1.1.1/dns-query, https://9.9.9.9/dns-query, https://dns.google/dns-query
-fallback-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query
+fallback-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query, system
+
+# v2.6.12: 节点域名必须在代理隧道建立前完成解析. 单独使用系统 DNS
+# 避免境外 DoH 尚不可达时形成「节点未连上 → DoH 也不可达」启动闭环.
+# 仅影响节点主机名解析,不改变代理域名由远端节点解析的行为.
+proxy-dns-server = system
 
 # v2.6.2: true (v2.6.1 为 false)
 # 系统 DNS 对国内域名解析更准 (Wi-Fi DHCP 通常给运营商 DNS, 返回就近 CDN)
@@ -918,8 +962,8 @@ AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect
 Gemini = select, 美国节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 
 # ---------- 流媒体 ----------
-# V26.00 稳定性修复: 首选 YT-Auto (Google 同源探针自愈组, 定义见下方测速区)
-YouTube = select, YT-Auto, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
+# v2.6.12: 默认走 YT-Auto 两级高可用; 其余 YT 地区池保留作手动灾备.
+YouTube = select, YT-Auto, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, AutoSelect
 Netflix = select, 香港节点, 日本节点, 新加坡节点, 美国节点
 Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
 TikTok = select, 日本节点, 台湾节点, 新加坡节点, 美国节点
@@ -966,7 +1010,7 @@ Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 # 主测速组 (用于网页/AI/短交互业务)
 AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
 
-# ---------- V26.00 稳定性修复: YouTube/Google 专用自愈组 ----------
+# ---------- v2.6.12: YouTube/Google 专用两级高可用组 ----------
 # 根因(真机症状: 后台开着但 YouTube 打不开, 重开/手动切节点才恢复):
 #   全部组的探针都是 cp.cloudflare.com —— 节点"能到 Cloudflare 但到不了
 #   Google"(出口 IP 被 Google 侧封禁/限流是机场常态故障)时, url-test
@@ -978,11 +1022,20 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #   两个恶果: ① 选点从"全池选最快(url-test)"退化成"随缘第一个"(订阅
 #   排序与质量无关); ② 204 小包只测【可达】不测【吞吐】, 拥挤到卡视频的
 #   烂节点照样回 204、fallback 永不切走. 大流量业务被这盲区坑得最狠.
-# 正确设计(对齐 Loon 版 = 池级 fallback):
-#   成员改为【地区池】(每个地区池内部仍是 url-test 选最快).
-#   于是: 池【内】由 url-test 保"最快", 池【间】由 Google 探针保"可达
-#   且自愈" —— "最快"与"Google 可达"两个目标都不牺牲.
-YT-Auto = fallback, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, url=http://www.gstatic.com/generate_204, interval=600, timeout=3
+# v2.6.12 高可用实现:
+#   - 五个 YT-* 地区池全部直接吸收真实订阅节点,Google 同源探测;
+#   - interval=120 加快硬故障发现,tolerance=300 避免普通抖动换出口;
+#   - 外层 fallback interval=60,仅在当前地区不可用时跨地区降级;
+#   - 不使用裸节点总池,避免订阅顺序决定首选且 204 小包掩盖拥堵.
+# 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
+
+YT-香港节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+YT-台湾节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+YT-日本节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+YT-新加坡节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+YT-美国节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+
+YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=http://www.gstatic.com/generate_204, interval=60, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
@@ -1438,6 +1491,18 @@ RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/
 #     (section 0.5), 确保在任何 YouTube 分流规则之前命中, 这样无论
 #     用户手动把 YouTube 组选成哪个节点, UDP 都会先被拦截走 TCP,
 #     浮窗/后台播放脚本才能生效.
+
+# v2.6.12 核心本地兜底:远程 YouTube.list 拉取失败时仍保持同组同出口.
+DOMAIN-SUFFIX,youtube.com,YouTube
+DOMAIN-SUFFIX,youtu.be,YouTube
+DOMAIN-SUFFIX,youtube-nocookie.com,YouTube
+DOMAIN,youtubei.googleapis.com,YouTube
+DOMAIN,youtube.googleapis.com,YouTube
+DOMAIN-SUFFIX,googlevideo.com,YouTube
+DOMAIN-SUFFIX,ytimg.com,YouTube
+DOMAIN-SUFFIX,ggpht.com,YouTube
+DOMAIN-SUFFIX,gvt1.com,YouTube
+DOMAIN-SUFFIX,gvt2.com,YouTube
 
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/YouTube/YouTube.list,YouTube
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Netflix/Netflix.list,Netflix
@@ -2121,14 +2186,16 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 #         这是服务端限制, 脚本无法绕过. 普通视频不受此限.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# V26.00 换源修复 (死链巡检发现):
-#   上游 Maasea 已回归【单 response 脚本】架构, youtube.request.js 已删除
-#   (404, 原 request 行自上游删除起静默失效). 现行 YouTube.Enhance.sgmodule
-#   (已核验) 仅含 response 脚本; pattern 与 argument 按上游现行同步.
-# response 脚本 (改写服务端响应, 去广告 + 解锁后台播放/PiP + 翻译)
-# argument 说明: blockUpload=屏蔽上传按钮, blockImmersive=屏蔽选段,
-#               blockShorts=屏蔽Shorts(默认 false 保留), 翻译默认 off
-YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/master/Script/Youtube/youtube.response.js,argument={"lyricLang":"off","captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+# v2.6.12 上游复核:
+#   Maasea 已重新提供 request + response 双脚本. 但用户核心需求仅为
+#   去广告/PiP/后台播放,其实现位于 response 的 player/account/get_setting/
+#   get_watch 等接口. request 主要处理 initplayback/log_event 与字幕状态;
+#   captionLang=off 时不引入它,即可避免把 *.googlevideo.com 加回 MITM.
+#   log_event 依赖 request hook 处理 content-encoding,故本精简模式不接管;
+#   config 为上游现行 response 接口,保留广告状态兼容.
+#   response.js 锁定 2026-07-19 commit 65075cdb (fix ad judgment),避免
+#   master 无审计更新导致功能或播放链路漂移.
+YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Spotify
@@ -2258,5 +2325,8 @@ hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.i
 #   一并纳入死链巡检.
 #
 # Maasea/sgmodule:
-#   策略: 同 NobyDa,稳定可信
+#   v2.6.12 例外:YouTube response.js 锁定 commit
+#   65075cdb388fc5e3094afd7e7314c67b243f3525 (2026-07-19).
+#   原因:该脚本直接改写 player/PiP/后台播放控制面,master 漂移会影响播放;
+#   每次升级必须先核验脚本 pattern/argument 与 MITM hostname 再换 hash.
 # =====================================================================
