@@ -1101,6 +1101,7 @@ IP-CIDR6,fc00::/7,DIRECT,no-resolve
 # ---------------------------------------------------------------------
 AND,((DOMAIN-SUFFIX,googlevideo.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN,youtubei.googleapis.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,youtubei-att.googleapis.com),(PROTOCOL,UDP)),REJECT
 
 # ---------------------------------------------------------------------
 # 0.55 MITM 依赖域强制 TCP (V26.00 统一 QUIC 策略, CLAUDE.md §一.6)
@@ -1497,6 +1498,7 @@ DOMAIN-SUFFIX,youtube.com,YouTube
 DOMAIN-SUFFIX,youtu.be,YouTube
 DOMAIN-SUFFIX,youtube-nocookie.com,YouTube
 DOMAIN,youtubei.googleapis.com,YouTube
+DOMAIN,youtubei-att.googleapis.com,YouTube
 DOMAIN,youtube.googleapis.com,YouTube
 DOMAIN-SUFFIX,googlevideo.com,YouTube
 DOMAIN-SUFFIX,ytimg.com,YouTube
@@ -2195,7 +2197,7 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 #   config 为上游现行 response 接口,保留广告状态兼容.
 #   response.js 锁定 2026-07-19 commit 65075cdb (fix ad judgment),避免
 #   master 无审计更新导致功能或播放链路漂移.
-YouTube.response = type=http-response,pattern=^https://youtubei\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+YouTube.response = type=http-response,pattern=^https://youtubei(?:-att)?\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Spotify
@@ -2291,7 +2293,7 @@ client-source-address = false
 #   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
 #   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
 #     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
