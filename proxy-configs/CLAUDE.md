@@ -52,7 +52,7 @@
 ### Shadowrocket —— 稳定优先的日用机
 - **发挥**:`[Host]` 段 per-domain DNS 解析器路由(`域名 = server:DoH`);最省电、最成熟。
 - **做**:坚持降耗(MITM 最小化、测速 interval 900s);去广告保持"网络层 REJECT + 少量脚本"。
-- **YouTube 高可用例外**:仅 YouTube 专用两级池采用 120s/60s Google 同源探针。2026-08-26 真机确认 response 脚本/MITM 正常但仍有流内广告后,按用户"去广告 + 不中断"的明确优先级,允许 `*.googlevideo.com` MITM + **仅 `initplayback &ack`** 的自托管本地回退脚本;禁止采用会把请求转发至第三方 Worker 的完整 request 脚本。其余 googlevideo 请求不做脚本改写,原 YT-Auto/DNS/分流不得联动修改。
+- **YouTube 高可用例外**:仅 YouTube 专用两级池采用 120s/60s Google 同源探针。2026-08-26 真机确认 response-only 仍漏流内广告,且自制无状态空响应会使增强整体失效后,采用锁定提交的 Maasea `response + request.init + request.log_event` 完整闭环。允许 `*.googlevideo.com` MITM;其 Worker `init-stream.maasea.workers.dev` 必须显式走 `YouTube/YT-Auto`,不得落入 `FINAL=DIRECT`。原 YT-Auto/DNS/其余分流不得联动修改;第三方 Worker 是已知外部依赖,真机需验证。
 - **别勉强**:不支持 Fake-IP(架构限制),DNS 是全局单池;不要往重脚本/最大化去广告方向推。
 
 ### Quantumult X —— 自动化 / 脚本 / 任务中枢

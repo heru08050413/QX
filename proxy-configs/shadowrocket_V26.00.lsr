@@ -1,30 +1,34 @@
 # =====================================================================
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
-# Codename: "YouTube Strict Ad + HA"
-# Generated: 2026-08-26 (v2.6.12 → v2.6.13 YouTube 加密广告链路修复)
-# Predecessor: v2.6.12 (YouTube HA Preserve)
+# Codename: "YouTube Full-Chain Ad + HA"
+# Generated: 2026-08-26 (v2.6.13 → v2.6.14 YouTube 完整加密链路)
+# Predecessor: v2.6.13 (本地空响应回退;真机验证失败,本版撤销)
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# v2.6.13 修订日志 (需求: YouTube 去广告 + 不中断;其余配置不变)
+# v2.6.14 修订日志 (需求: YouTube 去广告 + 不中断;其余配置不变)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 真机诊断证据:
-#   PiP 生效、上传按钮隐藏、youtubei/v1/player 日志显示 MITM,证明现有
-#   response 脚本已正常执行. 残留广告不是响应脚本/证书失效,而是新版
-#   googlevideo/initplayback &ack 加密播放控制链路绕过 player 响应过滤.
+#   ① v2.6.12:PiP 生效、上传按钮隐藏、player 显示 MITM,但仍有广告;
+#   ② v2.6.13:本地空 200 强制回退后,广告仍在且上传按钮重新出现.
+#   结论:当前客户端不能使用无状态空响应替代完整的加密 UMP 协议处理.
 #
-# [P0 去广告] 新增严格限定的 initplayback 本地回退:
-#   - 仅匹配 *.googlevideo.com/initplayback 且带 &ack 的请求;
-#   - 返回本地空 200,迫使客户端回退至已被 YouTube.response 处理的
-#     youtubei/v1/player 链路,从而删除 adPlacements/adSlots;
-#   - 自托管脚本锁定本仓库 commit 22f2062,不转发到第三方 Worker,
-#     不上传播放请求,避免把第三方可用性引入播放关键路径;
-#   - 不修改 videoplayback 媒体分段,原 YT-Auto 两级无感切换完全不动.
+# [P0 去广告] 改用 Maasea 官方完整闭环并锁定同一提交:
+#   - response 增补 log_event,负责广告字段删除、PiP/后台播放与密钥状态;
+#   - request.log_event 处理压缩头与播放密钥协商;
+#   - request.init 处理 *.googlevideo.com/initplayback &ack 加密 UMP;
+#   - 三条均固定 commit 65075cdb,不跟随 master 静默漂移;
+#   - 删除 v2.6.13 自制空响应脚本,避免再次破坏客户端状态机.
 #
-# 必要代价:
-#   URL path 位于 TLS 内,故必须把 *.googlevideo.com 加入 MITM 才能精确
-#   识别 initplayback. QUIC 继续在规则层拒绝,确保请求回落 TCP/MITM.
-#   这是清除该类加密流内广告不可绕开的代价;真机需观察温升与吞吐.
+# [P0 稳定] Worker 明确纳入 YouTube 高可用出口:
+#   官方 request 在密钥匹配后使用 init-stream.maasea.workers.dev 处理 UMP.
+#   新增本地域名规则把它固定到 YouTube/YT-Auto,避免在中国网络下落入
+#   FINAL=DIRECT 而超时.原地区池、60/120 秒探针、DNS和其他分流不变.
+#
+# 信任边界与必要代价:
+#   URL path 位于 TLS 内,故 *.googlevideo.com 必须 MITM;加密 UMP 由上述
+#   Maasea Worker 处理,这是当前完整去广告方案的外部依赖.通过固定脚本
+#   版本和强制代理路由降低漂移/直连超时风险,但无法承诺第三方永不故障.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1124,6 +1128,8 @@ IP-CIDR6,fc00::/7,DIRECT,no-resolve
 AND,((DOMAIN-SUFFIX,googlevideo.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN,youtubei.googleapis.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN,youtubei-att.googleapis.com),(PROTOCOL,UDP)),REJECT
+# v2.6.14:必须早于通用广告 RULE-SET,防止 Worker 未来被上游误收后阻断.
+DOMAIN,init-stream.maasea.workers.dev,YouTube
 
 # ---------------------------------------------------------------------
 # 0.55 MITM 依赖域强制 TCP (V26.00 统一 QUIC 策略, CLAUDE.md §一.6)
@@ -1516,6 +1522,7 @@ RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/
 #     浮窗/后台播放脚本才能生效.
 
 # v2.6.12 核心本地兜底:远程 YouTube.list 拉取失败时仍保持同组同出口.
+# v2.6.14 Worker 规则已提升到 0.5 节,确保早于通用广告 RULE-SET.
 DOMAIN-SUFFIX,youtube.com,YouTube
 DOMAIN-SUFFIX,youtu.be,YouTube
 DOMAIN-SUFFIX,youtube-nocookie.com,YouTube
@@ -2210,13 +2217,10 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 #         这是服务端限制, 脚本无法绕过. 普通视频不受此限.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# v2.6.13 分层方案:
-#   response 继续负责 player/browse/next 的广告字段删除与 PiP/后台播放;
-#   request 只负责加密 initplayback 的本地回退. 不启用 Maasea 完整
-#   youtube.request.js,因为其现行实现会把命中请求重定向至第三方 Worker,
-#   将外部服务故障引入播放关键路径. 两个脚本均锁定 commit,避免漂移.
-YouTube.response = type=http-response,pattern=^https://youtubei(?:-att)?\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
-YouTube.initplayback-fallback = type=http-request,pattern=^https://[\w-]+\.googlevideo\.com/initplayback(?:\?[^#]*)?[?&]ack(?:[=&][^#]*)?(?:#.*)?$,requires-body=0,script-path=https://raw.githubusercontent.com/heru08050413/QX/22f206224dc5b9417017876e289da7494c896cde/proxy-configs/scripts/youtube.initplayback.fallback.js
+# v2.6.14:严格采用上游三钩子闭环,显式 webview 保证大型 protobuf 兼容.
+YouTube.response = type=http-response,engine=webview,pattern=^https://youtubei(?:-att)?\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|log_event|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+YouTube.request.init = type=http-request,engine=webview,pattern=^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback.+&ack.*,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js,argument={"captionLang":"off"}
+YouTube.request.log_event = type=http-request,engine=webview,pattern=^https://youtubei(?:-att)?\.googleapis\.com/youtubei/v1/log_event,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Spotify
