@@ -49,10 +49,10 @@
 
 ## 二、各 App 定制方向(放大独特能力,不要互相抄)
 
-### Shadowrocket —— 低功耗 + 极致稳定的日用机
+### Shadowrocket —— 稳定优先的日用机
 - **发挥**:`[Host]` 段 per-domain DNS 解析器路由(`域名 = server:DoH`);最省电、最成熟。
-- **做**:坚持降耗(MITM 最小化、测速 interval 900s、`googlevideo` 移出 MITM);去广告保持"网络层 REJECT + 少量脚本"的中等强度。
-- **YouTube 高可用例外**:仅 YouTube 专用两级池采用 120s/60s Google 同源探针;广告/PiP 使用固定提交的 response-only 脚本,不得把 `*.googlevideo.com` 或 initplayback 请求脚本纳入 MITM。
+- **做**:坚持降耗(MITM 最小化、测速 interval 900s);去广告保持"网络层 REJECT + 少量脚本"。
+- **YouTube 高可用例外**:仅 YouTube 专用两级池采用 120s/60s Google 同源探针。2026-08-26 真机确认 response 脚本/MITM 正常但仍有流内广告后,按用户"去广告 + 不中断"的明确优先级,允许 `*.googlevideo.com` MITM + **仅 `initplayback &ack`** 的自托管本地回退脚本;禁止采用会把请求转发至第三方 Worker 的完整 request 脚本。其余 googlevideo 请求不做脚本改写,原 YT-Auto/DNS/分流不得联动修改。
 - **别勉强**:不支持 Fake-IP(架构限制),DNS 是全局单池;不要往重脚本/最大化去广告方向推。
 
 ### Quantumult X —— 自动化 / 脚本 / 任务中枢

@@ -1,9 +1,31 @@
 # =====================================================================
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
-# Codename: "YouTube HA Preserve"
-# Generated: 2026-08-21 (v2.6.11 → v2.6.12 YouTube 高可用与增强保全)
-# Predecessor: v2.6.11 (Pinterest Unblock)
+# Codename: "YouTube Strict Ad + HA"
+# Generated: 2026-08-26 (v2.6.12 → v2.6.13 YouTube 加密广告链路修复)
+# Predecessor: v2.6.12 (YouTube HA Preserve)
+#
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# v2.6.13 修订日志 (需求: YouTube 去广告 + 不中断;其余配置不变)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 真机诊断证据:
+#   PiP 生效、上传按钮隐藏、youtubei/v1/player 日志显示 MITM,证明现有
+#   response 脚本已正常执行. 残留广告不是响应脚本/证书失效,而是新版
+#   googlevideo/initplayback &ack 加密播放控制链路绕过 player 响应过滤.
+#
+# [P0 去广告] 新增严格限定的 initplayback 本地回退:
+#   - 仅匹配 *.googlevideo.com/initplayback 且带 &ack 的请求;
+#   - 返回本地空 200,迫使客户端回退至已被 YouTube.response 处理的
+#     youtubei/v1/player 链路,从而删除 adPlacements/adSlots;
+#   - 自托管脚本锁定本仓库 commit 22f2062,不转发到第三方 Worker,
+#     不上传播放请求,避免把第三方可用性引入播放关键路径;
+#   - 不修改 videoplayback 媒体分段,原 YT-Auto 两级无感切换完全不动.
+#
+# 必要代价:
+#   URL path 位于 TLS 内,故必须把 *.googlevideo.com 加入 MITM 才能精确
+#   识别 initplayback. QUIC 继续在规则层拒绝,确保请求回落 TCP/MITM.
+#   这是清除该类加密流内广告不可绕开的代价;真机需观察温升与吞吐.
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # v2.6.12 修订日志 (需求: 保留去广告/PiP, 节点不稳定时自动故障转移)
@@ -2188,16 +2210,13 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 #         这是服务端限制, 脚本无法绕过. 普通视频不受此限.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-# v2.6.12 上游复核:
-#   Maasea 已重新提供 request + response 双脚本. 但用户核心需求仅为
-#   去广告/PiP/后台播放,其实现位于 response 的 player/account/get_setting/
-#   get_watch 等接口. request 主要处理 initplayback/log_event 与字幕状态;
-#   captionLang=off 时不引入它,即可避免把 *.googlevideo.com 加回 MITM.
-#   log_event 依赖 request hook 处理 content-encoding,故本精简模式不接管;
-#   config 为上游现行 response 接口,保留广告状态兼容.
-#   response.js 锁定 2026-07-19 commit 65075cdb (fix ad judgment),避免
-#   master 无审计更新导致功能或播放链路漂移.
+# v2.6.13 分层方案:
+#   response 继续负责 player/browse/next 的广告字段删除与 PiP/后台播放;
+#   request 只负责加密 initplayback 的本地回退. 不启用 Maasea 完整
+#   youtube.request.js,因为其现行实现会把命中请求重定向至第三方 Worker,
+#   将外部服务故障引入播放关键路径. 两个脚本均锁定 commit,避免漂移.
 YouTube.response = type=http-response,pattern=^https://youtubei(?:-att)?\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|config))(\?(.*))?$,requires-body=1,max-size=-1,binary-body-mode=1,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument={"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}
+YouTube.initplayback-fallback = type=http-request,pattern=^https://[\w-]+\.googlevideo\.com/initplayback(?:\?[^#]*)?[?&]ack(?:[=&][^#]*)?(?:#.*)?$,requires-body=0,script-path=https://raw.githubusercontent.com/heru08050413/QX/22f206224dc5b9417017876e289da7494c896cde/proxy-configs/scripts/youtube.initplayback.fallback.js
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # Spotify
@@ -2293,7 +2312,7 @@ client-source-address = false
 #   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
 #   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
 #     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
