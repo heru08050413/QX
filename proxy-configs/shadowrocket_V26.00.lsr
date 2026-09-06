@@ -2,8 +2,15 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Generated: 2026-08-26 (v2.6.13 → v2.6.14 YouTube 完整加密链路)
-# Predecessor: v2.6.13 (本地空响应回退;真机验证失败,本版撤销)
+# Generated: 2026-09-07 (v2.6.14 → v2.6.15 已知分流与规则格式修复)
+# Predecessor: v2.6.14 (YouTube 完整加密链路;实际去广告和连续播放仍待验证)
+#
+# v2.6.15 修订日志 (仅修复审查确认的配置缺陷)
+#   - 三个美国池的 US/USA 缩写增加字母边界,排除 Russia/Australia/RUS 误匹配.
+#   - 五个 Gemini / AI Studio 专用域名明确走 Gemini,不再落入谷歌服务.
+#   - Advertising_Domain.list 按源作者说明改用 DOMAIN-SET;URL 和 REJECT 不变.
+#   - YouTube 三条脚本、PiP/隐藏上传参数、MITM、Worker、DNS、探针参数不变.
+#   - 本版不宣称已解决所有广告或断流;节点、脚本运行和账号限制需真机证据.
 #
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # v2.6.14 修订日志 (需求: YouTube 去广告 + 不中断;其余配置不变)
@@ -11,14 +18,14 @@
 # 真机诊断证据:
 #   ① v2.6.12:PiP 生效、上传按钮隐藏、player 显示 MITM,但仍有广告;
 #   ② v2.6.13:本地空 200 强制回退后,广告仍在且上传按钮重新出现.
-#   结论:当前客户端不能使用无状态空响应替代完整的加密 UMP 协议处理.
+#   证据边界:上述现象不足以确认空响应与增强失效的因果关系,仍需请求/脚本日志.
 #
 # [P0 去广告] 改用 Maasea 官方完整闭环并锁定同一提交:
 #   - response 增补 log_event,负责广告字段删除、PiP/后台播放与密钥状态;
 #   - request.log_event 处理压缩头与播放密钥协商;
 #   - request.init 处理 *.googlevideo.com/initplayback &ack 加密 UMP;
 #   - 三条均固定 commit 65075cdb,不跟随 master 静默漂移;
-#   - 删除 v2.6.13 自制空响应脚本,避免再次破坏客户端状态机.
+#   - 删除 v2.6.13 自制空响应脚本,恢复上游处理流程;故障原因尚未确认.
 #
 # [P0 稳定] Worker 明确纳入 YouTube 高可用出口:
 #   官方 request 在密钥匹配后使用 init-stream.maasea.workers.dev 处理 UMP.
@@ -1059,7 +1066,7 @@ YT-香港节点 = url-test, url=http://www.gstatic.com/generate_204, interval=12
 YT-台湾节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
 YT-日本节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
 YT-新加坡节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-YT-美国节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+YT-美国节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
 YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=http://www.gstatic.com/generate_204, interval=60, timeout=5
 
@@ -1077,11 +1084,11 @@ Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, ti
 台湾节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
 日本节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
 新加坡节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-美国节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+美国节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
 # v2.6.2 新增: 稳定地区池 (interval 拉长到 15 分钟, IG/Twitter 专用)
 # 同地区内仍可切换, 但跨地区漂移被根本阻止
-美国稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+美国稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 日本稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
 新加坡稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 
@@ -1327,7 +1334,7 @@ DOMAIN-SUFFIX,weibomingzi.com,REJECT
 # 推荐回滚 hash: 见配置末尾 PINNED COMMITS 段
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Advertising/Advertising.list,REJECT
 
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Advertising/Advertising_Domain.list,REJECT
+DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Advertising/Advertising_Domain.list,REJECT
 
 # v2.6.5 新增: Privacy 隐私拦截 (在微博保护区之后, 不会误伤微博埋点)
 # bm7 新版 Privacy.list 已与 Advertising 解耦, 不再含 weibo gdt
@@ -1510,6 +1517,12 @@ DOMAIN,alkalimakersuite.google.com,Gemini
 DOMAIN,generativeai-pa.googleapis.com,Gemini
 DOMAIN,labs.google,Gemini
 DOMAIN,proactivebackend-pa.googleapis.com,Gemini
+# v2.6.15:补齐已核验的 Gemini / AI Studio 专用域名,不改共享 Google 登录分流.
+DOMAIN,geller-pa.googleapis.com,Gemini
+DOMAIN,robinfrontend-pa.googleapis.com,Gemini
+DOMAIN,gemini.gstatic.com,Gemini
+DOMAIN,alkalicore-pa.clients6.google.com,Gemini
+DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini
 
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/OpenAI/OpenAI.list,AI
 
