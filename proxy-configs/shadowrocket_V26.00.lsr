@@ -2,8 +2,18 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Generated: 2026-09-07 (v2.6.14 → v2.6.15 已知分流与规则格式修复)
-# Predecessor: v2.6.14 (YouTube 完整加密链路;实际去广告和连续播放仍待验证)
+# Generated: 2026-09-07 (v2.6.15 → v2.6.16 日志证据驱动的连通性修复)
+# Predecessor: v2.6.15 (已知分流与规则格式修复)
+#
+# v2.6.16 修订日志 (基于 proxy-2026-09-07-130752.db 的 19,917 条记录)
+#   - GitHub Copilot、Cursor 补入 AI 代理；X/Twitter 视频域 pscp.tv 补入 Twitter.
+#   - 在广告规则前精确放行日志中被误拦的运营商认证、支付 HTTPDNS、
+#     Google 推送、嘀嗒风控与个推初始化域；不放开对应整个厂商域名体系.
+#   - 删除无 MITM 脚本依赖的小红书 QUIC 阻断；微博只对脚本实际入口强制
+#     TCP/MITM，避免无关链接、图片和视频被大范围解密或降级.
+#   - YouTube 三脚本、PiP/隐藏上传参数、Worker、DNS与高可用池保持不变.
+#   - ChatGPT/Gemini 日志均已走代理且无失败字段；不以节点变化臆判故障，
+#     不改共享 Google 登录域，避免反向破坏 YouTube/其他 Google 服务.
 #
 # v2.6.15 修订日志 (仅修复审查确认的配置缺陷)
 #   - 三个美国池的 US/USA 缩写增加字母边界,排除 Russia/Australia/RUS 误匹配.
@@ -1148,13 +1158,21 @@ DOMAIN,init-stream.maasea.workers.dev,YouTube
 #   TCP/HTTP2, 无功能损失 (微信 VOIP 走高位 UDP 端口且此处仅精确域
 #   mp.weixin.qq.com, 不受影响). 不依赖 block-quic=auto 的模糊语义.
 # ---------------------------------------------------------------------
-AND,((DOMAIN-SUFFIX,weibo.cn),(PROTOCOL,UDP)),REJECT
-AND,((DOMAIN-SUFFIX,weibo.com),(PROTOCOL,UDP)),REJECT
+# v2.6.16:微博仅对实际脚本入口强制 TCP；不再阻断所有微博链接的 QUIC.
+AND,((DOMAIN,api.weibo.cn),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,mapi.weibo.cn),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,api.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,mapi.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,sdkapp.uve.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,wbapp.uve.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,sdkapp.mob.uve.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,wbapp.mob.uve.weibo.com),(PROTOCOL,UDP)),REJECT
+AND,((DOMAIN,new.vip.weibo.cn),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,bilibili.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,biliapi.net),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,zhihu.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,amap.com),(PROTOCOL,UDP)),REJECT
-AND,((DOMAIN-SUFFIX,xiaohongshu.com),(PROTOCOL,UDP)),REJECT
+# v2.6.16:小红书已无本配置 MITM hostname/脚本依赖，删除无收益的 UDP 阻断.
 AND,((DOMAIN,mp.weixin.qq.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-KEYWORD,spclient),(PROTOCOL,UDP)),REJECT
 
@@ -1253,6 +1271,30 @@ DOMAIN-SUFFIX,miaopai.com,DIRECT
 DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT
 DOMAIN-SUFFIX,qq.com.cn,DIRECT
 DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+
+# ---------------------------------------------------------------------
+# 1.6 必要功能域兼容保护 (v2.6.16，必须早于广告/隐私 REJECT)
+#
+# 仅放行本次日志中被规则集实际误拦的精确服务入口；运营商认证使用后缀，
+# 因同一官方服务在 id6/config/log 等子域间切换。个推仅列日志出现的主机，
+# 不放开 getui/gepush 整个域名体系，控制隐私暴露面。
+# ---------------------------------------------------------------------
+DOMAIN-SUFFIX,id6.me,DIRECT
+DOMAIN-SUFFIX,cmpassport.com,DIRECT
+DOMAIN,amdc.alipay.com,DIRECT
+DOMAIN,fp-it.fengkongcloud.com,DIRECT
+DOMAIN,kuaishou.httpdns.pro,DIRECT
+DOMAIN,httpdns.c.cdnhwc2.com,DIRECT
+DOMAIN,oneid.getui.net,DIRECT
+DOMAIN,c-gtc.getui.net,DIRECT
+DOMAIN,c-oneid.getui.net,DIRECT
+DOMAIN,b-gtc.getui.net,DIRECT
+DOMAIN,c-gtc.gepush.com,DIRECT
+DOMAIN,b-gtc.gepush.com,DIRECT
+DOMAIN,c-oneid.gepush.com,DIRECT
+DOMAIN,oneid.gepush.com,DIRECT
+DOMAIN,c-hzgt2.getui.com,DIRECT
+DOMAIN,mtalk.google.com,谷歌服务
 
 # ---------------------------------------------------------------------
 # 2. 广告 / 隐私 → REJECT
@@ -1492,6 +1534,12 @@ DOMAIN-SUFFIX,x.ai,AI
 DOMAIN-SUFFIX,grok.com,AI
 DOMAIN-SUFFIX,cohere.com,AI
 DOMAIN,copilot.microsoft.com,AI
+# v2.6.16:日志中 Copilot/Cursor API 落入 FINAL=DIRECT，补齐官方服务域.
+DOMAIN-SUFFIX,githubcopilot.com,AI
+DOMAIN-SUFFIX,cursor.sh,AI
+DOMAIN-SUFFIX,cursorapi.com,AI
+DOMAIN-SUFFIX,cursor-cdn.com,AI
+DOMAIN-SUFFIX,cursorvm.com,AI
 
 # v2.6.1 新增: OpenAI / ChatGPT 边缘依赖 (日志诊断: 这些缺失会导致登录失败)
 DOMAIN-SUFFIX,statsigapi.net,AI
@@ -1577,6 +1625,8 @@ DOMAIN-SUFFIX,twimg.com,Twitter
 DOMAIN-SUFFIX,t.co,Twitter
 DOMAIN-SUFFIX,x.com,Twitter
 DOMAIN-SUFFIX,twitterstat.us,Twitter
+# v2.6.16:X/Twitter 视频 CDN 原落入 FINAL=DIRECT，导致控制面与视频面分流.
+DOMAIN-SUFFIX,pscp.tv,Twitter
 
 # Meta - Instagram 走 Instagram 组, 其他走 Proxy
 # v2.6.2 关键修复: IG 单独路由到 Instagram 策略组 (美国稳定池)
@@ -2313,13 +2363,9 @@ client-source-address = false
 #   - *.bilibili.com   → 只保留 app.bilibili.com 等 5 个接口域名
 #   - *.zhihu.com      → 只保留 api.zhihu.com
 #
-# 保留的通配 (有充分理由):
-#   - *.weibo.cn / *.weibo.com / *.weibo.com.cn / *.weibocdn.com
-#     原因: 微博接口分散在 api/m/mapi/wbapp/new.vip 等子域, 收窄会
-#           立刻让脚本失效. 已用显式排除保护 passport/login/security/
-#           pay/图片 CDN 共 26 个高敏感子域, 这是当前最佳平衡.
-#   - *.sina.cn / *.sina.com.cn / *.sinaimg.cn / *.sinajs.cn
-#     原因: 微博域名联动, 同上.
+# v2.6.16:微博通配已收窄为脚本 URL pattern 实际使用的 9 个主机.
+#   日志显示大量普通链接与媒体请求不需要脚本处理；继续通配 MITM 会扩大
+#   TLS 故障面并增加图片/视频解密开销。账户/支付/图片排除仍保留作防御纵深.
 #
 # V26.00 [一致性] 显式排除 银行/支付/icloud, 对齐安全基线(CLAUDE.md §一.1)
 #   与 QX/Loon/Egern 一致. SR 的 hostname 本是白名单, 这些域当前不在
@@ -2329,7 +2375,7 @@ client-source-address = false
 #   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
 #   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
 #     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinaimg.cn, *.sinajs.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
