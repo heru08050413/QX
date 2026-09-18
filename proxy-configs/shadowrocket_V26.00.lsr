@@ -2,8 +2,18 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Generated: 2026-09-07 (v2.6.15 → v2.6.16 日志证据驱动的连通性修复)
-# Predecessor: v2.6.15 (已知分流与规则格式修复)
+# Updated: 2026-09-19 (v2.6.17 单客户端审查修复；尚待真机验收)
+# Predecessor: v2.6.16 (8860378，可用于回滚)
+#
+# v2.6.17 修订日志
+#   - 微信 dns.weixin.qq.com 精确前置保护，不放开整个 qq.com，也不放行 ad.weixin.
+#   - 三个已被现用广告表收录的微博图片广告主机在微博保护区之前精确拒绝；
+#     sdkapp 等混合接口继续直连交给脚本处理，删除被保护区遮蔽的旧拒绝项。
+#   - YouTube 六个探针仅 HTTP→HTTPS，保留 120s/60s、容差及地区优先级；
+#     TLS 可达不等于视频 CDN/吞吐正常，不保证既有连接无感迁移。
+#   - 三个稳定地区池改 fallback/300s/5s/HTTPS，保持原地区筛选及选择器；
+#     按订阅优先级选可用节点，可能回切优先节点，不承诺最快或绝不切换。
+#   - YouTube 三钩子、PiP/隐藏上传、DNS、AI/Gemini 分流和兼容例外不变。
 #
 # v2.6.16 修订日志 (基于 proxy-2026-09-07-130752.db 的 19,917 条记录)
 #   - GitHub Copilot、Cursor 补入 AI 代理；X/Twitter 视频域 pscp.tv 补入 Twitter.
@@ -993,8 +1003,8 @@ update-interval = 86400
 #         Telegram/Instagram/Twitter/苹果/谷歌/微软/B站)
 #   层 3: 测速基础设施 (AutoSelect/StableSelect/地区池)
 #
-# 防抖核心: 长连接业务 (IG/Twitter) 走 fallback 类型策略组,
-#           不主动测速切换。短交互业务 (网页/AI) 走 url-test。
+# 长连接业务 (IG/Twitter) 的稳定地区池使用 fallback，按可用性/优先级选择；
+# 不按延迟排名切换，但优先节点恢复可能触发回切。其他地区池保持 url-test。
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # ---------- 主选择器 ----------
@@ -1057,7 +1067,7 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 # 根因(真机症状: 后台开着但 YouTube 打不开, 重开/手动切节点才恢复):
 #   全部组的探针都是 cp.cloudflare.com —— 节点"能到 Cloudflare 但到不了
 #   Google"(出口 IP 被 Google 侧封禁/限流是机场常态故障)时, url-test
-#   探针全绿、组永不切换, YouTube 却挂死. 探针必须与业务【同源】.
+#   探针可能全绿而 YouTube 不通。Google 探针减少跨服务盲区，但不是视频同源测试。
 #
 # ⚠️ V26.00-fix2 缺陷修正(用户实测 YouTube/AI 反而变差):
 #   初版把 YT-Auto 建成【裸节点池 + 仅过滤器】的 fallback —— 成员=订阅
@@ -1066,19 +1076,19 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #   排序与质量无关); ② 204 小包只测【可达】不测【吞吐】, 拥挤到卡视频的
 #   烂节点照样回 204、fallback 永不切走. 大流量业务被这盲区坑得最狠.
 # v2.6.12 高可用实现:
-#   - 五个 YT-* 地区池全部直接吸收真实订阅节点,Google 同源探测;
+#   - 五个 YT-* 地区池全部直接吸收真实订阅节点,Google 可达性探测;
 #   - interval=120 加快硬故障发现,tolerance=300 避免普通抖动换出口;
 #   - 外层 fallback interval=60,仅在当前地区不可用时跨地区降级;
 #   - 不使用裸节点总池,避免订阅顺序决定首选且 204 小包掩盖拥堵.
 # 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
 
-YT-香港节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-YT-台湾节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-YT-日本节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-YT-新加坡节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-YT-美国节点 = url-test, url=http://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=http://www.gstatic.com/generate_204, interval=60, timeout=5
+YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=https://www.gstatic.com/generate_204, interval=60, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
@@ -1096,11 +1106,12 @@ Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, ti
 新加坡节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 美国节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-# v2.6.2 新增: 稳定地区池 (interval 拉长到 15 分钟, IG/Twitter 专用)
-# 同地区内仍可切换, 但跨地区漂移被根本阻止
-美国稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
-日本稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-新加坡稳定 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+# v2.6.17: IG/Twitter 专用稳定池改为按优先级故障转移，不再按延迟排名换点。
+# 300s 比原 900s 更快发现硬故障，探测更频繁；timeout=5 为 TLS 握手留余量。
+# 这是低频故障恢复，不是吞吐测试；订阅排序决定优先级，恢复后可能回切。
+美国稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+日本稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 
 # ---------- 漏网之鱼 ----------
 # v2.6.1 关键修复: 默认指向 DIRECT (v2.6.0 默认 Proxy)
@@ -1243,8 +1254,13 @@ DOMAIN-SUFFIX,ocsp.sca1b.amazontrust.com,DIRECT
 DOMAIN-SUFFIX,ocsp.rootca1.amazontrust.com,DIRECT
 
 # ---------------------------------------------------------------------
-# 1. 微博 / 新浪保护区 → 直连 (必须最先匹配)
+# 1. 微博图片广告精确拒绝 → 业务域保护 → 通用广告表
+# 三个主机均在当前 Advertising_Domain.list 中；只处理精确主机，不扩至 SDK/API。
+# sdkapp/wbapp 混合接口必须可达，交给现有响应脚本删广告，不能整域 REJECT。
 # ---------------------------------------------------------------------
+DOMAIN,fastimage.uve.weibo.com,REJECT
+DOMAIN,adimg.uve.weibo.com,REJECT
+DOMAIN,adimg.vue.weibo.com,REJECT
 DOMAIN-SUFFIX,weibo.cn,DIRECT
 DOMAIN-SUFFIX,weibo.com,DIRECT
 DOMAIN-SUFFIX,weibo.com.cn,DIRECT
@@ -1265,19 +1281,21 @@ DOMAIN-SUFFIX,miaopai.com,DIRECT
 #   反复重试刷屏 → 降级到系统 DNS 的等待 = 微信启动 loading.
 #   apd-pcdnwxlogin.teg.tencent-cloud.net (微信登录 PCDN) 同样被误伤.
 # 修复: 在广告 REJECT 之前显式放行腾讯 .com.cn 与 teg 后台域名.
-#   注: long/short.weixin.qq.com 等 .com 域名本就被 qq.com 命中直连,
-#       此处只补 .com.cn / teg 这两个被规则集误伤的盲区, 精准补丁.
+#   v2.6.17: 后面的 qq.com 直连不能保护先被广告表命中的域名。
+#   精确保护 .com 解析入口；这不代表日志已证明该域当前被拦。
+#   不提前放行整个 weixin.qq.com，保留 ad.weixin.qq.com 的广告拦截。
 # ---------------------------------------------------------------------
+DOMAIN,dns.weixin.qq.com,DIRECT
 DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT
 DOMAIN-SUFFIX,qq.com.cn,DIRECT
 DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
 
 # ---------------------------------------------------------------------
-# 1.6 必要功能域兼容保护 (v2.6.16，必须早于广告/隐私 REJECT)
+# 1.6 兼容性候选例外 (v2.6.16 引入，必须早于广告/隐私 REJECT)
 #
-# 仅放行本次日志中被规则集实际误拦的精确服务入口；运营商认证使用后缀，
-# 因同一官方服务在 id6/config/log 等子域间切换。个推仅列日志出现的主机，
-# 不放开 getui/gepush 整个域名体系，控制隐私暴露面。
+# 日志能证明规则命中，不能单凭命中证明每个域都是必要依赖。
+# OneID/设备识别等例外保持现状，待真机 A/B 验证，无收益再单独回收；
+# 不扩大到 getui/gepush 整个域名体系。本轮不把候选例外宣称为已证实修复。
 # ---------------------------------------------------------------------
 DOMAIN-SUFFIX,id6.me,DIRECT
 DOMAIN-SUFFIX,cmpassport.com,DIRECT
@@ -1363,12 +1381,9 @@ DOMAIN-SUFFIX,e.qq.com,REJECT-DROP
 DOMAIN,cm.bilibili.com,REJECT
 DOMAIN,cm.biliapi.net,REJECT
 
-# 微博广告物料 (与 zmqcherish 微博脚本协同: 这些先 REJECT, 漏过的进脚本)
-DOMAIN-SUFFIX,biz.weibo.com,REJECT
-DOMAIN,bootpreload.uve.weibo.com,REJECT
-DOMAIN-SUFFIX,fastimage.uve.weibo.com,REJECT
-DOMAIN-SUFFIX,adimg.vue.weibo.com,REJECT
-DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT
+# 微博图片广告已在第 1 段精确拒绝；SDK/API 继续由脚本处理。
+# 删除原本被 weibo.com 直连遮蔽的 biz/bootpreload/sdkapp 拒绝项；
+# 不直接把它们前移，避免把业务/混合接口封死。独立域名规则保留：
 DOMAIN-SUFFIX,weibomingzi.com,REJECT
 
 # 通用广告规则集 (域名级,无 MITM 压力)

@@ -1,7 +1,8 @@
 # Requires PowerShell 7. Run from any directory; no network or subscription needed.
 # Static regression checks, NOT a Shadowrocket/iPhone runtime test.
 param(
-    [string]$ConfigPath = (Join-Path $PSScriptRoot '../shadowrocket_V26.00.lsr')
+    [string]$ConfigPath = (Join-Path $PSScriptRoot '../shadowrocket_V26.00.lsr'),
+    [string]$ConfigText
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -13,7 +14,8 @@ function Get-ActiveLines([string[]]$Lines) {
     @($Lines | ForEach-Object { $_.Trim() } | Where-Object { $_ -and $_ -notmatch '^[#;]' })
 }
 
-$lines = @(Get-Content -LiteralPath $ConfigPath -Encoding utf8)
+$lines = if ($PSBoundParameters.ContainsKey('ConfigText')) { @($ConfigText -split '\r?\n') }
+    else { @(Get-Content -LiteralPath $ConfigPath -Encoding utf8) }
 $active = @(Get-ActiveLines $lines)
 $usGroups = @('YT-美国节点', '美国节点', '美国稳定')
 $positive = @('US', 'USA', 'us-01', 'US01', 'USA01', '机场-US-01',
@@ -89,10 +91,9 @@ Assert-True (!$active.Contains('AND,((DOMAIN-SUFFIX,xiaohongshu.com),(PROTOCOL,U
 Assert-True (!$active.Contains('AND,((DOMAIN-SUFFIX,weibo.cn),(PROTOCOL,UDP)),REJECT')) 'Broad weibo.cn QUIC block remains'
 Assert-True (!$active.Contains('AND,((DOMAIN-SUFFIX,weibo.com),(PROTOCOL,UDP)),REJECT')) 'Broad weibo.com QUIC block remains'
 
-# Reconstruct only the authorized v2.6.16 active-line delta from the immutable
+# Reconstruct the authorized v2.6.16 active-line delta from the immutable
 # v2.6.15 revision. Any other changed, removed, or reordered directive fails,
-# including YouTube scripts/arguments, DNS, health checks, shared Google routing,
-# policy groups, and FINAL=DIRECT.
+# after applying the explicitly enumerated v2.6.17 delta below.
 $repoPath = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $baseline = @(git -C $repoPath show 'c4ac682:proxy-configs/shadowrocket_V26.00.lsr')
 Assert-True ($LASTEXITCODE -eq 0) 'Cannot read pre-fix git baseline'
@@ -131,5 +132,88 @@ foreach ($line in (Get-ActiveLines $baseline)) {
     }
     if ($line -ceq 'DOMAIN-SUFFIX,twitterstat.us,Twitter') { $expected.Add('DOMAIN-SUFFIX,pscp.tv,Twitter') }
 }
-Assert-True (($expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
-Write-Output "PASS: $regexChecks US-regex cases; 5 Gemini routes; 16 compatibility rules; 5 AI routes; Twitter video; narrowed QUIC/MITM; complete v2.6.16 scope invariant."
+# Keep the previous change-set verifiable; do not silently replace its baseline.
+$previous = @(Get-ActiveLines @(git -C $repoPath show '8860378:proxy-configs/shadowrocket_V26.00.lsr'))
+Assert-True ($LASTEXITCODE -eq 0) 'Cannot read v2.6.16 baseline'
+Assert-True (($expected -join "`n") -ceq ($previous -join "`n")) 'Historical v2.6.16 invariant failed'
+
+$retired = @(
+    'DOMAIN-SUFFIX,biz.weibo.com,REJECT',
+    'DOMAIN,bootpreload.uve.weibo.com,REJECT',
+    'DOMAIN-SUFFIX,fastimage.uve.weibo.com,REJECT',
+    'DOMAIN-SUFFIX,adimg.vue.weibo.com,REJECT',
+    'DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT'
+)
+$imageRules = @(
+    'DOMAIN,fastimage.uve.weibo.com,REJECT',
+    'DOMAIN,adimg.uve.weibo.com,REJECT',
+    'DOMAIN,adimg.vue.weibo.com,REJECT'
+)
+$currentExpected = [Collections.Generic.List[string]]::new()
+foreach ($line in $expected) {
+    if ($retired -ccontains $line) { continue }
+    if ($line -ceq 'DOMAIN-SUFFIX,weibo.cn,DIRECT') {
+        foreach ($rule in $imageRules) { $currentExpected.Add($rule) }
+    }
+    if ($line -ceq 'DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT') {
+        $currentExpected.Add('DOMAIN,dns.weixin.qq.com,DIRECT')
+    }
+    $updated = $line
+    if ($line -match '^YT-.+ = ') {
+        $updated = $line.Replace('url=http://www.gstatic.com/', 'url=https://www.gstatic.com/')
+    }
+    if ($line -match '^(美国|日本|新加坡)稳定 = ') {
+        $updated = $line.Replace('= url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=300, timeout=3,',
+            '= fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5,')
+    }
+    $currentExpected.Add($updated)
+}
+Assert-True (($currentExpected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+
+# Check relevant rule ordering independently of the full delta comparison.
+$ruleStart = [array]::IndexOf($active, '[Rule]')
+$hostStart = [array]::IndexOf($active, '[Host]')
+Assert-True ($ruleStart -ge 0 -and $hostStart -gt $ruleStart) 'Missing Rule/Host sections'
+$rules = @($active[($ruleStart + 1)..($hostStart - 1)])
+function First-LocalDomainRule([string]$Domain) {
+    foreach ($rule in $rules) {
+        $parts = $rule -split ','
+        if ($parts[0] -ceq 'DOMAIN' -and $Domain -ceq $parts[1]) { return $rule }
+        if ($parts[0] -ceq 'DOMAIN-SUFFIX' -and
+            ($Domain -ceq $parts[1] -or $Domain.EndsWith('.' + $parts[1]))) { return $rule }
+    }
+    return ''
+}
+foreach ($rule in $imageRules) {
+    $domain = ($rule -split ',')[1]
+    Assert-True ((First-LocalDomainRule $domain) -ceq $rule) "Image rejection shadowed: $domain"
+}
+foreach ($domain in @('sdkapp.uve.weibo.com', 'wbapp.uve.weibo.com', 'api.weibo.cn',
+    'mapi.weibo.com', 'bootpreload.uve.weibo.com', 'wx1.sinaimg.cn', 'video.weibocdn.com')) {
+    Assert-True ((First-LocalDomainRule $domain).EndsWith(',DIRECT')) "Business/media host blocked: $domain"
+}
+$firstAd = [array]::IndexOf($active, ($active | Where-Object { $_ -match '^RULE-SET,.*/Advertising/Advertising\.list,REJECT$' } | Select-Object -First 1))
+Assert-True ($firstAd -ge 0) 'Advertising ruleset not found'
+Assert-True ([array]::IndexOf($active, 'DOMAIN,dns.weixin.qq.com,DIRECT') -lt $firstAd) 'WeChat DNS protection too late'
+Assert-True (!$active.Contains('DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -or
+    [array]::IndexOf($active, 'DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -gt $firstAd) 'WeChat ads bypass the advertising list'
+
+$ytGroups = @($active | Where-Object { $_ -match '^YT-.+ = ' })
+Assert-True ($ytGroups.Count -eq 6) 'YouTube must retain five region pools plus outer fallback'
+foreach ($group in $ytGroups) {
+    Assert-True ($group.Contains('url=https://www.gstatic.com/generate_204')) 'YouTube probe is not HTTPS'
+    Assert-True (!$group.Contains('DIRECT')) 'YouTube pool unexpectedly contains DIRECT'
+}
+foreach ($name in @('美国稳定', '日本稳定', '新加坡稳定')) {
+    $group = @($active | Where-Object { $_.StartsWith("$name = ") })
+    Assert-True ($group.Count -eq 1 -and $group[0].Contains('= fallback,') -and
+        $group[0].Contains('interval=300, timeout=5')) "Invalid stable pool: $name"
+}
+$ytScripts = @($active | Where-Object { $_ -match '^YouTube\.(response|request\.(init|log_event)) = ' })
+Assert-True ($ytScripts.Count -eq 3) 'YouTube hook count changed'
+Assert-True ($ytScripts[0].Contains('"blockUpload":true')) 'Upload-button hiding disabled'
+foreach ($hook in $ytScripts) {
+    Assert-True ($hook.Contains('/65075cdb388fc5e3094afd7e7314c67b243f3525/')) 'YouTube script pin changed'
+    Assert-True ($hook.Contains('engine=webview') -and $hook.Contains('binary-body-mode=1')) 'YouTube binary runtime changed'
+}
+Write-Output "PASS: $regexChecks US-regex cases; legacy Gemini/AI/compatibility checks; 10 Weibo routing fixtures; WeChat DNS order; 6 HTTPS YouTube probes; 3 stable fallback pools; unchanged YouTube hooks; complete v2.6.16 + v2.6.17 scope invariants."
