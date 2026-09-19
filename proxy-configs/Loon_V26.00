@@ -2,7 +2,10 @@
 # Loon Pro Configuration — V26.00
 # (四套配置统一版本号 V26.00; 历史沿革见下方 Revision 2.x 修订日志)
 # Codename: "UDP Safety Net"
-# Generated: 2026-05-21 (v2.1 → v2.2 微信通话预防性修复 + UDP 路径加固)
+# Updated: 2026-09-19 (v2.3.0 单客户端稳定性与规则修复)
+# 当前修订: 关闭 HTTPDNS 改写插件; 微信关键主机保护; YouTube 专用
+# HTTPS 探针两级池; 稳定池 fallback; Gemini 路由与 US 筛选; MITM 缩面。
+# 以下为历史日志, 其中“完全生效/零副作用/唯一手段”等不是当前验收结论。
 # ---------------------------------------------------------------------
 # v2.1 → v2.2 修订日志
 # ---------------------------------------------------------------------
@@ -234,8 +237,8 @@ test-timeout = 3
 real-ip = msftconnecttest.com,msftncsi.com,*.msftconnecttest.com,*.msftncsi.com,*.srv.nintendo.net,*.stun.playstation.net,xbox.*.microsoft.com,*.xboxlive.com,*.battlenet.com.cn,*.battlenet.com,*.blzstatic.cn,*.battle.net,*.lan,*.localdomain,*.home
 
 # > 拦截 App 自带的 DNS over UDP (v2.0 新增, Loon 3.2.5+)
-# 等价于 Egern/SR 的 BlockHttpDNS 规则集功能
-# 让 App 无法绕过我们的 DNS 规则
+# 仅截获列出的传统 DNS 端口; 不等价于 HTTPDNS/DoH 拦截。
+# v2.3.0 关闭会改写微信请求的 HTTPDNS 插件, 保留本项与原 DNS 上游。
 hijack-dns = *:53,8.8.8.8:53,1.1.1.1:53,8.8.4.4:53,1.0.0.1:53
 
 # > Sub-Store 资源解析器
@@ -284,13 +287,10 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 #   • 移除时的视角是【去广告】: 论据 ①②③ 本身没错 —— 直连 MITM 域的
 #     QUIC 由 Loon"SNI 命中 MITM 列表自动 reject"兜住, 与本参数无关.
 #   • 恢复的视角是【稳定性】(仓库优先级: 安全>稳定>去广告>低功耗):
-#     Loon 无 AND/PROTOCOL 复合规则, googlevideo 又不在 MITM 列表
-#     (省电, 不解密视频流) —— 即 YouTube 视频流的 QUIC 在代理侧无任何
-#     拦截手段. 节点 UDP 半死时(NAT 超时/机场 UDP 故障, TCP 探针查不
-#     出), YouTube 就挂死. block-quic=true 强制代理侧 QUIC 全走 TCP,
-#     是 Loon 架构内消除该故障面的【唯一】确定性手段.
-#   代价(实话): 代理链路无 HTTP/3, YouTube 首帧可能慢几十 ms;
-#   换来"节点 UDP 死活与 YouTube 可用性无关"的确定性. 稳定 > 速度.
+#     更正: Loon 3.1.7+ 支持 AND/PROTOCOL, Maasea 也追加 googlevideo MITM。
+#     本轮仍保留节点 block-quic=true, 避免未测即恢复代理侧 HTTP/3。
+#     代价是其他代理业务也无法使用 QUIC; 后续有真机 UDP 证据再收窄。
+#     阻断 QUIC 不等于转换协议, 是否重试 TCP 由 App 决定。
 #   ⚠️ 真机验证: 导入后确认 ①YouTube 播放正常 ②微博/B站广告仍被拦.
 # =====================================================================
 [Remote Proxy]
@@ -304,7 +304,7 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 #   层 1: 业务专用策略组 (用户可选)
 #   层 2: 测速基础设施 (AutoSelect / StableSelect / StableFallback)
 #   层 3: 地区节点池 (url-test 600s tolerance 200)
-#   层 4: 稳定地区池 (url-test 900s tolerance 300, 长连接专用)
+#   层 4: 稳定地区池 (fallback 300s, 不按最小延迟竞争)
 # =====================================================================
 [Proxy Group]
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -387,16 +387,18 @@ Github = url-test,自动选择,香港节点,狮城节点,日本节点,美国节�
 稳定选择 = select,自动选择,狮城稳定,日本稳定,美国稳定,香港稳定,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
 
 # StableFallback (fallback 类型, Loon 原生支持, 顺序选第一个可用)
-StableFallback = fallback,狮城稳定,日本稳定,美国稳定,香港稳定,url = http://cp.cloudflare.com/generate_204,interval = 900
+StableFallback = fallback,狮城稳定,日本稳定,美国稳定,香港稳定,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
 
-# ---------- V26.00 稳定性修复: YouTube/Google 专用自愈组 ----------
-# 根因(小火箭真机症状同款, 五套通病): 全部探针 = cp.cloudflare.com,
-#   节点"能到 Cloudflare 但到不了 Google"时探针全绿、组不切换,
-#   YouTube 挂死只能手动换节点. 探针必须与业务【同源】.
-# 设计: fallback 型(当前可用才不切, 失败即降级) + Google 自家 gstatic
-#   204 探针(探针通=Google 真可达); 成员为地区池, 探测的是各池当前
-#   选中节点的【Google 可达性】; interval=600 仅此一组, 控住耗电.
-YT-Auto = fallback,香港节点,狮城节点,日本节点,美国节点,url = http://www.gstatic.com/generate_204,interval = 600
+# ---------- v2.3.0 YouTube 专用探测, 不改变普通 Google/AI 默认组 ----------
+# 地区内 url-test 120s / 300ms 防抖; 地区间 fallback 60s / 5000ms 阈值。
+# gstatic HTTPS 仅测 Google 探针的 TLS 可达性, 不代表视频带宽/账号可用。
+# fallback 选列表首个可用项, 高优先级恢复可能回切; 不迁移已建立连接。
+# 代价: 较 600s 增加探测开销; 不保证 60s 内恢复或无感零中断。
+YT-Auto = fallback,YT-香港,YT-狮城,YT-日本,YT-美国,url = https://www.gstatic.com/generate_204,interval = 60,max-timeout = 5000
+YT-香港 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
+YT-狮城 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
+YT-日本 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
+YT-美国 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 地区节点池 (普通: 600s/200ms 用于短交互)
@@ -410,14 +412,13 @@ YT-Auto = fallback,香港节点,狮城节点,日本节点,美国节点,url = htt
 其他节点 = url-test,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 稳定地区池 (900s/300ms, IG/Twitter/Telegram 长连接专用)
-# 与地区节点的区别: 同地区内仍可切换, 但 interval 更长, tolerance 更高,
-# 同时跨地区漂移在策略组层面被根本阻止
+# 稳定地区池 (fallback 300s, IG/Twitter/Telegram)
+# 不再因更低延迟主动选优; 首个可用节点恢复时仍可能回切, 不是粘性会话。
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-香港稳定 = url-test,HK_Filter,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 300
-日本稳定 = url-test,JP_Filter,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 300
-美国稳定 = url-test,US_Filter,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 300
-狮城稳定 = url-test,SG_Filter,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 300
+香港稳定 = fallback,HK_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
+日本稳定 = fallback,JP_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
+美国稳定 = fallback,US_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
+狮城稳定 = fallback,SG_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
 
 
 # =====================================================================
@@ -428,7 +429,7 @@ YT-Auto = fallback,香港节点,狮城节点,日本节点,美国节点,url = htt
 OT_Filter = NameRegex, FilterKey = "^(?!.*(?:US|TW|JP|SG|美|韩|日本|新|港|澳|台|英|🇬🇧|🇺🇸|🇲🇴|🇸🇬|🇯🇵|🇭🇰|🇰🇷)).*$"
 HK_Filter = NameRegex, FilterKey = "(?i)(🇭🇰|港|HK|HongKong|Hong Kong)"
 TW_Filter = NameRegex, FilterKey = "(?i)(🇹🇼|台|TW|Tai|Taiwan)"
-US_Filter = NameRegex, FilterKey = "(?i)(🇺🇸|美|US|States|American)"
+US_Filter = NameRegex, FilterKey = "(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley"
 JP_Filter = NameRegex, FilterKey = "(?i)(🇯🇵|日本|JP|Japan)"
 KR_Filter = NameRegex, FilterKey = "(?i)(🇰🇷|KR|Korea|KOR|首尔|韩|韓)"
 SG_Filter = NameRegex, FilterKey = "(?i)(🇸🇬|新加坡|狮城|獅城|SG|Singapore)"
@@ -459,9 +460,17 @@ IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
 IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 1. 微博/新浪保护区 → DIRECT (必须最先匹配)
+# 1. 微信依赖保护 + 微博精确广告拒绝 + 微博/新浪保护
 # 借鉴 SR v2.6.4 经验: 微博接口分散在多子域, 误命中广告规则会内容空白
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# HTTPDNS 插件必须同时禁用: DIRECT 不能取消插件 Rewrite/Map Local。
+DOMAIN,dns.weixin.qq.com,DIRECT
+DOMAIN,dns.weixin.qq.com.cn,DIRECT
+DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net,DIRECT
+# 仅拒绝已知广告图片主机; SDK 响应仍交给微博脚本, 不封整个 API。
+DOMAIN,fastimage.uve.weibo.com,REJECT
+DOMAIN,adimg.uve.weibo.com,REJECT
+DOMAIN,adimg.vue.weibo.com,REJECT
 DOMAIN-SUFFIX,weibo.cn,DIRECT
 DOMAIN-SUFFIX,weibo.com,DIRECT
 DOMAIN-SUFFIX,weibocdn.com,DIRECT
@@ -497,12 +506,8 @@ DOMAIN-SUFFIX,e.qq.com,REJECT-DROP
 DOMAIN,cm.bilibili.com,REJECT
 DOMAIN,cm.biliapi.net,REJECT
 
-# 微博广告物料 (与 weibo.plugin 协同: 这些先 REJECT, 漏过的进脚本)
-DOMAIN-SUFFIX,biz.weibo.com,REJECT
-DOMAIN,bootpreload.uve.weibo.com,REJECT
-DOMAIN-SUFFIX,fastimage.uve.weibo.com,REJECT
-DOMAIN-SUFFIX,adimg.vue.weibo.com,REJECT
-DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT
+# 微博相关广告域; 三个精确图片主机已移至保护区之前。
+# 删除五条被上方 DIRECT 遮蔽的旧规则, 不将 SDK/业务接口改为整域拒绝。
 DOMAIN-SUFFIX,weibomingzi.com,REJECT
 
 # 全球追踪 / 数据分析 SDK
@@ -546,13 +551,26 @@ DOMAIN-SUFFIX,cpro.baidu.com,REJECT
 DOMAIN-SUFFIX,tanx.com,REJECT
 DOMAIN-SUFFIX,mmstat.com,REJECT
 
-# 信息收集拦截 (原配置保留)
-URL-REGEX,"\.log\.",REJECT
+# v2.3.0 删除跨域 URL-REGEX "\.log\.": 不能凭路径含 log 判定为广告。
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 4. 自定义业务规则
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DOMAIN-KEYWORD,haijiao,美国节点
+
+# YouTube API / 播放依赖独立于远程表, 与现有单套 Maasea 插件配合。
+# 保留节点级 block-quic=true; 不新增未知广告 URL 的整条拒绝。
+DOMAIN,youtubei.googleapis.com,油管视频
+DOMAIN,youtubei-att.googleapis.com,油管视频
+DOMAIN,init-stream.maasea.workers.dev,油管视频
+DOMAIN-SUFFIX,googlevideo.com,油管视频
+
+# Gemini 专属接口优先于通用 Google/AI 远程表; 主组仍默认美国节点。
+DOMAIN,geller-pa.googleapis.com,Gemini
+DOMAIN,robinfrontend-pa.googleapis.com,Gemini
+DOMAIN,gemini.gstatic.com,Gemini
+DOMAIN,alkalicore-pa.clients6.google.com,Gemini
+DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini
 
 # V26.00 谷歌翻译"连不上网"修复 (同 SR/Egern):
 #   核心 API translate-pa.googleapis.com 重度用 QUIC; 走代理但节点若不
@@ -750,12 +768,13 @@ https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule, e
 # 此前 Loon 是五套中唯一【无】YouTube 去广告/小窗的 (SR/Egern 均有).
 # 用 Maasea 官方 sgmodule (巡检已盯此 URL), 与 weibo 同款直引先例:
 #   [Script] youtubei 响应改写 (去广告 + 解锁 PiP/后台播放)
-#   [Map Local] googlevideo 广告流 initplayback&oad 拦截
-#   [Rule] googlevideo/youtubei UDP REJECT (与 block-quic=true 协同)
+#   [Script] initplayback 请求处理 + log_event 请求处理 (共三钩子)
+#   当前上游无 Map Local/Rule 段, 不把旧模块结构当成已生效功能。
 #   [MITM] 自动并入 *.googlevideo.com + youtubei.googleapis.com
 # 能耗实话: googlevideo 进 MITM 会解密视频流连接, 播放发热略增
 #   (与 Egern v6.3.0 同款取舍: 完整去广告 > 省电; SR 走的是反向取舍).
 # 客户端配套: YouTube App 设置→播放→画中画 开启; 后台播放 开启.
+# 上游默认屏蔽上传=true; 手机需核对实际参数替换与三钩子加载, 勿重复叠包。
 https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule, policy=油管视频, enabled=true
 
 # 国内 App 广告拦截 (730+ App)
@@ -773,8 +792,9 @@ https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/Auto_Join_TF.plugin,
 # Skip Proxy 域名列表
 https://raw.githubusercontent.com/Tartarus2014/Loon-Script/refs/heads/master/Plugin/skip-proxy.lpx, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Alpha/Imm.png, enabled=true
 
-# HTTPDNS 拦截 (与 hijack-dns 协同, 双保险)
-https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/plugin/HTTPDNS.Block.plugin, enabled=true
+# v2.3.0 关闭: 此插件还 Rewrite 微信 newgetdns/getcdndns, 非单纯 DNS 规则。
+# 稳定性取舍: 放行 App HTTPDNS, 不再提供该插件的防绕过/隐私控制。
+https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/plugin/HTTPDNS.Block.plugin, enabled=false
 
 # BoxJS (脚本管理面板, 需 MITM hostname boxjs.com)
 https://raw.githubusercontent.com/chavyleung/scripts/master/box/rewrite/boxjs.rewrite.loon.plugin, policy=代理节点, enabled=true
@@ -802,7 +822,7 @@ https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-
 [Mitm]
 # 高敏感子域排除 (登录/支付/银行/图片视频 CDN)
 # Loon 的 - 前缀表示该 hostname 不进行 MITM 解密
-hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -security.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, *.weibo.cn, *.weibo.com, *.weibo.com.cn, *.weibocdn.com, *.sina.cn, *.sina.com.cn, *.sinajs.cn, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, mobile.api.hunantv.com, boxjs.com, boxjs.net, sub.store, script.hub
+hostname = -www.google.com, -passport.weibo.cn, -login.sina.com.cn, -pay.weibo.cn, -security.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -12306.cn, -*.12306.cn, -alipay.com, -alipay.com.cn, -*.alipay.com.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, api.vc.bilibili.com, grpc.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, youtubei.googleapis.com, spclient.wg.spotify.com, edith.xiaohongshu.com, api.m.jd.com, apiv4.yangkeduo.com, api.pinduoduo.com, flowplus.meituan.net, interface.music.163.com, t7z.cupid.iqiyi.com, mobile.api.hunantv.com, boxjs.com, boxjs.net, sub.store, script.hub
 
 ca-p12 = 
 ca-passphrase = 
