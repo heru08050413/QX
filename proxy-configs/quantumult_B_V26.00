@@ -1,5 +1,9 @@
 #############################################
 # 配置版本: V26.00 (四套配置统一版本号; B 派, 历史沿革见下方 v5.1.x 日志)
+# 当前修订: v5.2.0 / 2026-09-19 (Quantumult X 单客户端修复)
+# 微信依赖保护 / Gemini 独立组 / US 筛选 / YouTube 专用选优 / 稳定组 available。
+# 当前上游存在 QuanX 二进制适配, 但请求分支兼容性未验收, 不自动启用实验移植。
+# 下方为历史记录, “完全不影响/根治/无 Fake-IP”等旧结论以本轮审查说明为准。
 #
 # v5.1.5 → v5.1.6 改动:
 #   1. [修复] 删除报错的 Quora.list 远程订阅 (bm7 仓库无此目录, 404).
@@ -78,8 +82,10 @@
 #############################################
 
 [general]
-server_check_url=http://cp.cloudflare.com/generate_204
-server_check_timeout=3000
+# 全局仅升级 HTTPS 与 5000ms 总超时; 节点自带 server_check_url 可覆盖本项。
+# 未证实按策略组指定探针的语法, 不伪造 YouTube 专属 Google 探针参数。
+server_check_url=https://cp.cloudflare.com/generate_204
+server_check_timeout=5000
 
 profile_img_url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/author/fmz200-01.png
 
@@ -93,20 +99,22 @@ resource_parser_url=https://raw.githubusercontent.com/KOP-XIAO/QuantumultX/maste
 
 excluded_routes=192.168.0.0/16, 172.16.0.0/12, 100.64.0.0/10, 10.0.0.0/8, 239.255.255.250/32
 
-fallback_udp_policy=direct
+# 官方样例: 仅接受支持 UDP 的节点 tag; 非节点值被忽略并默认 reject。
+# 显式写 reject 消除“direct 可保微信”的误导; 不强制境外 UDP 直连。
+fallback_udp_policy=reject
 
 # V26.00 [统一 QUIC 策略, CLAUDE.md §一.6] 排除 UDP 428-443 端口段:
 #   QX 无协议级规则 (不能像 SR/Egern 写 AND(域名+QUIC)REJECT), 阻断
-#   QUIC 的架构内唯一手段是 udp_whitelist (官方样例注释即此写法, 不在
-#   名单的 UDP 端口被丢弃并回 ICMP 端口不可达). 效果: UDP 443
-#   (QUIC/HTTP3) 全局阻断→客户端回落 TCP, 保证 MITM/rewrite 去广告
-#   链路不被 HTTP/3 绕过; DNS(53)、微信 VOIP/游戏/FaceTime (高位端口,
-#   均在 444-65535) 不受影响.
+#   这里沿用 udp_whitelist; 官方另有 udp_drop_list=QUIC, 但行为是静默丢弃,
+#   不等价于白名单外返回 ICMP 端口不可达, 本轮不替换。效果: UDP 443
+#   (QUIC/HTTP3) 受限; 是否回退 TCP 取决于 App。它与分流规则无关,
+#   直连 UDP 同样受影响, 不能保证微信/游戏/FaceTime 全部不受影响。
+#   本轮保留原范围, 精细化需真实 UDP 目标端口与失败日志后再做 A/B。
 udp_whitelist=53, 80-427, 444-65535
 
 
 # =====================================
-# [dns] - 继承 v5.1.3 (大幅收敛, 仅 AI 强制境外 DoH)
+# [dns] - 保留现有上游及国内服务映射, 本轮不改变 DNS 行为
 # =====================================
 [dns]
 no-ipv6
@@ -116,23 +124,13 @@ prefer-doh3
 doh-server=https://dns.alidns.com/dns-query, https://doh.pub/dns-query
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# V26.00 [勘误] 删除 v5.1.3~v5.1.5 累积的 18 行 per-domain DoH
-#   (doh-server=/域名/URL 形态: AI 9 行 + LinkedIn/Quora/Tumblr/Reddit 9 行)
-#
-# 原因 (经 QX 官方全语法样例 KOP-XIAO/QuantumultX_Profiles.conf 与
-#   DivineEngine QX DNS 教程双重核实): QX 的 per-domain DNS 仅支持
-#   明文形态 server=/域名/IP; doh-server 只有全局形态, 不存在
-#   doh-server=/域名/URL 语法. 这 18 行为无效指令, "AI 强制境外 DoH
-#   防污染"与 v5.1.5 修 LinkedIn/Quora 的"方向A"自引入起从未生效.
-#
-# 为什么功能一直正常: 这些域名被 [filter_remote] 规则送入代理后由
-#   节点【远端解析】, 连通不依赖本地解析. 实际损失仅隐私面——
-#   国内 DoH (阿里/腾讯) 能看到你查询过这些域名 (仅域名, 非内容).
-#
-# 架构结论 (实事求是): QX 无 Fake-IP、无 per-domain DoH, 在 QX 内
-#   无法实现"境外域名加密境外解析". 替代写法 server=/域名/8.8.8.8
-#   是明文 UDP:53, 在国内必被污染, 比无效更糟, 不采用. 若在意
-#   "查询记录不落国内 DoH", 请用 Loon/Egern (架构支持) 承担该场景.
+# v5.2.0 更正旧说明: crossutility 官方 sample.conf 已列出
+#   doh-server=/*.example.com/https://... 及 per-domain DoQ 示例,
+#   并说明 placeholder IP / resolve-on-remote。不能再说 QX 没有这些能力。
+#   但“支持”不等于手机所处网络可达: 本轮不凭空强制境外 DNS。
+#   国内 DoH 仍可能获知用于规则判定/直连的查询; 不承诺零 DNS 泄露。
+#   对代理连接, 官方说明本地解析结果不用于连接目标, 由代理端解析。
+#   后续 DNS 变更需当前手机版本、节点域名和失败查询记录作依据。
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 国内高频服务: 强制系统 DNS (拿就近 CDN)
@@ -191,6 +189,9 @@ static=兜底策略, 自动选择, 稳定选择, 香港节点, 狮城节点, 日
 
 static=人工智能, 狮城节点, 日本节点, 美国节点, 台湾节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT3.png
 
+# Gemini 与通用 AI 分开, 不改变 ChatGPT/Claude 的默认地区。
+static=Gemini, 美国节点, 日本节点, 台湾节点, 狮城节点
+
 static=Spotify, 狮城节点, 日本节点, 香港节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
 
 static=电报消息, 狮城稳定, 日本稳定, 美国稳定, 狮城节点, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_01.png
@@ -205,7 +206,12 @@ static=苹果服务, direct, 自动选择, 香港节点, img-url=https://raw.git
 
 static=Netflix, 狮城节点, 香港节点, 日本节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
 static=Disney+, 香港节点, 日本节点, 美国节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Disney+.png
-static=YouTube, 谷歌服务, 狮城节点, 香港节点, 日本节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+static=YouTube, YT-自动选择, 谷歌服务, 狮城节点, 香港节点, 日本节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+
+# 原生纯节点选优, 不套用 Loon fallback 嵌套语法。活跃时 120s 检测,
+# 闲置不额外轮询; 仍用全局/节点探针, 无法识别“CF 通但 Google 不通”。
+# 300ms 容差减少小幅延迟波动切换; 不代表视频带宽或旧连接无缝迁移。
+url-latency-benchmark=YT-自动选择, server-tag-regex=^(?!.*(剩余|套餐|官网|流量|过期|更新|失联|网址|备用|测试|GB|MB)).*$, check-interval=120, tolerance=300, alive-checking=false
 
 # 长连接业务专用 (Instagram / Twitter / Threads) - 防风控漂移
 static=Instagram, 美国稳定, 日本稳定, 狮城稳定, 兜底策略, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Instagram.png
@@ -226,17 +232,18 @@ url-latency-benchmark=自动选择, server-tag-regex=^(?!.*(剩余|套餐|官网
 
 url-latency-benchmark=香港节点, server-tag-regex=港|HK|Hong|🇭🇰, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/HK.png
 url-latency-benchmark=台湾节点, server-tag-regex=台|TW|Taiwan|🇹🇼, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/tw.png
-url-latency-benchmark=美国节点, server-tag-regex=美|US|States|American|🇺🇸, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/US.png
+url-latency-benchmark=美国节点, server-tag-regex=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/US.png
 url-latency-benchmark=日本节点, server-tag-regex=日|JP|Japan|🇯🇵, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/JP.png
 url-latency-benchmark=韩国节点, server-tag-regex=韩|KR|Korea|🇰🇷, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/KR.png
 url-latency-benchmark=狮城节点, server-tag-regex=新加坡|狮|獅|SG|🇸🇬, check-interval=600, tolerance=200, alive-checking=true, img-url=https://raw.githubusercontent.com/Orz-3/mini/master/Color/SG.png
 
-# 稳定地区池 (IG/Twitter 长连接专用, interval=900 防漂移)
-url-latency-benchmark=美国稳定, server-tag-regex=美|US|States|American|🇺🇸, check-interval=900, tolerance=300, alive-checking=true
-url-latency-benchmark=日本稳定, server-tag-regex=日|JP|Japan|🇯🇵, check-interval=900, tolerance=300, alive-checking=true
-url-latency-benchmark=狮城稳定, server-tag-regex=新加坡|狮|獅|SG|🇸🇬, check-interval=900, tolerance=300, alive-checking=true
+# 原生 available: 使用候选首个可用节点, 活跃且结果不可用时触发检测。
+# 不为 available 写 url-latency 专用的间隔/容差参数; 仍可能因失败或重测切换。
+available=美国稳定, server-tag-regex=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+available=日本稳定, server-tag-regex=日|JP|Japan|🇯🇵
+available=狮城稳定, server-tag-regex=新加坡|狮|獅|SG|🇸🇬
 
-# 稳定选择降级链 (static 类型, 可嵌套策略组)
+# 稳定选择是手动入口, 不是自动降级链 (static 类型, 可嵌套策略组)
 static=稳定选择, 自动选择, 狮城稳定, 日本稳定, 美国稳定, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
 
 
@@ -254,6 +261,11 @@ https://YOUR_AIRPORT/subscribe?token=__REDACTED__, tag=良心云, update-interva
 # 局域网保护
 host-suffix, local, direct
 
+# 微信依赖精确保护, 优先于远程 BlockHttpDNS/广告表; 不放开整个 qq.com。
+host, dns.weixin.qq.com, direct
+host, dns.weixin.qq.com.cn, direct
+host, apd-pcdnwxlogin.teg.tencent-cloud.net, direct
+
 # ---------- 高频重试源熔断 (QX 原生 reject) ----------
 host, umc.danuoyi.alicdn.com, reject
 host-suffix, mum.alibabachengdun.com, reject
@@ -268,6 +280,10 @@ host-suffix, xy.fbcdn.net, reject
 
 # ---------- 微博保护区 (最先匹配, 避免被广告规则集误命中) ----------
 # V26.00 [一致性] 补 weibo.com.cn / miaopai.com, 对齐 SR/Egern 保护区覆盖.
+# 精确广告物料例外必须先于微博宽泛直连; 不封整个 SDK API。
+host, fastimage.uve.weibo.com, reject
+host, adimg.uve.weibo.com, reject
+host, adimg.vue.weibo.com, reject
 host-suffix, weibo.cn, direct
 host-suffix, weibo.com, direct
 host-suffix, weibo.com.cn, direct
@@ -295,18 +311,31 @@ host-suffix, citics.com, direct
 host-suffix, quora.com, 社交阅读
 host-suffix, quoracdn.net, 社交阅读
 
+# Gemini 的专用接口先于 Google/AI 远程表。
+host, geller-pa.googleapis.com, Gemini
+host, robinfrontend-pa.googleapis.com, Gemini
+host, gemini.gstatic.com, Gemini
+host, alkalicore-pa.clients6.google.com, Gemini
+host, webchannel-alkalimakersuite-pa.clients6.google.com, Gemini
+
+# YouTube 核心分流的本地兜底, 不等于启用了去广告脚本。
+host, youtubei.googleapis.com, YouTube
+host, youtubei-att.googleapis.com, YouTube
+host-suffix, youtube.com, YouTube
+host-suffix, googlevideo.com, YouTube
+host-suffix, ytimg.com, YouTube
+
 # ---------- V26.00: 谷歌翻译"连不上网"修复 ----------
-# QUIC 陷阱本身已由 [general] udp_whitelist 全局挡 UDP443 解决(强制 TCP);
+# [general] udp_whitelist 已阻断 UDP443; 应用是否回退 TCP 仍需实测。
 # 此处再显式钉谷歌服务组, 先于远程 Google 列表, 防其加载失败漏到兜底.
-# 注: QX 无 per-domain 加密 DNS(架构限制), translate 解析走主 DoH,
-#     经代理由节点远端解析, 不泄露/不污染.
+# 注: 保持本轮 DNS 原值, 不把代理分流表述成绝对防泄露/防污染。
 host, translate-pa.googleapis.com, 谷歌服务
 host-suffix, translate.googleapis.com, 谷歌服务
 host-suffix, translate.google.com, 谷歌服务
 
 # ---------- v5.1.4 修复: 国内 IP 兜底 (微信 VOIP / 纯 IP UDP) ----------
-# 病灶修复: 补上 no-resolve, 避免对每个国内 IP 触发多余的 DNS 反查
-# (既降延迟又降基带唤醒能耗). 与 fallback_udp_policy=direct 双重保护.
+# 保留既有 GEOIP 规则; no-resolve 不是 DNS 反查开关。
+# 国内 IP 直连也不依赖无效的 UDP direct 回退。
 geoip, CN, direct, no-resolve
 
 # 兜底
@@ -320,7 +349,7 @@ final, 兜底策略
 # =====================================
 [filter_remote]
 # 广告与隐私 (3天)
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Advertising/Advertising.list, tag=广告拦截, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/advertising.png, update-interval=259200, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Advertising/Advertising.list, tag=广告拦截, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/advertising.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Privacy/Privacy.list, tag=隐私保护, img-url=https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/icon/color/privacy.png, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/BlockHttpDNS/BlockHttpDNS.list, tag=BlockHttpDNS, force-policy=reject, update-interval=259200, opt-parser=false, enabled=true
 
@@ -332,7 +361,7 @@ https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Quan
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/OpenAI/OpenAI.list, tag=OpenAI, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Claude/Claude.list, tag=Claude, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
 # 注: Gemini 仅 master 分支提供 (release 上 404), 故此条保留 master.
-https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Gemini/Gemini.list, tag=Gemini, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/QuantumultX/Gemini/Gemini.list, tag=Gemini, force-policy=Gemini, update-interval=604800, opt-parser=false, enabled=true
 https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/QuantumultX/Copilot/Copilot.list, tag=Copilot, force-policy=人工智能, update-interval=604800, opt-parser=false, enabled=true
 
 # 社交与海外流媒体 (7天)
@@ -364,11 +393,11 @@ https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Quan
 # =====================================
 # [rewrite_remote] - v5.1.4 能耗: 3天更新
 # =====================================
-# YouTube 去广告/小窗 (V26.00 功能审查注记): QX 不提供 ——
-#   Maasea 方案的核心是 binary-body-mode=1 的 protobuf 响应改写脚本,
-#   QX 改写语法无此参数、上游模块无 QX 适配版, 硬移植会静默损坏播放.
-#   YouTube 去广告+画中画需求请用 SR / Egern / Loon (三套链路完整).
-#   QX 保留: YouTube 分流 + udp_whitelist 强制 TCP (播放稳定性不受影响).
+# YouTube 去广告/小窗 (v5.2.0 能力勘误): QX 官方有 bodyBytes 二进制示例,
+#   Maasea 当前也含 QuanX 适配。但 request.init 的 response 嵌套返回与
+#   URL 重定向路径尚未完成 QX 验收, 上游仅保证 Surge 测试。
+#   本配置不启用未经验证的移植, 不能声称已提供 YouTube 去广告/PiP。
+#   本轮只修播放分流/选点, 不把 QX 有能力与本配置已实现混为一谈。
 [rewrite_remote]
 https://github.com/chavyleung/scripts/raw/master/box/rewrite/boxjs.rewrite.quanx.conf, tag=BoxJs, update-interval=259200, opt-parser=false, enabled=true
 https://github.com/sub-store-org/Sub-Store/raw/master/config/QX.snippet, tag=Sub-Store, update-interval=259200, opt-parser=false, enabled=true
