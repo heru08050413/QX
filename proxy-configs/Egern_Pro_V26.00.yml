@@ -1,7 +1,13 @@
 # =====================================================================
-# Egern Pro Master Configuration — V26.00  (TUN Mode + NextDNS)
+# Egern Pro Master Configuration — V26.00 (v6.5.1 / Egern 2.20.0+)
 # (四套配置统一版本号 V26.00; 历史沿革见下方 v6.x 修订日志)
-# Generated: 2026-05-27
+# Updated: 2026-09-19；基线 6fcf24d，仅修复 Egern，待真机验收。
+# v6.5.1：YouTube/微博/ScriptHub 去重；微信解析前置保护；修正规则遮蔽；
+# 美国池缩写加字母边界；Gemini 默认美国并补充专用接口；YouTube 专用 smart
+# 使用 HTTPS Google 探针与运行失败反馈，不承诺带宽或既有连接无感迁移。
+# 12306 不再 MITM/强制降级；移除主动公网 IP→ECS 查询，保留 CA 与节点凭据。
+# DNS 仍保留原可达性取舍：proxy_nameservers 强制国内解析，非全程隐私 DNS。
+# 以下 v6.5.0 及更早内容是历史记录，不代表本版已证明 DNS 隐私/广告/断流问题解决。
 # ---------------------------------------------------------------------
 # ┌─ v6.5.0 改动 (TUN 模式 + 境外用 NextDNS, 解决 DNS 隐私) ─────────┐
 # │ 背景: 此前 v6.2-6.4 为修"境外服务全挂", 把境外域名解析退到国内    │
@@ -239,11 +245,10 @@ dns:
     #   NextDNS会应用该profile的过滤/日志策略)。备用 Cloudflare/Google,
     #   防 NextDNS 偶发不可达。
     #
-    # 工作机制(诚实标注): 这些DoH查询本身走你的代理节点出去。
-    #   • 隐私: 查询经加密+经代理, 国内DNS商和运营商都看不到 ✓
-    #   • 依赖: DNS解析的稳定性现在【绑定代理节点稳定性】。节点抖动时,
-    #     DNS解析会跟着抖(这是TUN+境外DNS方案的固有代价, 非缺陷)。
-    #   • 若境外服务又出现解析失败, 优先排查节点是否可用, 而非DNS配置。
+    # v6.5.1 语义校正：同组上游并发竞速，不是 NextDNS 主用/其余按序备用。
+    # 不能保证每次都经过 NextDNS 过滤。默认 DNS 遵循 forward/分流；
+    # proxy DNS 则由下方 proxy_nameservers 强制覆盖，不能宣称所有查询都走代理。
+    # 本批保持上游选择不变；解析异常需同时检查 DNS 与节点，不能只归因节点。
     Foreign-DoH:
       - https://dns.nextdns.io/f3af17
       - https://1.1.1.1/dns-query
@@ -673,12 +678,12 @@ dns:
       - 45.90.28.0
       - 45.90.30.0
 
-  # EDNS Client Subnet 用(拿更精准 CDN IP)
-  public_ip_lookup_url: https://ifconfig.me/ip
+  # v6.5.1：不再主动获取公网 IP 注入 ECS；可能改变 CDN 选址，需真机测速。
+  # 这不保证上游 DNS 自身不使用 ECS，也不改变 proxy DNS 的直连路径。
 
-  # proxy_nameservers: 2.19.0 后 proxy DNS 共享默认 resolver 的 forward
-  #   规则, 此项仅作 fallback. 显式给国内 DoH, 测速阶段(代理未建立)即可
-  #   秒解析, 消除"回退境外 DoH 被 RST"的死锁. 同源阿里/腾讯, 信任面不变.
+  # 官方现行语义：设置后 proxy DNS 绕过 forward，全部使用该列表且直连。
+  # 保留国内 DoH 保证启动阶段可达；代价是相应查询对这些 DNS 服务商可见。
+  # 不直接删除：沿用 Foreign-DoH 的直连 proxy DNS 可能在当前网络不可达。
   proxy_nameservers:
     - https://223.5.5.5/dns-query
     - https://1.12.12.12/dns-query
@@ -793,7 +798,7 @@ policy_groups:
       policies:
         - 订阅
       flatten: true
-      filter: (?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+      filter: (?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
       interval: 600
       tolerance: 200
       timeout: 3
@@ -806,7 +811,7 @@ policy_groups:
       policies:
         - 订阅
       flatten: true
-      filter: (?i)🇺🇸|US|USA|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+      filter: (?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
       interval: 900
       tolerance: 300
       timeout: 3
@@ -857,23 +862,39 @@ policy_groups:
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT_01.png
       hidden: false
 
-  # Gemini (可手动选任意单节点 + 地区快捷; 香港可能被 Google 标记, 不置首)
+  # Gemini 默认美国；订阅/其他地区保留为手动选项，不代表每个出口均可用。
   - select:
       name: Gemini
       policies:
-        - 订阅
         - 美国
         - 台湾
         - 日本
         - 新加坡
         - 香港
         - AutoSelect
+        - 订阅
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png
+      hidden: false
+
+  # Egern 2.20.0+：专用智能池，独立 Google TLS 探针，结合抖动/失败反馈选点。
+  # flatten 展开这些地区池的节点，不复用通用 Cloudflare 测速结论。
+  # smart 使用客户端自适应周期；不套用 auto_test 的 interval/tolerance 参数。
+  - smart:
+      name: YT-Auto
+      policies:
+        - 香港
+        - 台湾
+        - 日本
+        - 新加坡
+        - 美国
+      flatten: true
+      latency_test_url: https://www.gstatic.com/generate_204
       hidden: false
 
   - select:
       name: YouTube
       policies:
+        - YT-Auto
         - AutoSelect
         - 香港
         - 台湾
@@ -1111,16 +1132,15 @@ rules:
   #
   # 本版: 用官方 `and` 逻辑规则同时要求 [protocol=udp] 且 [geoip=CN],
   #   仅当"国内 IP 的 UDP 包"才前置直连. 微信 VOIP 媒体流正是 udp+国内 IP,
-  #   保护不减; 而网页/App 的境外 HTTPS 都是 TCP, 不再被这条误伤.
+  #   但 HTTPS 也可能使用 QUIC/UDP，因此显式 QUIC 限制必须先于此规则。
   #
   # 语法依据(官方 egernapp.com/docs/configuration/rules): 逻辑规则顶层
   #   key 为 and/or/not, 其下 match: 接子规则列表, policy/name 与普通规则
   #   同级. 子条件用 protocol(支持 tcp/udp/http/https/quic/stun)与 geoip.
   #
-  # 关于 no_resolve: 官方文档明确 no_resolve 仅作用于 IP 类规则
-  #   (geoip/ip_cidr/ip_cidr6/asn). 此处不在子条件里写 no_resolve —
-  #   因为 protocol=udp 这个前置条件已保证只命中"已拿到 IP 的 UDP 连接"
-  #   (VOIP 不会对域名发 UDP), 无解析触发, 故无需也不应在嵌套里塞它.
+  # no_resolve 仅作用于 IP 条件；UDP 本身不能证明目标已预先解析。
+  # 本批仅移动规则、不改原 GeoIP 条件，避免同时改变 VOIP 的匹配范围。
+  # 是否给 GeoIP 子条件增加 no_resolve，留待实际 DNS/VOIP 命中记录验证。
   #
   # 已知副作用(诚实标注): 这条会让所有"目标=国内 IP 的 UDP"走直连,
   #   不止微信 VOIP, 还包括国内游戏 UDP 对战/国内 App 的 QUIC/国内 WebRTC.
@@ -1131,14 +1151,7 @@ rules:
   #   anycast, 按 ASN 锁定要么漏 VOIP(走了表外网段)要么误伤境外腾讯
   #   节点. udp+CN 组合比 ASN 边界更稳, 也不依赖 ASN 库精度.
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  - and:
-      match:
-        - protocol:
-            match: udp
-        - geoip:
-            match: CN
-      policy: DIRECT
-      name: 国内 UDP 前置直连 (微信 VOIP 保护)
+  # v6.5.1：国内 UDP 规则移至全部精确 QUIC 限制之后，仍在广告表之前。
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.6 YouTube 去广告 — 强制 googlevideo + youtubei 走 TCP (v6.3.0)
@@ -1180,15 +1193,7 @@ rules:
       policy: REJECT
       name: YouTube API 禁 QUIC (强制 TCP 保 MITM 解密)
 
-  # [H2] youtubei.googleapis.com 的 TCP 流量硬编码路由到 YouTube 组.
-  #   原先此域 TCP 路由仅靠远程 YouTube.list 收录(DOMAIN-SUFFIX,
-  #   youtubei.googleapis.com); 一旦规则集改版删除该条, 去广告会'静默
-  #   失效'(无报错, 广告悄悄回来). 硬编码后此链自包含, 不依赖外部结构.
-  #   必须放在 Gemini/Google rule_set 之前, 否则可能被 googleapis 泛匹配
-  #   抢先路由到错误策略组.
-  - domain:
-      match: youtubei.googleapis.com
-      policy: YouTube
+  # v6.5.1：YouTube API 分流移至精确 URL 拦截之后，避免遮蔽 ad_break。
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.65 代理侧 AI(Gemini/Google AI)禁 QUIC → 强制 TCP (V26.00, 放大长处)
@@ -1419,26 +1424,28 @@ rules:
   - and:
       match:
         - domain:
-            match: gateway.12306.cn
-        - protocol:
-            match: quic
-      policy: REJECT
-      name: 12306 禁 QUIC
-  - and:
-      match:
-        - domain:
             match: api.udache.com
         - protocol:
             match: quic
       policy: REJECT
       name: 滴滴 禁 QUIC
 
+  # 保留微信 VOIP/国内 UDP 直连，但不抢先放行上方需 MITM 的 QUIC。
+  - and:
+      match:
+        - protocol:
+            match: udp
+        - geoip:
+            match: CN
+      policy: DIRECT
+      name: 国内 UDP 前置直连 (微信 VOIP 保护)
+
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.7 YouTube 广告流 / 统计信标拦截 (v6.3.0, url_regex 精确匹配)
   #
-  # 对齐 Maasea 模块的 URL 拦截清单(经核验模块源码), 用官方 url_regex
-  #   规则(Rules 文档支持)REJECT 以下精确路径. 这些只读 URL、不解密
-  #   body, 能效极小:
+  # 历史本地 URL 拦截层；当前 Maasea 模块是三脚本结构，不自带此清单。
+  # 本批保留原拦截意图，仅修正 ad_break 边界和分流优先级。
+  # 这些规则需要 MITM 后的 URL 才能匹配，效果及误伤必须真机验证：
   #   • googlevideo.com/...&oad : 独立投放的广告视频流(前贴/中插主力)
   #   • youtubei/.../player/ad_break : 广告插入点请求
   #   • (www|s).youtube.com/api/stats/ads : 广告播放统计
@@ -1451,7 +1458,7 @@ rules:
       policy: REJECT
       name: YT 广告视频流
   - url_regex:
-      match: '^https?://youtubei\.googleapis\.com/youtubei/v\d+/player/ad_break'
+      match: '^https?://youtubei\.googleapis\.com/youtubei/v\d+/player/ad_break(?:[/?]|$)'
       policy: REJECT
       name: YT 广告插入点
   - url_regex:
@@ -1466,6 +1473,39 @@ rules:
       match: '^https?://s\.youtube\.com/api/stats/qoe\?.*adcontext'
       policy: REJECT
       name: YT 广告质量上报
+
+  # 精确 URL 处理之后、通用 Google/广告表之前；不拦普通 player/videoplayback。
+  - domain:
+      match: youtubei.googleapis.com
+      policy: YouTube
+  - domain:
+      match: init-stream.maasea.workers.dev
+      policy: YouTube
+  - domain_suffix:
+      match: googlevideo.com
+      policy: YouTube
+
+  # 微信解析/登录入口保护，早于 BlockHttpDNS；不放开整个 qq.com。
+  - domain:
+      match: dns.weixin.qq.com
+      policy: DIRECT
+  - domain:
+      match: dns.weixin.qq.com.cn
+      policy: DIRECT
+  - domain:
+      match: apd-pcdnwxlogin.teg.tencent-cloud.net
+      policy: DIRECT
+
+  # 微博仅精确拦图片广告；混合 SDK/API 保持可达并交给响应脚本处理。
+  - domain:
+      match: fastimage.uve.weibo.com
+      policy: REJECT
+  - domain:
+      match: adimg.uve.weibo.com
+      policy: REJECT
+  - domain:
+      match: adimg.vue.weibo.com
+      policy: REJECT
 
   # ── 1. 微博/新浪保护区 → 直连(必须先于广告规则集) ──
   - domain_suffix:
@@ -1553,22 +1593,7 @@ rules:
       match: cm.biliapi.net
       policy: REJECT
 
-  # 微博广告物料
-  - domain_suffix:
-      match: biz.weibo.com
-      policy: REJECT
-  - domain:
-      match: bootpreload.uve.weibo.com
-      policy: REJECT
-  - domain_suffix:
-      match: fastimage.uve.weibo.com
-      policy: REJECT
-  - domain_suffix:
-      match: adimg.vue.weibo.com
-      policy: REJECT
-  - domain_suffix:
-      match: sdkapp.uve.weibo.com
-      policy: REJECT
+  # 原被微博保护区遮蔽的拒绝项已清理；不能把 SDK 整域拒绝前移。
   - domain_suffix:
       match: weibomingzi.com
       policy: REJECT
@@ -1866,6 +1891,23 @@ rules:
   - domain:
       match: copilot.microsoft.com
       policy: AI
+
+  # Gemini 专用移动端 / AI Studio 入口；必须在通用 Google 规则之前。
+  - domain:
+      match: geller-pa.googleapis.com
+      policy: Gemini
+  - domain:
+      match: robinfrontend-pa.googleapis.com
+      policy: Gemini
+  - domain:
+      match: gemini.gstatic.com
+      policy: Gemini
+  - domain:
+      match: alkalicore-pa.clients6.google.com
+      policy: Gemini
+  - domain:
+      match: webchannel-alkalimakersuite-pa.clients6.google.com
+      policy: Gemini
 
   # Gemini(单独组)
   - domain_suffix:
@@ -2271,7 +2313,8 @@ rules:
 # ---------------------------------------------------------------------
 # ⚠️⚠️ 立刻修改 ca_passphrase ⚠️⚠️
 #   当前 'egern' 是默认口令. 请在 Egern App 内重新生成 egern.p12 并改成
-#   你自己的强口令. 否则任何拿到该 p12 的人都能解密你 MITM 的全部站点.
+#   你自己的强口令，并保护 CA 私钥；本配置不自动替换证书或口令。
+#   私钥泄漏可能被用于伪造受信任证书，不等于能回溯解密现代 TLS 会话。
 # =====================================================================
 mitm:
   ca_p12: egern.p12
@@ -2280,6 +2323,9 @@ mitm:
   hostnames:
     # ── 显式排除高敏感子域(登录/支付/账户; 降低攻击面) ──
     excludes:
+      # 12306 票务/身份业务不解密，防止模块再次注入。
+      - '12306.cn'
+      - '*.12306.cn'
       - passport.weibo.cn
       - login.sina.com.cn
       - security.weibo.cn
@@ -2392,14 +2438,13 @@ mitm:
 
     # ── 精确解密清单(仅列实际有脚本/改写需求的 host) ──
     includes:
-      # 微博(脚本去广告)
-      - '*.weibo.cn'
-      - '*.weibo.com'
-      - '*.weibo.com.cn'
-      - '*.weibocdn.com'
-      - '*.sina.cn'
-      - '*.sina.com.cn'
-      - '*.sinajs.cn'
+      # 微博主配置只列保留模块的接口；模块自身仍可能追加 *.uve.weibo.com。
+      - api.weibo.cn
+      - mapi.weibo.cn
+      - api.weibo.com
+      - mapi.weibo.com
+      - sdkapp.uve.weibo.com
+      - wbapp.uve.weibo.com
       # B 站(仅 API 域)
       - app.bilibili.com
       - api.bilibili.com
@@ -2437,7 +2482,6 @@ mitm:
       - lives.l.qq.com
       - live.l.qq.com
       - mobile.api.hunantv.com
-      - gateway.12306.cn
       - api.udache.com
 
 
@@ -2492,12 +2536,12 @@ modules:
   # QQ 音乐去广告
   - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Beta/QQ%E9%9F%B3%E4%B9%90%E5%8E%BB%E5%B9%BF%E5%91%8A.beta.sgmodule
     enabled: true
-  # YouTube (Music) Enhance — 去广告(用户实测有效)
+  # 关闭重复 YouTube 包，唯一主处理保留下方 Maasea 三钩子。
   - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/Youtube%20(Music)%20Enhance.official.sgmodule
-    enabled: true
-  # Script Hub
+    enabled: false
+  # 关闭重复 Script Hub，保留下方 Egern 专用入口。
   - url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/%E2%AD%90%EF%B8%8F%20Script%20Hub.official.sgmodule
-    enabled: true
+    enabled: false
   # 节假日信息
   - name: 节假日信息
     url: https://raw.githubusercontent.com/QingRex/LoonKissSurge/refs/heads/main/Surge/Official/节假日信息.official.sgmodule
@@ -2553,14 +2597,20 @@ modules:
   - url: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule
     enabled: true
 
-  # fmz200 微博去广告(REJECT 层, 与 zmqcherish 分层协同)
+  # 此模块也包含与 zmqcherish 重叠的响应脚本，不是单纯 REJECT 层；关闭重复处理。
   - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/weibo.module
-    enabled: true
+    enabled: false
 
   # Maasea YouTube.Enhance(App 视频前/中插广告; youtubei API 改写)
   #   注: 去广告稳定性由 rules 段 0.6 的"REJECT youtubei QUIC → 强制 TCP"
   #   规则保障, 确保该 API 被 MITM 解密. 不依赖全局 block_quic 设置.
   - url: https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule
+    compat_arguments:
+      屏蔽上传按钮: 'true'
+      屏蔽选段按钮: 'true'
+      屏蔽Shorts按钮: 'false'
+      字幕翻译语言: 'off'
+      启用调试模式: 'false'
     enabled: true
 
   # V26.00 [清理] 原 Maasea Adblock4limbo 模块引用已删除: 该 sgmodule
