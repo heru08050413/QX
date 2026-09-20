@@ -1,0 +1,11 @@
+name: Stash Pro 私有机场入口（本地编辑）
+desc: 仅在手机本地保存真实订阅。反复换机场只改 url；换机场时也更换 path 后缀并手动更新，以免旧缓存混用。不要将私有副本上传 GitHub。
+proxy-providers:
+  Airport:
+    url: https://example.invalid/REPLACE_WITH_YOUR_STASH_SUBSCRIPTION
+    path: ./providers/stash-pro-airport-private-v1.yaml
+    # 换机场时 v1 → v2 → v3；先确认新节点非空、测速成功，再切换 VPN。
+    # 格式必须为 Stash 支持的 Clash/Stash YAML（顶层 proxies），不是机场网页。
+    # 需要 UA 时取消下面两行注释，以机场官方要求为准，不用公共转换站。
+    # headers:
+    #   User-Agent: Stash

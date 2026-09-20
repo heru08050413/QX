@@ -1,0 +1,39 @@
+name: Stash Pro YouTube 增强（需真机验证）
+desc: 去广告/PiP/隐藏上传按钮；需启用 MITM 并信任自己的 CA。锁定 Maasea 上游版本，作者只保证 Surge。本覆写含第三方 Worker 转发，启用前务必阅读 Stash_Pro_README.md 风险说明；播放异常可单独关闭，保留主分流。
+# 适配 Stash 原生 binary-mode / require-body / Uint8Array / $done(response)。
+# 不可同时启用其他 YouTube 重写。未擅自生成证书或关闭服务器证书校验。
+http:
+  mitm:
+    - youtubei.googleapis.com
+    - '*.googlevideo.com'
+  script:
+    - name: yt-response
+      match: '^https:\/\/youtubei\.googleapis\.com\/(youtubei\/v1\/(browse|next|player|search|reel\/reel_watch_sequence|guide|account\/get_setting|get_watch|log_event|config))(\?(.*))?$'
+      type: response
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}'
+    - name: yt-request
+      match: '^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback.+&ack.*'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off"}'
+    - name: yt-request
+      match: '^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/log_event'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+script-providers:
+  yt-response:
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js
+    interval: 86400
+  yt-request:
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js
+    interval: 86400

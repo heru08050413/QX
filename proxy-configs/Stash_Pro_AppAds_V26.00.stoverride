@@ -1,0 +1,96 @@
+name: Stash Pro 信息流广告过滤
+desc: 微博/知乎/小红书的明确广告项与小红书开屏；需自己的 MITM CA。只挂载列出的接口，不删正常推荐、评论、付费正文或账户功能。未知格式原样放行。与旧 Stash_All / Script 覆写不要重复启用。
+rules:
+  # 覆写数组前插；仅目标 API 的 UDP 443 回落 TCP，不扩大到整个国内站点。
+  - AND,((DOMAIN,api.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,sub.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,we.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,edith.xiaohongshu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+http:
+  mitm:
+    - api.weibo.cn
+    - sub.weibo.cn
+    - we.weibo.cn
+    - api.zhihu.com
+    - edith.xiaohongshu.com
+  script:
+    - name: precise-app-ads
+      match: '^https:\/\/(api|sub|we)\.weibo\.cn\/\d+\/(groups\/timeline|statuses\/(unread|friends\/timeline|friends_timeline|video_timeline|container_timeline(?:_hot|_unread)?)|search\/container_timeline)(\?|$)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: precise-app-ads
+      match: '^https:\/\/api\.zhihu\.com\/(topstory\/(recommend|hot-lists\/total)|next-bff|next-data|next-render)(\?|$|/)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: precise-app-ads
+      match: '^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v[12]\/(homefeed|search\/notes|system_service\/splash_config)(\?|$)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+script-providers:
+  precise-app-ads:
+    # 小型内嵌脚本消除首次下载依赖；不读取订阅、Cookie、存储，不发外部请求。
+    # 字段依据仓库旧脚本中明确的广告标记；未复用删除正常推荐/正文的清空逻辑。
+    payload: |
+      (() => {
+        let result = {};
+        try {
+          if ($response.status !== 200 || typeof $response.body !== "string" || !$response.body) {
+            $done(result); return;
+          }
+          const url = $request.url;
+          const obj = JSON.parse($response.body);
+          if (!obj || typeof obj !== "object" || Array.isArray(obj)) { $done(result); return; }
+          let changed = false;
+          const yes = value => value === true || value === 1 || value === "1";
+          const filter = (parent, key, isAd) => {
+            if (!parent || !Array.isArray(parent[key])) return;
+            const original = parent[key];
+            const clean = original.filter(item => !isAd(item));
+            if (clean.length !== original.length) { parent[key] = clean; changed = true; }
+          };
+          const weiboAd = item => !!item && (
+            yes(item.mblogtype) || yes(item.ad_state) || item.promotion?.type === "ad"
+          );
+          const zhihuAd = item => !!item && (
+            ["feed_advert", "ad", "advert"].includes(item.type) ||
+            ["feed_advert", "ad", "advert"].includes(item.origin_data?.type) ||
+            ["ad", "advert"].includes(item.origin_data?.resource_type) ||
+            item.common_card?.footline?.elements?.some?.(e => e?.text?.panel_text === "广告") === true
+          );
+          const xhsAd = item => !!item && (
+            ["ad", "ads"].includes(item.model_type) || yes(item.is_ad)
+          );
+          if (/^https:\/\/(api|sub|we)\.weibo\.cn\//.test(url)) {
+            filter(obj, "statuses", weiboAd);
+            filter(obj, "items", item => item?.category === "feed" && weiboAd(item.data));
+            // 只清空名称明确的广告数组，不触碰趋势、提醒、评论、推荐和游标。
+            for (const key of ["advertises", "ad"]) {
+              if (Array.isArray(obj[key]) && obj[key].length) { obj[key] = []; changed = true; }
+            }
+          } else if (/^https:\/\/api\.zhihu\.com\//.test(url)) {
+            filter(obj, "data", zhihuAd);
+            filter(obj.data, "data", zhihuAd);
+          } else if (/^https:\/\/edith\.xiaohongshu\.com\//.test(url)) {
+            if (/\/system_service\/splash_config(?:\?|$)/.test(url)) {
+              if (Array.isArray(obj.data?.ads_groups) && obj.data.ads_groups.length) {
+                obj.data.ads_groups = []; changed = true;
+              }
+            } else {
+              filter(obj.data, "items", xhsAd);
+              filter(obj, "data", xhsAd);
+            }
+          }
+          if (changed) result = {body: JSON.stringify(obj)};
+        } catch (_) {
+          // HTTP 错误、HTML、未知 JSON 结构一律保留原响应，不输出用户内容。
+          result = {};
+        }
+        $done(result);
+      })();

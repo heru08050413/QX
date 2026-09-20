@@ -1,0 +1,266 @@
+# Stash Pro V26.00 / revision 1.0.0 / 2026-09-20
+# 新建独立配置；不覆盖 Stash_V26.00.yaml 或其他客户端。
+# 兼容基线：本次 App Store 可核实的 iOS Stash 3.4.1。
+# 使用前阅读 Stash_Pro_README.md：必须先填写并启用本地机场覆写、确认节点非空。
+# 广告：本文件为网络层；App / YouTube 深度过滤分别启用同名配套覆写。
+# 绝不在公共配置中填写真实订阅、节点密码或 MITM CA。
+
+mode: rule
+log-level: info
+ipv6: false
+
+dns:
+  # Stash 使用 Fake-IP 避免对代理目标做本地解析；不要加入全匹配 '*'
+  # 或照搬 Mihomo 的 respect-rules / proxy-server-nameserver 等版本不匹配字段。
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  follow-rule: false
+  nameserver-policy:
+    '+.lan': system
+    '+.local': system
+    '+.home.arpa': system
+    '+.miwifi.com': system
+    '+.tplogin.cn': system
+    '+.tplinkwifi.net': system
+    '+.routerlogin.net': system
+    '+.orbilogin.com': system
+    '+.melogin.cn': system
+    '+.falogin.cn': system
+    'router.asus.com': system
+    'router.synology.com': system
+  fake-ip-filter:
+    - '+.lan'
+    - '+.local'
+    - '+.home.arpa'
+    - '+.miwifi.com'
+    - '+.tplogin.cn'
+    - '+.tplinkwifi.net'
+    - '+.routerlogin.net'
+    - '+.orbilogin.com'
+    - '+.melogin.cn'
+    - '+.falogin.cn'
+    - router.asus.com
+    - router.synology.com
+    - '+.msftconnecttest.com'
+    - '+.msftncsi.com'
+    - '+.ntp.org'
+    - time.apple.com
+    - time.windows.com
+    - '+.cmpassport.com'
+    - id6.me
+    - open.e.189.cn
+    - mdn.open.wo.cn
+
+proxy-providers:
+  Airport:
+    # 在手机本地 Stash_Pro_Airport.example.stoverride 中替换 URL。
+    # .invalid 故意不可用，不含示范公共节点；绝不能把空节点组当作可用代理。
+    url: https://example.invalid/REPLACE_WITH_YOUR_STASH_SUBSCRIPTION
+    path: ./providers/stash-pro-airport.yaml
+    interval: 21600
+    # Stash 的测速属于节点，同一节点跨组共享结果，不伪造按组独立探针。
+    benchmark-url: https://www.gstatic.com/generate_204
+    benchmark-timeout: 8
+
+proxy-groups:
+  - name: 默认代理
+    type: select
+    # 首次导入先关闭境外出口；绑定并验收机场后手动选 稳定切换。
+    proxies: [REJECT, 稳定切换, 手动节点]
+  - name: 稳定切换
+    type: fallback
+    use: [Airport]
+    interval: 120
+    lazy: false
+    # 按订阅顺序选健康节点，优先节点恢复后可能切回；不保证既有连接迁移。
+    # 不用地区 filter，避免新机场命名不同导致空组被 Stash 当成 DIRECT。
+  - name: 手动节点
+    type: select
+    use: [Airport]
+    interval: 600
+    lazy: true
+  - name: YouTube
+    type: select
+    proxies: [REJECT, 稳定切换, 手动节点]
+  - name: AI
+    type: select
+    proxies: [默认代理, 手动节点]
+    use: [Airport]
+    # 首次使用应选经实测支持目标 AI 服务的节点；不通过名字推断地区可用性。
+    # 直接选单节点不再自动切换；需要自动切换时选 默认代理→稳定切换。
+  - name: Google
+    type: select
+    proxies: [AI, 默认代理, 手动节点]
+    # 默认与 AI 共出口，使 Google 登录、Gemini API 不随 YouTube 手动选点分离。
+  - name: 国际媒体
+    type: select
+    proxies: [默认代理, 手动节点]
+    use: [Airport]
+  - name: Telegram
+    type: select
+    proxies: [默认代理, 手动节点]
+  - name: Apple
+    type: select
+    proxies: [DIRECT, 默认代理]
+  - name: Microsoft
+    type: select
+    proxies: [DIRECT, 默认代理]
+  - name: 广告过滤
+    type: select
+    proxies: [REJECT, DIRECT]
+    # DIRECT 仅用于诊断网络层误杀，不会关闭独立的 HTTP 去广告覆写。
+  - name: 兜底流量
+    type: select
+    proxies: [默认代理, DIRECT]
+
+# 采用 indexed domain/ipcidr 清单，不叠加多个庞大、重叠的广告规则集。
+# release 是可更新清单；审核脚本会验证内容而不只检查 HTTP 200。
+rule-providers:
+  Ads:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt
+    path: ./rules/stash-pro-ads.yaml
+    interval: 86400
+  ChinaDomains:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt
+    path: ./rules/stash-pro-china.yaml
+    interval: 86400
+  PrivateDomains:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/private.txt
+    path: ./rules/stash-pro-private.yaml
+    interval: 86400
+  ChinaIPs:
+    behavior: ipcidr
+    format: yaml
+    url: https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt
+    path: ./rules/stash-pro-cn-ip.yaml
+    interval: 86400
+
+rules:
+  # 1. 局域网与解析器，不强制解析未命中的境外域名。
+  - DOMAIN,dns.alidns.com,DIRECT
+  - DOMAIN,doh.pub,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,home.arpa,DIRECT
+  - RULE-SET,PrivateDomains,DIRECT
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # 2. 国内登录/通信与易误伤的正文接口优先，保护的是具体功能域而非整个 CDN。
+  - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
+  - DOMAIN-SUFFIX,wx.qq.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com.cn,DIRECT
+  - DOMAIN,teg.tencent-cloud.net,DIRECT
+  - DOMAIN-SUFFIX,wechat.com,DIRECT
+  - DOMAIN-SUFFIX,weixinbridge.com,DIRECT
+  - DOMAIN-SUFFIX,tenpay.com,DIRECT
+  - DOMAIN-SUFFIX,alipay.com,DIRECT
+  - DOMAIN,api.weibo.cn,DIRECT
+  - DOMAIN,sub.weibo.cn,DIRECT
+  - DOMAIN,we.weibo.cn,DIRECT
+  - DOMAIN,api.zhihu.com,DIRECT
+  - DOMAIN,www.zhihu.com,DIRECT
+  - DOMAIN,zhuanlan.zhihu.com,DIRECT
+  - DOMAIN,edith.xiaohongshu.com,DIRECT
+
+  # 3. 网络层广告拦截。共享正文域的广告交给独立 HTTP 覆写，不能封杀整个域。
+  - RULE-SET,Ads,广告过滤
+
+  # 4. YouTube 的应用层 UDP 443 回落 TCP；不封禁全局 UDP/HY2/TUIC 隧道。
+  - AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - DOMAIN,init-stream.maasea.workers.dev,YouTube
+  - DOMAIN,youtubei.googleapis.com,YouTube
+  - DOMAIN-SUFFIX,youtube.com,YouTube
+  - DOMAIN-SUFFIX,youtu.be,YouTube
+  - DOMAIN-SUFFIX,youtube-nocookie.com,YouTube
+  - DOMAIN-SUFFIX,googlevideo.com,YouTube
+  - DOMAIN-SUFFIX,ytimg.com,YouTube
+  - DOMAIN-SUFFIX,ggpht.com,YouTube
+
+  # 5. AI 在 Google / Microsoft / 国内清单之前，避免 Gemini/Copilot 被宽规则吞掉。
+  - DOMAIN-SUFFIX,openai.com,AI
+  - DOMAIN-SUFFIX,chatgpt.com,AI
+  - DOMAIN-SUFFIX,oaistatic.com,AI
+  - DOMAIN-SUFFIX,oaiusercontent.com,AI
+  - DOMAIN-SUFFIX,auth0.com,AI
+  - DOMAIN-SUFFIX,claude.ai,AI
+  - DOMAIN-SUFFIX,anthropic.com,AI
+  - DOMAIN-SUFFIX,perplexity.ai,AI
+  - DOMAIN,gemini.google.com,AI
+  - DOMAIN,aistudio.google.com,AI
+  - DOMAIN,ai.google.dev,AI
+  - DOMAIN,generativelanguage.googleapis.com,AI
+  - DOMAIN,alkalimakersuite-pa.clients6.google.com,AI
+  - DOMAIN,makersuite.google.com,AI
+  - DOMAIN,proactivebackend-pa.googleapis.com,AI
+  - DOMAIN,copilot.microsoft.com,AI
+  - DOMAIN-SUFFIX,bing.com,AI
+  - DOMAIN-SUFFIX,google.com,Google
+  - DOMAIN-SUFFIX,googleapis.com,Google
+  - DOMAIN-SUFFIX,gstatic.com,Google
+  - DOMAIN-SUFFIX,googleusercontent.com,Google
+  - DOMAIN-SUFFIX,google.com.hk,Google
+  - DOMAIN-SUFFIX,google.co.jp,Google
+
+  # 6. 国际通信/媒体与代码托管。
+  - DOMAIN-SUFFIX,telegram.org,Telegram
+  - DOMAIN-SUFFIX,t.me,Telegram
+  - DOMAIN-SUFFIX,telegra.ph,Telegram
+  - IP-CIDR,149.154.160.0/20,Telegram,no-resolve
+  - DOMAIN-SUFFIX,netflix.com,国际媒体
+  - DOMAIN-SUFFIX,nflxvideo.net,国际媒体
+  - DOMAIN-SUFFIX,nflximg.net,国际媒体
+  - DOMAIN-SUFFIX,nflxso.net,国际媒体
+  - DOMAIN-SUFFIX,nflxext.com,国际媒体
+  - DOMAIN-SUFFIX,disneyplus.com,国际媒体
+  - DOMAIN-SUFFIX,dssott.com,国际媒体
+  - DOMAIN-SUFFIX,bamgrid.com,国际媒体
+  - DOMAIN-SUFFIX,spotify.com,国际媒体
+  - DOMAIN-SUFFIX,scdn.co,国际媒体
+  - DOMAIN-SUFFIX,tiktok.com,国际媒体
+  - DOMAIN-SUFFIX,tiktokv.com,国际媒体
+  - DOMAIN-SUFFIX,tiktokcdn.com,国际媒体
+  - DOMAIN-SUFFIX,github.com,默认代理
+  - DOMAIN-SUFFIX,githubusercontent.com,默认代理
+  - DOMAIN-SUFFIX,githubassets.com,默认代理
+  - DOMAIN-SUFFIX,apple.com,Apple
+  - DOMAIN-SUFFIX,icloud.com,Apple
+  - DOMAIN-SUFFIX,icloud-content.com,Apple
+  - DOMAIN-SUFFIX,microsoft.com,Microsoft
+  - DOMAIN-SUFFIX,live.com,Microsoft
+  - DOMAIN-SUFFIX,office.com,Microsoft
+  - DOMAIN-SUFFIX,office365.com,Microsoft
+  - DOMAIN-SUFFIX,windowsupdate.com,Microsoft
+
+  # 7. 国内业务、国内地址，最后未分类默认代理（可在策略面板手动切换）。
+  - DOMAIN-SUFFIX,weibo.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,sinaimg.cn,DIRECT
+  - DOMAIN-SUFFIX,zhihu.com,DIRECT
+  - DOMAIN-SUFFIX,zhimg.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,qpic.cn,DIRECT
+  - DOMAIN-SUFFIX,qlogo.cn,DIRECT
+  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,xhscdn.com,DIRECT
+  - RULE-SET,ChinaDomains,DIRECT
+  - RULE-SET,ChinaIPs,DIRECT,no-resolve
+  - GEOIP,CN,DIRECT,no-resolve
+  - MATCH,兜底流量
