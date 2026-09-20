@@ -1,6 +1,6 @@
 #############################################
 # 配置版本: V26.00 (四套配置统一版本号; B 派, 历史沿革见下方 v5.1.x 日志)
-# 当前修订: v5.2.0 / 2026-09-19 (Quantumult X 单客户端修复)
+# 当前修订: v5.2.1 / 2026-09-20 (回退第 87 行测速 URL，修复导入兼容性)
 # 微信依赖保护 / Gemini 独立组 / US 筛选 / YouTube 专用选优 / 稳定组 available。
 # 当前上游存在 QuanX 二进制适配, 但请求分支兼容性未验收, 不自动启用实验移植。
 # 下方为历史记录, “完全不影响/根治/无 Fake-IP”等旧结论以本轮审查说明为准。
@@ -82,9 +82,9 @@
 #############################################
 
 [general]
-# 全局仅升级 HTTPS 与 5000ms 总超时; 节点自带 server_check_url 可覆盖本项。
+# 测速恢复 HTTP，保留 5000ms 总超时；节点自带 server_check_url 可覆盖本项。
 # 未证实按策略组指定探针的语法, 不伪造 YouTube 专属 Google 探针参数。
-server_check_url=https://cp.cloudflare.com/generate_204
+server_check_url=http://cp.cloudflare.com/generate_204
 server_check_timeout=5000
 
 profile_img_url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/author/fmz200-01.png

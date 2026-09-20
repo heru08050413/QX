@@ -7,6 +7,10 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $baseline = '4cbd5a0dd4dcf2bb528263495bf72757c4e82e64'
 $base = (& git -C $repo show "${baseline}:proxy-configs/quantumult_B_V26.00") -join "`n"
 if ($LASTEXITCODE) { throw 'Immutable baseline unavailable' }
+$importBaseline = 'e8fa202efd94195ed0e095fc2ebf1564b33a2099'
+$beforeImportFix = (& git -C $repo show "${importBaseline}:proxy-configs/quantumult_B_V26.00") -join "`n"
+if ($LASTEXITCODE) { throw 'Import-fix baseline unavailable' }
+$expectedImportFix = $beforeImportFix.Replace('server_check_url=https://cp.cloudflare.com/generate_204','server_check_url=http://cp.cloudflare.com/generate_204')
 $source = Get-Content -LiteralPath $ConfigPath -Raw -Encoding utf8
 function Assert([bool]$Ok, [string]$Message) { if (!$Ok) { throw $Message } }
 function Active([string]$Text) {
@@ -34,7 +38,6 @@ $ytGroup = "url-latency-benchmark=YT-自动选择, server-tag-regex=$nodeFilter,
 $expected = [Collections.Generic.List[string]]::new()
 foreach ($original in (Active $base)) {
     $line = $original
-    if ($line -eq 'server_check_url=http://cp.cloudflare.com/generate_204') { $line='server_check_url=https://cp.cloudflare.com/generate_204' }
     if ($line -eq 'server_check_timeout=3000') { $line='server_check_timeout=5000' }
     if ($line -eq 'fallback_udp_policy=direct') { $line='fallback_udp_policy=reject' }
     if ($line -match '^(url-latency-benchmark)=(美国节点|美国稳定),') { $line=$line.Replace('美|US|States|American|🇺🇸',$us) }
@@ -58,7 +61,10 @@ foreach ($original in (Active $base)) {
 }
 function Check([string]$Text, [bool]$Delta=$true) {
     $s=Sections $Text; $active=@(Active $Text)
-    if ($Delta) { Assert (($active -join "`n") -ceq ($expected -join "`n")) 'Unexpected active-line change against immutable baseline' }
+    if ($Delta) {
+        Assert (($active -join "`n") -ceq ($expected -join "`n")) 'Unexpected active-line change against immutable baseline'
+        Assert (($active -join "`n") -ceq ((Active $expectedImportFix) -join "`n")) 'Import fix must change only the global probe URL'
+    }
     $groups=@{}
     foreach ($line in $s['policy']) {
         $pair=$line -split '=',2; $parts=@($pair[1] -split ',\s*')
@@ -107,7 +113,7 @@ function Check([string]$Text, [bool]$Delta=$true) {
         if ($line.Contains('/Gemini/')) { Assert ($m.Groups[1].Value -eq 'Gemini') 'Remote Gemini still uses general AI' }
         if ($line.Contains('/Advertising/')) { Assert ($m.Groups[1].Value -eq 'reject') 'Advertising policy not forced' }
     }
-    foreach ($value in @('server_check_url=https://cp.cloudflare.com/generate_204','server_check_timeout=5000','fallback_udp_policy=reject','udp_whitelist=53, 80-427, 444-65535')) {
+    foreach ($value in @('server_check_url=http://cp.cloudflare.com/generate_204','server_check_timeout=5000','fallback_udp_policy=reject','udp_whitelist=53, 80-427, 444-65535')) {
         Assert ($value -in $s['general']) "Invalid general field: $value"
     }
     Assert ('skip_validating_cert = false' -in $s['mitm']) 'TLS validation weakened'
@@ -117,7 +123,9 @@ function Check([string]$Text, [bool]$Delta=$true) {
 }
 Check $source
 $mutations=[ordered]@{
-    probe=@('server_check_url=https:','server_check_url=http:')
+    # Regression: user reported native import error at line 87 with this HTTPS probe.
+    # This is a compatibility guard for this profile, not a claim about all QX versions.
+    probe=@('server_check_url=http:','server_check_url=https:')
     timeout=@('server_check_timeout=5000','server_check_timeout=9000')
     udp=@('fallback_udp_policy=reject','fallback_udp_policy=direct')
     us=@($us,'(?i)US|美')
@@ -171,7 +179,8 @@ if ($Online) {
         $js[$url] | & node --check --input-type=commonjs -
         Assert ($LASTEXITCODE -eq 0) "JS syntax failed: $url"
     }
-    $probe=Invoke-WebRequest -Uri 'https://cp.cloudflare.com/generate_204' -Method Head -TimeoutSec 20
-    Assert ($probe.StatusCode -eq 204) 'HTTPS HEAD probe not 204'
-    Write-Output "PASS: $($urls.Count) enabled direct resources 200/nonempty/non-HTML; $($dependencies.Count) rewrite JS dependencies 200; $($js.Count) JS syntax checks; HTTPS HEAD probe 204. No downloaded JS executed."
+    $probeUrl = ($s['general'] | Where-Object { $_.StartsWith('server_check_url=') }).Substring('server_check_url='.Length)
+    $probe=Invoke-WebRequest -Uri $probeUrl -Method Head -MaximumRedirection 0 -TimeoutSec 20
+    Assert ($probe.StatusCode -eq 204) 'Configured HTTP HEAD probe not directly 204'
+    Write-Output "PASS: $($urls.Count) enabled direct resources 200/nonempty/non-HTML; $($dependencies.Count) rewrite JS dependencies 200; $($js.Count) JS syntax checks; configured HTTP HEAD probe directly 204. No downloaded JS executed."
 }
