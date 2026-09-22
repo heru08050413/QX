@@ -93,7 +93,7 @@ Assert-True (!$active.Contains('AND,((DOMAIN-SUFFIX,weibo.com),(PROTOCOL,UDP)),R
 
 # Reconstruct the authorized v2.6.16 active-line delta from the immutable
 # v2.6.15 revision. Any other changed, removed, or reordered directive fails,
-# after applying the explicitly enumerated v2.6.17 / v2.6.18 deltas below.
+# after applying the explicitly enumerated v2.6.17 / v2.6.18 / v2.6.19 deltas below.
 $repoPath = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $baseline = @(git -C $repoPath show 'c4ac682:proxy-configs/shadowrocket_V26.00.lsr')
 Assert-True ($LASTEXITCODE -eq 0) 'Cannot read pre-fix git baseline'
@@ -192,7 +192,55 @@ foreach ($line in $currentExpected) {
     $v2618Expected.Add($updated)
 }
 Assert-True ($intervalEdits -eq 6) 'Expected exactly six YouTube interval edits'
-Assert-True (($v2618Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+$v2618 = @(Get-ActiveLines @(git -C $repoPath show 'bedea9364b324e240a36ceb6344388b022650967:proxy-configs/shadowrocket_V26.00.lsr'))
+Assert-True ($LASTEXITCODE -eq 0) 'Cannot read v2.6.18 baseline'
+Assert-True (($v2618Expected -join "`n") -ceq ($v2618 -join "`n")) 'Historical v2.6.18 invariant failed'
+
+# v2.6.19: allowlisted selector defaults, Google/Gemini linkage and Meta coverage.
+$replacements19 = @{
+    'Proxy = select, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, DIRECT' = 'Proxy = select, 美国节点, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, DIRECT'
+    'AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect' = 'AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect'
+    'Gemini = select, 美国节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect' = 'Gemini = select, 谷歌服务'
+    'Netflix = select, 香港节点, 日本节点, 新加坡节点, 美国节点' = 'Netflix = select, 美国节点, 香港节点, 日本节点, 新加坡节点'
+    'TikTok = select, 日本节点, 台湾节点, 新加坡节点, 美国节点' = 'TikTok = select, 美国节点, 日本节点, 台湾节点, 新加坡节点'
+    'Telegram = select, 新加坡节点, 香港节点, 日本节点, 美国节点, AutoSelect' = 'Telegram = select, 美国节点, 新加坡节点, 香港节点, 日本节点, AutoSelect'
+    '苹果服务 = select, DIRECT, 美国节点, 香港节点' = '苹果服务 = select, 美国节点, DIRECT, 香港节点'
+    '谷歌服务 = select, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点' = '谷歌服务 = select, 美国节点, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点'
+    '微软服务 = select, DIRECT, 美国节点, 香港节点' = '微软服务 = select, 美国节点, DIRECT, 香港节点'
+    'YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5' = 'YT-Auto = fallback, YT-美国节点, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5'
+    'DOMAIN-SUFFIX,facebook.com,Proxy' = 'DOMAIN-SUFFIX,facebook.com,Meta'
+    'DOMAIN-SUFFIX,fbcdn.net,Proxy' = 'DOMAIN-SUFFIX,fbcdn.net,Meta'
+    'DOMAIN-SUFFIX,fb.com,Proxy' = 'DOMAIN-SUFFIX,fb.com,Meta'
+    'DOMAIN-SUFFIX,whatsapp.com,Proxy' = 'DOMAIN-SUFFIX,whatsapp.com,Meta'
+    'DOMAIN-SUFFIX,whatsapp.net,Proxy' = 'DOMAIN-SUFFIX,whatsapp.net,Meta'
+}
+$metaRules = @('DOMAIN-SUFFIX,muse.ai,Meta', 'DOMAIN-SUFFIX,meta.ai,Meta', 'DOMAIN-SUFFIX,meta.com,Meta')
+$googleCoreRules = @('DOMAIN-SUFFIX,google.com,谷歌服务', 'DOMAIN-SUFFIX,googleapis.com,谷歌服务',
+    'DOMAIN-SUFFIX,gstatic.com,谷歌服务', 'DOMAIN-SUFFIX,googleusercontent.com,谷歌服务')
+$googleAuthRules = @('DOMAIN,accounts.google.com,谷歌服务', 'DOMAIN,oauth2.googleapis.com,谷歌服务',
+    'DOMAIN,securetoken.googleapis.com,谷歌服务', 'DOMAIN,identitytoolkit.googleapis.com,谷歌服务')
+$v2619Expected = [Collections.Generic.List[string]]::new()
+$replaced19 = 0
+foreach ($line in $v2618Expected) {
+    if ($line -ceq 'DOMAIN-SUFFIX,instagram.com,Instagram') {
+        foreach ($rule in $metaRules) { $v2619Expected.Add($rule) }
+    }
+    if ($line -ceq $googleRules[0]) {
+        foreach ($rule in $googleCoreRules) { $v2619Expected.Add($rule) }
+    }
+    if ($replacements19.ContainsKey($line)) {
+        $v2619Expected.Add($replacements19[$line])
+        $replaced19++
+    } else { $v2619Expected.Add($line) }
+    if ($line -ceq 'DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini') {
+        foreach ($rule in $googleAuthRules) { $v2619Expected.Add($rule) }
+    }
+    if ($line.StartsWith('Gemini = ')) {
+        $v2619Expected.Add('Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect')
+    }
+}
+Assert-True ($replaced19 -eq 15 -and $v2619Expected.Count -eq $v2618Expected.Count + 12) 'Unexpected v2.6.19 delta size'
+Assert-True (($v2619Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
 
 # Check relevant rule ordering independently of the full delta comparison.
 $ruleStart = [array]::IndexOf($active, '[Rule]')
@@ -245,4 +293,75 @@ foreach ($hook in $ytScripts) {
     Assert-True ($hook.Contains('/65075cdb388fc5e3094afd7e7314c67b243f3525/')) 'YouTube script pin changed'
     Assert-True ($hook.Contains('engine=webview') -and $hook.Contains('binary-body-mode=1')) 'YouTube binary runtime changed'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy Gemini/AI/compatibility checks; 10 Weibo routing fixtures; WeChat DNS order; 6 HTTPS YouTube probes at 30s/5s; 3 stable fallback pools; unchanged YouTube hooks; complete v2.6.16 + v2.6.17 + v2.6.18 scope invariants."
+# Parse all policy references and reject missing members/cycles, including manual alternatives.
+$groupStart = [array]::IndexOf($active, '[Proxy Group]')
+$groups = @{}
+foreach ($line in $active[($groupStart + 1)..($ruleStart - 1)]) {
+    $pair = $line -split ' = ', 2
+    Assert-True ($pair.Count -eq 2 -and !$groups.ContainsKey($pair[0])) "Invalid/duplicate policy: $line"
+    $parts = @($pair[1] -split ', ')
+    $groups[$pair[0]] = @{
+        Kind = $parts[0]
+        Members = @($parts | Select-Object -Skip 1 | Where-Object { $_ -notmatch '=' })
+    }
+}
+function Test-PolicyGraph([string]$Name, [string[]]$Chain = @()) {
+    if (@('DIRECT','REJECT','REJECT-DROP') -ccontains $Name) { return }
+    Assert-True ($groups.ContainsKey($Name)) "Unknown policy reference: $Name"
+    Assert-True ($Chain -cnotcontains $Name) "Policy cycle: $($Chain -join ' -> ') -> $Name"
+    foreach ($member in $groups[$Name].Members) { Test-PolicyGraph $member (@($Chain) + $Name) }
+}
+foreach ($name in $groups.Keys) { Test-PolicyGraph $name }
+function Resolve-DefaultPool([string]$Name, [hashtable]$Selections = @{}) {
+    if (!$groups.ContainsKey($Name)) { return $Name }
+    $group = $groups[$Name]
+    if ($group.Kind -ceq 'url-test' -or $group.Members.Count -eq 0) { return $Name }
+    $choice = if ($Selections.ContainsKey($Name)) { $Selections[$Name] } else { $group.Members[0] }
+    Assert-True ($group.Members -ccontains $choice) "Invalid selection for ${Name}: $choice"
+    Resolve-DefaultPool $choice $Selections
+}
+$expectedDefaults = @{
+    Proxy='美国节点'; AI='美国节点'; Gemini='美国节点'; Meta='美国节点';
+    YouTube='YT-美国节点'; Netflix='美国节点'; Spotify='新加坡节点'; TikTok='美国节点';
+    Telegram='美国节点'; Instagram='美国稳定'; Twitter='美国稳定';
+    苹果服务='美国节点'; 谷歌服务='美国节点'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
+}
+foreach ($entry in $expectedDefaults.GetEnumerator()) {
+    Assert-True ((Resolve-DefaultPool $entry.Key) -ceq $entry.Value) "Wrong initial region/pool: $($entry.Key)"
+}
+Assert-True (($groups.Gemini.Members -join ',') -ceq '谷歌服务') 'Gemini must follow the single Google selector'
+foreach ($choice in $groups['谷歌服务'].Members) {
+    $selection = @{ '谷歌服务' = $choice }
+    Assert-True ((Resolve-DefaultPool 'Gemini' $selection) -ceq (Resolve-DefaultPool '谷歌服务' $selection)) "Google/Gemini drift when selecting $choice"
+}
+$routingFixtures = @{
+    'gemini.google.com'='Gemini'; 'geller-pa.googleapis.com'='Gemini'; 'gemini.gstatic.com'='Gemini';
+    'accounts.google.com'='谷歌服务'; 'oauth2.googleapis.com'='谷歌服务';
+    'securetoken.googleapis.com'='谷歌服务'; 'identitytoolkit.googleapis.com'='谷歌服务';
+    'lh3.googleusercontent.com'='谷歌服务'; 'www.gstatic.com'='谷歌服务';
+    'muse.ai'='Meta'; 'auth.muse.ai'='Meta'; 'hatch-api.meta.ai'='Meta'; 'api.meta.ai'='Meta';
+    'ar.graph.meta.com'='Meta'; 'auth.meta.com'='Meta'; 'graph.facebook.com'='Meta';
+    'scontent.example.fbcdn.net'='Meta'; 'api.whatsapp.com'='Meta';
+    'i.instagram.com'='Instagram'; 'rr1.example.googlevideo.com'='YouTube';
+    'youtubei.googleapis.com'='YouTube'; 'init-stream.maasea.workers.dev'='YouTube';
+    'sample.xz.fbcdn.net'='REJECT-DROP'; 'sample.xy.fbcdn.net'='REJECT-DROP';
+    'qq.com'='DIRECT'; 'api.zhihu.com'='DIRECT'; 'p6.douyinpic.com'='DIRECT';
+    'gateway.icloud.com.cn'='DIRECT'; 'apps.apple.com'='DIRECT'
+}
+foreach ($fixture in $routingFixtures.GetEnumerator()) {
+    $match = First-LocalDomainRule $fixture.Key
+    Assert-True ($match -and ($match -split ',')[-1] -ceq $fixture.Value) "Wrong local route for $($fixture.Key): $match"
+}
+# These local-only fixtures do NOT evaluate upstream ad/IP lists or iPhone policy state.
+foreach ($domain in @('meta.ai.evil.example', 'notmeta.ai', 'muse.ai.evil.example', 'notmuse.ai')) {
+    Assert-True ((First-LocalDomainRule $domain) -notmatch ',Meta$') "Meta suffix overmatch: $domain"
+}
+foreach ($rule in @($metaRules) + @($googleCoreRules) + @($googleAuthRules)) {
+    Assert-True ([array]::IndexOf($active, $rule) -gt $firstAd) 'Core routing unexpectedly bypasses ad filtering'
+}
+$youtubeRemote = @($active | Where-Object { $_ -match '^RULE-SET,.*/YouTube/YouTube\.list,YouTube$' })
+Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
+foreach ($rule in $googleAuthRules) {
+    Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
+}
+Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.19 scope invariants; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."

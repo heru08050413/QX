@@ -2,8 +2,20 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-09-22 (v2.6.18 YouTube 故障探测提频；尚待真机验收)
-# Predecessor: v2.6.17 (e6f119a 中的本文件；回滚请仅撤销本批变更)
+# Updated: 2026-09-23 (v2.6.19 Google/Gemini 对齐、Meta 补漏、默认美国；待真机验收)
+# Predecessor: v2.6.18 (bedea93；回滚请仅撤销本批变更)
+#
+# v2.6.19 修订日志
+#   - Gemini 仅跟随谷歌服务，登录/通用 API 与 Gemini 共用同一选择入口；
+#     谷歌服务默认美国节点，手动改地区请在谷歌服务内操作。
+#   - Google 四个核心根域增加本地兜底，放在 Gemini/YouTube 专用规则之后。
+#     共享登录/令牌接口另以前置精确规则对齐，避免后续远程表的 UA/IP 规则抢先。
+#   - 新增 Meta 策略：muse.ai/meta.ai/meta.com 及现有 Facebook/CDN/WhatsApp
+#     共用默认美国入口；保留前置广告拦截，不增加 MITM 或修改 DNS。
+#   - 代理业务默认美国；Spotify 保留新加坡；YT-Auto 美国优先且保留跨区备用。
+#   - 国内业务、B站、Apple 国内 CDN、FINAL 直连不变；YouTube 30s/5s/300ms
+#     与去广告/PiP/隐藏上传不变。地区池按名称匹配，不证明节点真实出口地理位置。
+#   - 手机可能保留旧手动选项：更新后核对策略页；文件不能强制重置客户端状态。
 #
 # v2.6.18 修订日志
 #   - 仅调整六个 YT-* 组：地区池 interval 120→30s，外层 fallback 60→30s。
@@ -1019,21 +1031,24 @@ update-interval = 86400
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # ---------- 主选择器 ----------
-Proxy = select, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, DIRECT
+Proxy = select, 美国节点, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, DIRECT
 
 # ---------- AI 服务 ----------
-AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect
-Gemini = select, 美国节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
+AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect
+# Gemini 使用单一跟随入口，避免两个独立选择器在手动改点后再次分离。
+Gemini = select, 谷歌服务
+# Muse/Meta 的 API、账号和已有 Facebook CDN 共用此选择器。
+Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 
 # ---------- 流媒体 ----------
 # v2.6.12: 默认走 YT-Auto 两级高可用; 其余 YT 地区池保留作手动灾备.
 YouTube = select, YT-Auto, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, AutoSelect
-Netflix = select, 香港节点, 日本节点, 新加坡节点, 美国节点
+Netflix = select, 美国节点, 香港节点, 日本节点, 新加坡节点
 Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
-TikTok = select, 日本节点, 台湾节点, 新加坡节点, 美国节点
+TikTok = select, 美国节点, 日本节点, 台湾节点, 新加坡节点
 
 # ---------- 通讯 ----------
-Telegram = select, 新加坡节点, 香港节点, 日本节点, 美国节点, AutoSelect
+Telegram = select, 美国节点, 新加坡节点, 香港节点, 日本节点, AutoSelect
 
 # ---------- v2.6.2 新增: Instagram 专用 (防节点漂移) ----------
 # 日志 2 证据: AutoSelect 在 11 分钟内把 IG 切换 4 个不同节点,
@@ -1045,13 +1060,12 @@ Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 
 # ---------- 大厂 ----------
-苹果服务 = select, DIRECT, 美国节点, 香港节点
-# V26.00-fix2: 默认恢复 AutoSelect(选最快). 谷歌服务承载 accounts/
-#   googleapis 等【轻流量登录/接口】—— 它们要的是"选点快而稳", 不需要
-#   为大流量视频设计的激进自愈; 让它默认走 YT-Auto 会把 AI 登录/接口一起
-#   钉到自愈组、拖慢. YT-Auto 降为备选(Google 侧真封 IP 时用户可手切).
-谷歌服务 = select, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点
-微软服务 = select, DIRECT, 美国节点, 香港节点
+苹果服务 = select, 美国节点, DIRECT, 香港节点
+# v2.6.19: 覆盖旧 fix2 默认 AutoSelect 的偏好；Google 与 Gemini 统一由此选点。
+#   默认美国节点，不默认进入 YouTube 的 30s 两级池；其他地区保留手动选择。
+#   共享 Google 登录可能也被其他 App 使用；换点后旧连接需自行重建。
+谷歌服务 = select, 美国节点, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点
+微软服务 = select, 美国节点, DIRECT, 香港节点
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1101,7 +1115,7 @@ YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=3
 YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5
+YT-Auto = fallback, YT-美国节点, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
@@ -1578,7 +1592,7 @@ DOMAIN,files.oaiusercontent.com,AI
 DOMAIN,android.chat.openai.com,AI
 DOMAIN,ios.chat.openai.com,AI
 
-# Gemini 走专用组 (排除香港,香港地区会被 Gemini 限制)
+# Gemini 专用规则保留可见分类；策略组跟随谷歌服务，避免登录和业务独立选点。
 DOMAIN-SUFFIX,gemini.google.com,Gemini
 DOMAIN-SUFFIX,bard.google.com,Gemini
 DOMAIN-SUFFIX,aistudio.google.com,Gemini
@@ -1599,6 +1613,13 @@ DOMAIN,robinfrontend-pa.googleapis.com,Gemini
 DOMAIN,gemini.gstatic.com,Gemini
 DOMAIN,alkalicore-pa.clients6.google.com,Gemini
 DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini
+
+# v2.6.19: Google 共享登录/令牌先于后续远程表，仍位于广告拦截之后。
+# YouTube 远程表含 USER-AGENT/IP 规则，不能只在表后补 google.com 后缀兜底。
+DOMAIN,accounts.google.com,谷歌服务
+DOMAIN,oauth2.googleapis.com,谷歌服务
+DOMAIN,securetoken.googleapis.com,谷歌服务
+DOMAIN,identitytoolkit.googleapis.com,谷歌服务
 
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/OpenAI/OpenAI.list,AI
 
@@ -1656,7 +1677,13 @@ DOMAIN-SUFFIX,twitterstat.us,Twitter
 # v2.6.16:X/Twitter 视频 CDN 原落入 FINAL=DIRECT，导致控制面与视频面分流.
 DOMAIN-SUFFIX,pscp.tv,Twitter
 
-# Meta - Instagram 走 Instagram 组, 其他走 Proxy
+# Meta - Instagram 保留独立稳定组，Muse/账号/Facebook 走统一 Meta 组。
+# v2.6.19: 日志确认 meta.ai/meta.com API 原落入 FINAL 直连；
+# muse.ai 为 Meta 官方 Muse 入口。后缀匹配包含 auth 等子域，不匹配伪造相似域。
+# 本段在广告保护之后，不放行前面的 xz/xy.fbcdn.net 跟踪拒绝，也不增加解密。
+DOMAIN-SUFFIX,muse.ai,Meta
+DOMAIN-SUFFIX,meta.ai,Meta
+DOMAIN-SUFFIX,meta.com,Meta
 # v2.6.2 关键修复: IG 单独路由到 Instagram 策略组 (美国稳定池)
 # 日志证据: AutoSelect 在 11 分钟内把 IG 切了 4 个节点, 触发风控
 DOMAIN-SUFFIX,instagram.com,Instagram
@@ -1667,12 +1694,12 @@ DOMAIN,graph.instagram.com,Instagram
 # Threads 也是 Meta 长连接业务, 同样走稳定组
 DOMAIN-SUFFIX,threads.net,Instagram
 
-# Facebook / WhatsApp 走 Proxy 默认
-DOMAIN-SUFFIX,facebook.com,Proxy
-DOMAIN-SUFFIX,fbcdn.net,Proxy
-DOMAIN-SUFFIX,fb.com,Proxy
-DOMAIN-SUFFIX,whatsapp.com,Proxy
-DOMAIN-SUFFIX,whatsapp.net,Proxy
+# Facebook 登录/CDN 与 Muse 共用 Meta；WhatsApp 同属此选择器。
+DOMAIN-SUFFIX,facebook.com,Meta
+DOMAIN-SUFFIX,fbcdn.net,Meta
+DOMAIN-SUFFIX,fb.com,Meta
+DOMAIN-SUFFIX,whatsapp.com,Meta
+DOMAIN-SUFFIX,whatsapp.net,Meta
 
 # Reddit
 DOMAIN-SUFFIX,reddit.com,Proxy
@@ -1742,6 +1769,12 @@ DOMAIN-SUFFIX,arxiv.org,Proxy
 # ---------------------------------------------------------------------
 # 10. 大厂 (Google / Microsoft)
 # ---------------------------------------------------------------------
+# v2.6.19: 核心域本地兜底，远程 Google.list 不可用时也不落入 FINAL 直连。
+# Gemini/YouTube 专用规则在前；广告规则也在前，不能以统一路由绕过拒绝。
+DOMAIN-SUFFIX,google.com,谷歌服务
+DOMAIN-SUFFIX,googleapis.com,谷歌服务
+DOMAIN-SUFFIX,gstatic.com,谷歌服务
+DOMAIN-SUFFIX,googleusercontent.com,谷歌服务
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,谷歌服务
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
 

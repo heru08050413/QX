@@ -8,7 +8,7 @@ $cases = @(
     @{ Name='WeChat DNS protection removed'; From='DOMAIN,dns.weixin.qq.com,DIRECT'; To='# removed by mutation' },
     @{ Name='Weibo ad incorrectly allowed'; From='DOMAIN,adimg.uve.weibo.com,REJECT'; To='DOMAIN,adimg.uve.weibo.com,DIRECT' },
     @{ Name='Stable group ranks latency'; From='美国稳定 = fallback,'; To='美国稳定 = url-test,' },
-    @{ Name='AI default changed'; From='AI = select, 新加坡节点, 美国节点, 日本节点, AutoSelect'; To='AI = select, DIRECT' },
+    @{ Name='AI default changed'; From='AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect'; To='AI = select, DIRECT' },
     @{ Name='DNS changed'; From='dns-direct-fallback-proxy = false'; To='dns-direct-fallback-proxy = true' },
     @{ Name='MITM expanded'; From='hostname = -*.alipay.com'; To='hostname = *, -*.alipay.com' },
     @{ Name='YouTube pin lost'; From='/65075cdb388fc5e3094afd7e7314c67b243f3525/'; To='/master/' },
@@ -17,9 +17,21 @@ $cases = @(
     @{ Name='YouTube outer fallback still slow'; From='interval=30, timeout=5'; To='interval=60, timeout=5' },
     @{ Name='YouTube timeout too aggressive'; From='interval=30, tolerance=300, timeout=5'; To='interval=30, tolerance=300, timeout=1' },
     @{ Name='YouTube tolerance lost'; From='interval=30, tolerance=300, timeout=5'; To='interval=30, tolerance=0, timeout=5' },
-    @{ Name='YouTube preferred region changed'; From='YT-Auto = fallback, YT-香港节点, YT-台湾节点'; To='YT-Auto = fallback, YT-台湾节点, YT-香港节点' },
+    @{ Name='YouTube preferred region changed'; From='YT-Auto = fallback, YT-美国节点, YT-香港节点'; To='YT-Auto = fallback, YT-香港节点, YT-美国节点' },
     @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900'; To='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=30' },
-    @{ Name='YouTube region group type changed'; From='YT-香港节点 = url-test,'; To='YT-香港节点 = fallback,' }
+    @{ Name='YouTube region group type changed'; From='YT-香港节点 = url-test,'; To='YT-香港节点 = fallback,' },
+    @{ Name='Gemini selector split again'; From='Gemini = select, 谷歌服务'; To='Gemini = select, 美国节点' },
+    @{ Name='Google selector cycle'; From='谷歌服务 = select, 美国节点, AutoSelect'; To='谷歌服务 = select, Gemini, AutoSelect' },
+    @{ Name='Meta API missing'; From='DOMAIN-SUFFIX,meta.ai,Meta'; To='# removed by mutation' },
+    @{ Name='Muse auth subdomains missing'; From='DOMAIN-SUFFIX,muse.ai,Meta'; To='DOMAIN,muse.ai,Meta' },
+    @{ Name='Meta suffix too broad'; From='DOMAIN-SUFFIX,meta.ai,Meta'; To='DOMAIN-KEYWORD,meta,Meta' },
+    @{ Name='Meta CDN split again'; From='DOMAIN-SUFFIX,fbcdn.net,Meta'; To='DOMAIN-SUFFIX,fbcdn.net,Proxy' },
+    @{ Name='Google local fallback missing'; From='DOMAIN-SUFFIX,googleapis.com,谷歌服务'; To='# removed by mutation' },
+    @{ Name='Spotify region changed'; From='Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点'; To='Spotify = select, 美国节点, 新加坡节点, 香港节点, 日本节点' },
+    @{ Name='Default Proxy not US'; From='Proxy = select, 美国节点, AutoSelect'; To='Proxy = select, AutoSelect, 美国节点' },
+    @{ Name='Domestic fallback changed'; From='Final = select, DIRECT, Proxy'; To='Final = select, Proxy, DIRECT' },
+    @{ Name='Meta tracking unblocked'; From='DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP'; To='DOMAIN-SUFFIX,xz.fbcdn.net,Meta' },
+    @{ Name='Google auth early guard missing'; From='DOMAIN,accounts.google.com,谷歌服务'; To='# removed by mutation' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {
