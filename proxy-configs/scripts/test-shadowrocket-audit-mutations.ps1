@@ -12,7 +12,14 @@ $cases = @(
     @{ Name='DNS changed'; From='dns-direct-fallback-proxy = false'; To='dns-direct-fallback-proxy = true' },
     @{ Name='MITM expanded'; From='hostname = -*.alipay.com'; To='hostname = *, -*.alipay.com' },
     @{ Name='YouTube pin lost'; From='/65075cdb388fc5e3094afd7e7314c67b243f3525/'; To='/master/' },
-    @{ Name='Weibo SDK blocked'; From='DOMAIN-SUFFIX,weibomingzi.com,REJECT'; To="DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT`nDOMAIN-SUFFIX,weibomingzi.com,REJECT" }
+    @{ Name='Weibo SDK blocked'; From='DOMAIN-SUFFIX,weibomingzi.com,REJECT'; To="DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT`nDOMAIN-SUFFIX,weibomingzi.com,REJECT" },
+    @{ Name='YouTube regions still slow'; From='interval=30, tolerance=300, timeout=5'; To='interval=120, tolerance=300, timeout=5' },
+    @{ Name='YouTube outer fallback still slow'; From='interval=30, timeout=5'; To='interval=60, timeout=5' },
+    @{ Name='YouTube timeout too aggressive'; From='interval=30, tolerance=300, timeout=5'; To='interval=30, tolerance=300, timeout=1' },
+    @{ Name='YouTube tolerance lost'; From='interval=30, tolerance=300, timeout=5'; To='interval=30, tolerance=0, timeout=5' },
+    @{ Name='YouTube preferred region changed'; From='YT-Auto = fallback, YT-香港节点, YT-台湾节点'; To='YT-Auto = fallback, YT-台湾节点, YT-香港节点' },
+    @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900'; To='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=30' },
+    @{ Name='YouTube region group type changed'; From='YT-香港节点 = url-test,'; To='YT-香港节点 = fallback,' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {

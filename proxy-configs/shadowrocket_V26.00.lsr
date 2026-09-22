@@ -2,8 +2,19 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-09-19 (v2.6.17 单客户端审查修复；尚待真机验收)
-# Predecessor: v2.6.16 (8860378，可用于回滚)
+# Updated: 2026-09-22 (v2.6.18 YouTube 故障探测提频；尚待真机验收)
+# Predecessor: v2.6.17 (e6f119a 中的本文件；回滚请仅撤销本批变更)
+#
+# v2.6.18 修订日志
+#   - 仅调整六个 YT-* 组：地区池 interval 120→30s，外层 fallback 60→30s。
+#   - 保留 timeout=5、地区池 tolerance=300、HTTPS 探针、地区顺序和节点筛选。
+#   - 保留 YouTube 去广告/PiP/隐藏上传、MITM、QUIC、DNS及其他应用分流。
+#   - 9/22 多出口记录已确认来自手动测试，不作为自动切换抖动的证据。
+#   - 本批缩短配置层的周期探测间隔，不保证 30 秒内恢复或已有连接无损迁移；
+#     探针成功也不代表视频吞吐正常。检测请求增加，电量和误切换需真机观察。
+#   - 更新后核对 YouTube 选择 YT-Auto，客户端可能保留旧的手动选择。
+#     谷歌服务若手动选择 YT-Auto，也会共用新频率；通用 AutoSelect 未调整。
+#   - 节点仍自动来自机场订阅；没有可靠性实测依据，不硬编码或删减节点。
 #
 # v2.6.17 修订日志
 #   - 微信 dns.weixin.qq.com 精确前置保护，不放开整个 qq.com，也不放行 ad.weixin.
@@ -1075,20 +1086,22 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #   两个恶果: ① 选点从"全池选最快(url-test)"退化成"随缘第一个"(订阅
 #   排序与质量无关); ② 204 小包只测【可达】不测【吞吐】, 拥挤到卡视频的
 #   烂节点照样回 204、fallback 永不切走. 大流量业务被这盲区坑得最狠.
-# v2.6.12 高可用实现:
+# v2.6.18 高可用参数 (结构沿用 v2.6.12):
 #   - 五个 YT-* 地区池全部直接吸收真实订阅节点,Google 可达性探测;
-#   - interval=120 加快硬故障发现,tolerance=300 避免普通抖动换出口;
-#   - 外层 fallback interval=60,仅在当前地区不可用时跨地区降级;
+#   - 地区池 interval=30 / timeout=5 / tolerance=300,缩短周期探测间隔;
+#   - 外层 fallback interval=30 / timeout=5,保持地区优先级及跨地区回退;
+#     优先地区恢复后可能回切,不承诺只切一次或完全无感;
 #   - 不使用裸节点总池,避免订阅顺序决定首选且 204 小包掩盖拥堵.
+#   - 探测负担增加;30s 是检测配置,不是故障恢复时限.需受控故障真机验证.
 # 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
 
-YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=120, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=https://www.gstatic.com/generate_204, interval=60, timeout=5
+YT-Auto = fallback, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$

@@ -93,7 +93,7 @@ Assert-True (!$active.Contains('AND,((DOMAIN-SUFFIX,weibo.com),(PROTOCOL,UDP)),R
 
 # Reconstruct the authorized v2.6.16 active-line delta from the immutable
 # v2.6.15 revision. Any other changed, removed, or reordered directive fails,
-# after applying the explicitly enumerated v2.6.17 delta below.
+# after applying the explicitly enumerated v2.6.17 / v2.6.18 deltas below.
 $repoPath = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $baseline = @(git -C $repoPath show 'c4ac682:proxy-configs/shadowrocket_V26.00.lsr')
 Assert-True ($LASTEXITCODE -eq 0) 'Cannot read pre-fix git baseline'
@@ -168,7 +168,31 @@ foreach ($line in $expected) {
     }
     $currentExpected.Add($updated)
 }
-Assert-True (($currentExpected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+# Preserve the v2.6.17 invariant against its immutable pre-change revision.
+$v2617 = @(Get-ActiveLines @(git -C $repoPath show 'e6f119a37596653d03a0da9d895ce91a723bdb4f:proxy-configs/shadowrocket_V26.00.lsr'))
+Assert-True ($LASTEXITCODE -eq 0) 'Cannot read v2.6.17 baseline'
+Assert-True (($currentExpected -join "`n") -ceq ($v2617 -join "`n")) 'Historical v2.6.17 invariant failed'
+
+# v2.6.18: exactly six interval edits; no group membership or other directive changes.
+$ytRegionNames = @('YT-香港节点', 'YT-台湾节点', 'YT-日本节点', 'YT-新加坡节点', 'YT-美国节点')
+$v2618Expected = [Collections.Generic.List[string]]::new()
+$intervalEdits = 0
+foreach ($line in $currentExpected) {
+    $name = ($line -split ' = ', 2)[0]
+    $updated = $line
+    if ($ytRegionNames -ccontains $name) {
+        Assert-True ($line.Contains(', interval=120, tolerance=300, timeout=5,')) "Unexpected region baseline: $name"
+        $updated = $line.Replace(', interval=120,', ', interval=30,')
+        $intervalEdits++
+    } elseif ($name -ceq 'YT-Auto') {
+        Assert-True ($line.EndsWith(', interval=60, timeout=5')) 'Unexpected outer fallback baseline'
+        $updated = $line.Replace(', interval=60,', ', interval=30,')
+        $intervalEdits++
+    }
+    $v2618Expected.Add($updated)
+}
+Assert-True ($intervalEdits -eq 6) 'Expected exactly six YouTube interval edits'
+Assert-True (($v2618Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
 
 # Check relevant rule ordering independently of the full delta comparison.
 $ruleStart = [array]::IndexOf($active, '[Rule]')
@@ -203,6 +227,11 @@ Assert-True ($ytGroups.Count -eq 6) 'YouTube must retain five region pools plus 
 foreach ($group in $ytGroups) {
     Assert-True ($group.Contains('url=https://www.gstatic.com/generate_204')) 'YouTube probe is not HTTPS'
     Assert-True (!$group.Contains('DIRECT')) 'YouTube pool unexpectedly contains DIRECT'
+    Assert-True ($group -match ', interval=30(?:,|$)') 'YouTube detection interval must be 30 seconds'
+    Assert-True ($group -match ', timeout=5(?:,|$)') 'YouTube timeout must stay at 5 seconds'
+    if (!$group.StartsWith('YT-Auto = ')) {
+        Assert-True ($group.Contains('= url-test,') -and $group.Contains(', tolerance=300,')) 'YouTube region type/tolerance changed'
+    }
 }
 foreach ($name in @('美国稳定', '日本稳定', '新加坡稳定')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
@@ -216,4 +245,4 @@ foreach ($hook in $ytScripts) {
     Assert-True ($hook.Contains('/65075cdb388fc5e3094afd7e7314c67b243f3525/')) 'YouTube script pin changed'
     Assert-True ($hook.Contains('engine=webview') -and $hook.Contains('binary-body-mode=1')) 'YouTube binary runtime changed'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy Gemini/AI/compatibility checks; 10 Weibo routing fixtures; WeChat DNS order; 6 HTTPS YouTube probes; 3 stable fallback pools; unchanged YouTube hooks; complete v2.6.16 + v2.6.17 scope invariants."
+Write-Output "PASS: $regexChecks US-regex cases; legacy Gemini/AI/compatibility checks; 10 Weibo routing fixtures; WeChat DNS order; 6 HTTPS YouTube probes at 30s/5s; 3 stable fallback pools; unchanged YouTube hooks; complete v2.6.16 + v2.6.17 + v2.6.18 scope invariants."
