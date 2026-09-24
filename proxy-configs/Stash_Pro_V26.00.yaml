@@ -1,4 +1,4 @@
-# Stash Pro V26.00 / revision 1.0.1 / 2026-09-24
+# Stash Pro V26.00 / revision 1.0.2 / 2026-09-24
 # 新建独立配置；不覆盖 Stash_V26.00.yaml 或其他客户端。
 # 兼容基线：本次 App Store 可核实的 iOS Stash 3.4.1。
 # 使用前阅读 Stash_Pro_README.md：在本文件 Airport.url 填入机场订阅，确认节点非空。
@@ -69,8 +69,7 @@ proxy-providers:
 proxy-groups:
   - name: 默认代理
     type: select
-    # 首次导入先关闭境外出口；绑定并验收机场后手动选 稳定切换。
-    proxies: [REJECT, 稳定切换, 手动节点]
+    proxies: [美国节点, 稳定切换, 手动节点, REJECT]
   - name: 稳定切换
     type: fallback
     use: [Airport]
@@ -83,23 +82,37 @@ proxy-groups:
     use: [Airport]
     interval: 600
     lazy: true
+  - name: 美国节点
+    type: fallback
+    use: [Airport]
+    filter: '(?i)(^|[^a-z])(us|usa|united states)([^a-z]|$)|美国|美國|美西|美东|美東|美中|🇺🇸'
+    interval: 120
+    lazy: false
+  - name: 新加坡节点
+    type: fallback
+    use: [Airport]
+    filter: '(?i)(^|[^a-z])(sg|singapore)([^a-z]|$)|新加坡|狮城|獅城|🇸🇬'
+    interval: 120
+    lazy: false
   - name: YouTube
     type: select
-    proxies: [REJECT, 稳定切换, 手动节点]
+    proxies: [美国节点, 稳定切换, 手动节点, REJECT]
   - name: AI
     type: select
-    proxies: [默认代理, 手动节点]
+    proxies: [美国节点, 默认代理, 手动节点]
     use: [Airport]
-    # 首次使用应选经实测支持目标 AI 服务的节点；不通过名字推断地区可用性。
-    # 直接选单节点不再自动切换；需要自动切换时选 默认代理→稳定切换。
+    # Google/Gemini 与 AI 同走美国池；手选单节点不会自动切换。
   - name: Google
     type: select
-    proxies: [AI, 默认代理, 手动节点]
-    # 默认与 AI 共出口，使 Google 登录、Gemini API 不随 YouTube 手动选点分离。
+    proxies: [美国节点, AI, 默认代理, 手动节点]
+    # 默认与 AI 共用美国池，使 Google 登录、Gemini API 出口对齐。
   - name: 国际媒体
     type: select
-    proxies: [默认代理, 手动节点]
+    proxies: [美国节点, 默认代理, 手动节点]
     use: [Airport]
+  - name: Spotify
+    type: select
+    proxies: [新加坡节点, 美国节点, 手动节点, REJECT]
   - name: Telegram
     type: select
     proxies: [默认代理, 手动节点]
@@ -232,8 +245,10 @@ rules:
   - DOMAIN-SUFFIX,disneyplus.com,国际媒体
   - DOMAIN-SUFFIX,dssott.com,国际媒体
   - DOMAIN-SUFFIX,bamgrid.com,国际媒体
-  - DOMAIN-SUFFIX,spotify.com,国际媒体
-  - DOMAIN-SUFFIX,scdn.co,国际媒体
+  - DOMAIN-SUFFIX,spotify.com,Spotify
+  - DOMAIN-SUFFIX,scdn.co,Spotify
+  - DOMAIN-SUFFIX,spotify.link,Spotify
+  - DOMAIN-SUFFIX,spotifycdn.com,Spotify
   - DOMAIN-SUFFIX,tiktok.com,国际媒体
   - DOMAIN-SUFFIX,tiktokv.com,国际媒体
   - DOMAIN-SUFFIX,tiktokcdn.com,国际媒体

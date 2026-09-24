@@ -88,7 +88,8 @@ def validate(c, check_dns=True):
                 walk(dest, stack | {name})
     for name, g in groups.items():
         walk(name, set())
-        assert 'filter' not in g, 'avoid filtered empty groups'
+        if name not in {'美国节点', '新加坡节点'}:
+            assert 'filter' not in g, 'only named regional groups may filter nodes'
         assert 'url' not in g and 'benchmark-url' not in g, 'node benchmark is shared'
         assert g.get('proxies') or g.get('use') or g.get('include-all')
         for provider in g.get('use', []):
@@ -96,9 +97,16 @@ def validate(c, check_dns=True):
     assert groups['稳定切换']['type'] == 'fallback'
     assert 60 <= groups['稳定切换']['interval'] <= 180
     assert groups['稳定切换']['lazy'] is False
-    assert groups['Google']['proxies'][0] == 'AI'
-    assert groups['默认代理']['proxies'][0] == 'REJECT'
-    assert groups['YouTube']['proxies'][0] == 'REJECT'
+    for name in ('默认代理', 'YouTube', 'AI', 'Google', '国际媒体'):
+        assert groups[name]['proxies'][0] == '美国节点'
+    assert groups['Spotify']['proxies'][0] == '新加坡节点'
+    assert groups['Apple']['proxies'][0] == 'DIRECT'
+    assert groups['Microsoft']['proxies'][0] == 'DIRECT'
+    for name in ('美国节点', '新加坡节点'):
+        assert groups[name]['type'] == 'fallback'
+        assert groups[name]['interval'] == 120
+        assert groups[name]['lazy'] is False
+        re.compile(groups[name]['filter'])
     if 'proxy-providers' in c:
         assert c['proxy-providers']['Airport']['benchmark-url'] == 'https://www.gstatic.com/generate_204'
         assert 'path' not in c['proxy-providers']['Airport']
@@ -199,7 +207,8 @@ class Audit(unittest.TestCase):
         self.assertNotIn('proxy-providers', POLICY)
         self.assertNotIn('dns', POLICY)
         self.assertNotIn('Airport', text)
-        airport = {'proxies': [{'name': 'US-1', 'type': 'ss'}, {'name': 'US-2', 'type': 'ss'}],
+        airport = {'proxies': [{'name': 'US-1', 'type': 'ss'}, {'name': 'US-2', 'type': 'ss'},
+                               {'name': 'SG-1', 'type': 'ss'}],
                    'proxy-groups': [{'name': '机场自带策略', 'type': 'select', 'proxies': ['US-1']}],
                    'rules': ['MATCH,机场自带策略'], 'dns': {'nameserver': ['9.9.9.9']},
                    'rule-providers': {'机场旧规则': {'url': 'https://example.invalid/old'}}}
@@ -211,6 +220,19 @@ class Audit(unittest.TestCase):
         self.assertEqual(result['dns'], airport['dns'])
         self.assertNotIn('机场自带策略', {g['name'] for g in result['proxy-groups']})
         self.assertNotIn('机场旧规则', result['rule-providers'])
+
+    def test_region_filters(self):
+        groups = {g['name']: g for g in POLICY['proxy-groups']}
+        us = re.compile(groups['美国节点']['filter'])
+        sg = re.compile(groups['新加坡节点']['filter'])
+        for name in ('US1-HY2', 'US-3', '美国-01', '🇺🇸 LA', 'United States 2'):
+            self.assertIsNotNone(us.search(name), name)
+        for name in ('AUS-1', 'RUS-2', 'SG-1', '日本-01'):
+            self.assertIsNone(us.search(name), name)
+        for name in ('SG1-HY2', 'Singapore-2', '新加坡-01', '🇸🇬 03'):
+            self.assertIsNotNone(sg.search(name), name)
+        for name in ('US-1', 'AUS-1', '日本-01'):
+            self.assertIsNone(sg.search(name), name)
 
     def test_duplicate_keys_rejected(self):
         with self.assertRaises(ValueError):
@@ -234,6 +256,8 @@ class Audit(unittest.TestCase):
             'www.youtube.com': 'YouTube', 'rr1.googlevideo.com': 'YouTube',
             'youtubei.googleapis.com': 'YouTube', 'init-stream.maasea.workers.dev': 'YouTube',
             'raw.githubusercontent.com': '默认代理', 'www.netflix.com': '国际媒体',
+            'open.spotify.com': 'Spotify', 'audio4-fa.scdn.co': 'Spotify',
+            'spotify.link': 'Spotify', 'adstudio-video-preview-image.spotifycdn.com': 'Spotify',
             'unknown.example': '兜底流量', 'www.apple.com': 'Apple', 't.me': 'Telegram',
         }
         for host, expected in tests.items():
