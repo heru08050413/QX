@@ -1,86 +1,26 @@
-# Stash Pro V26.00 / revision 1.0.1 / 2026-09-24
-# 新建独立配置；不覆盖 Stash_V26.00.yaml 或其他客户端。
-# 兼容基线：本次 App Store 可核实的 iOS Stash 3.4.1。
-# 使用前阅读 Stash_Pro_README.md：在本文件 Airport.url 填入机场订阅，确认节点非空。
-# 广告：本文件为网络层；App / YouTube 深度过滤分别启用同名配套覆写。
-# 绝不在公共配置中填写真实订阅、节点密码或 MITM CA。
+name: Stash Pro 分流策略
+desc: 在已导入并能显示节点的机场配置上启用；使用机场配置中的节点，无需机场入口覆写。
+# 本覆写接管策略组和分流规则；机场订阅配置提供节点并保留其 DNS/隧道设置。
+# 可选的 App/YouTube 去广告覆写需单独启用。
 
 mode: rule
-log-level: info
-ipv6: false
 
-dns:
-  # Stash 使用 Fake-IP 避免对代理目标做本地解析；不要加入全匹配 '*'
-  # 或照搬 Mihomo 的 respect-rules / proxy-server-nameserver 等版本不匹配字段。
-  default-nameserver:
-    - 223.5.5.5
-    - 119.29.29.29
-  nameserver:
-    - https://dns.alidns.com/dns-query
-    - https://doh.pub/dns-query
-  follow-rule: false
-  nameserver-policy:
-    '+.lan': system
-    '+.local': system
-    '+.home.arpa': system
-    '+.miwifi.com': system
-    '+.tplogin.cn': system
-    '+.tplinkwifi.net': system
-    '+.routerlogin.net': system
-    '+.orbilogin.com': system
-    '+.melogin.cn': system
-    '+.falogin.cn': system
-    'router.asus.com': system
-    'router.synology.com': system
-  fake-ip-filter:
-    - '+.lan'
-    - '+.local'
-    - '+.home.arpa'
-    - '+.miwifi.com'
-    - '+.tplogin.cn'
-    - '+.tplinkwifi.net'
-    - '+.routerlogin.net'
-    - '+.orbilogin.com'
-    - '+.melogin.cn'
-    - '+.falogin.cn'
-    - router.asus.com
-    - router.synology.com
-    - '+.msftconnecttest.com'
-    - '+.msftncsi.com'
-    - '+.ntp.org'
-    - time.apple.com
-    - time.windows.com
-    - '+.cmpassport.com'
-    - id6.me
-    - open.e.189.cn
-    - mdn.open.wo.cn
 
-proxy-providers:
-  Airport:
-    # 唯一机场入口：在 Stash 中将本行完整替换为机场的 Clash/Stash YAML 订阅地址。
-    # .invalid 是无效占位地址；不要把私有链接或 token 提交到 GitHub。
-    url: 'https://example.invalid/REPLACE_WITH_YOUR_STASH_SUBSCRIPTION'
-    # 不固定缓存 path，换机场时无需手动更换缓存文件名。
-    interval: 21600
-    # Stash 的测速属于节点，同一节点跨组共享结果，不伪造按组独立探针。
-    benchmark-url: https://www.gstatic.com/generate_204
-    benchmark-timeout: 8
-
-proxy-groups:
+proxy-groups: #!replace
   - name: 默认代理
     type: select
     # 首次导入先关闭境外出口；绑定并验收机场后手动选 稳定切换。
     proxies: [REJECT, 稳定切换, 手动节点]
   - name: 稳定切换
     type: fallback
-    use: [Airport]
+    include-all: true
     interval: 120
     lazy: false
     # 按订阅顺序选健康节点，优先节点恢复后可能切回；不保证既有连接迁移。
     # 不用地区 filter，避免新机场命名不同导致空组被 Stash 当成 DIRECT。
   - name: 手动节点
     type: select
-    use: [Airport]
+    include-all: true
     interval: 600
     lazy: true
   - name: YouTube
@@ -89,7 +29,7 @@ proxy-groups:
   - name: AI
     type: select
     proxies: [默认代理, 手动节点]
-    use: [Airport]
+    include-all: true
     # 首次使用应选经实测支持目标 AI 服务的节点；不通过名字推断地区可用性。
     # 直接选单节点不再自动切换；需要自动切换时选 默认代理→稳定切换。
   - name: Google
@@ -99,7 +39,7 @@ proxy-groups:
   - name: 国际媒体
     type: select
     proxies: [默认代理, 手动节点]
-    use: [Airport]
+    include-all: true
   - name: Telegram
     type: select
     proxies: [默认代理, 手动节点]
@@ -119,7 +59,7 @@ proxy-groups:
 
 # 采用 indexed domain/ipcidr 清单，不叠加多个庞大、重叠的广告规则集。
 # release 是可更新清单；审核脚本会验证内容而不只检查 HTTP 200。
-rule-providers:
+rule-providers: #!replace
   Ads:
     behavior: domain
     format: yaml
@@ -145,7 +85,7 @@ rule-providers:
     path: ./rules/stash-pro-cn-ip.yaml
     interval: 86400
 
-rules:
+rules: #!replace
   # 1. 局域网与解析器，不强制解析未命中的境外域名。
   - DOMAIN,dns.alidns.com,DIRECT
   - DOMAIN,doh.pub,DIRECT

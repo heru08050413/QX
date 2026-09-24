@@ -54,13 +54,13 @@ def read(name):
 
 
 CONFIG = read('Stash_Pro_V26.00.yaml')
-AIRPORT = read('Stash_Pro_Airport.example.stoverride')
+POLICY = read('Stash_Pro_Policy_V26.00.stoverride')
 APP = read('Stash_Pro_AppAds_V26.00.stoverride')
 YT = read('Stash_Pro_YouTube_V26.00.stoverride')
 
 
 def merge(a, b):
-    """Documented Stash merge for these files (no #!replace used here)."""
+    """Default Stash merge; policy #!replace keys are modeled in their fixture."""
     if isinstance(a, dict) and isinstance(b, dict):
         result = copy.deepcopy(a)
         for key, val in b.items():
@@ -71,11 +71,12 @@ def merge(a, b):
     return copy.deepcopy(b)
 
 
-def validate(c):
+def validate(c, check_dns=True):
     assert c['mode'] == 'rule'
-    assert c['dns']['follow-rule'] is False
-    assert '*' not in c['dns']['fake-ip-filter']
-    assert 'proxy-server-nameserver' not in c['dns'], 'requires 3.6+'
+    if check_dns and 'dns' in c:
+        assert c['dns']['follow-rule'] is False
+        assert '*' not in c['dns']['fake-ip-filter']
+        assert 'proxy-server-nameserver' not in c['dns'], 'requires 3.6+'
     groups = {g['name']: g for g in c['proxy-groups']}
     assert len(groups) == len(c['proxy-groups'])
     builtins = {'DIRECT', 'REJECT', 'REJECT-DROP'}
@@ -89,7 +90,7 @@ def validate(c):
         walk(name, set())
         assert 'filter' not in g, 'avoid filtered empty groups'
         assert 'url' not in g and 'benchmark-url' not in g, 'node benchmark is shared'
-        assert g.get('proxies') or g.get('use')
+        assert g.get('proxies') or g.get('use') or g.get('include-all')
         for provider in g.get('use', []):
             assert provider in c['proxy-providers']
     assert groups['稳定切换']['type'] == 'fallback'
@@ -98,7 +99,12 @@ def validate(c):
     assert groups['Google']['proxies'][0] == 'AI'
     assert groups['默认代理']['proxies'][0] == 'REJECT'
     assert groups['YouTube']['proxies'][0] == 'REJECT'
-    assert c['proxy-providers']['Airport']['benchmark-url'] == 'https://www.gstatic.com/generate_204'
+    if 'proxy-providers' in c:
+        assert c['proxy-providers']['Airport']['benchmark-url'] == 'https://www.gstatic.com/generate_204'
+        assert 'path' not in c['proxy-providers']['Airport']
+    else:
+        assert groups['稳定切换']['include-all'] is True
+        assert groups['手动节点']['include-all'] is True
     assert c['rules'][-1] == 'MATCH,兜底流量'
     refs = set()
     for rule in c['rules']:
@@ -182,25 +188,42 @@ def node_fixtures(remote=None):
 class Audit(unittest.TestCase):
     def test_config_and_combined_overrides(self):
         validate(CONFIG)
-        validate(merge(merge(merge(CONFIG, AIRPORT), APP), YT))
+        validate(merge(merge(CONFIG, APP), YT))
+        validate(POLICY)
+        validate(merge(merge(POLICY, APP), YT))
+
+    def test_airport_profile_policy_override(self):
+        text = (BASE / 'Stash_Pro_Policy_V26.00.stoverride').read_text(encoding='utf-8')
+        for key in ('proxy-groups', 'rule-providers', 'rules'):
+            self.assertIn(f'{key}: #!replace', text)
+        self.assertNotIn('proxy-providers', POLICY)
+        self.assertNotIn('dns', POLICY)
+        self.assertNotIn('Airport', text)
+        airport = {'proxies': [{'name': 'US-1', 'type': 'ss'}, {'name': 'US-2', 'type': 'ss'}],
+                   'proxy-groups': [{'name': '机场自带策略', 'type': 'select', 'proxies': ['US-1']}],
+                   'rules': ['MATCH,机场自带策略'], 'dns': {'nameserver': ['9.9.9.9']},
+                   'rule-providers': {'机场旧规则': {'url': 'https://example.invalid/old'}}}
+        result = merge(airport, POLICY)
+        for key in ('proxy-groups', 'rule-providers', 'rules'):
+            result[key] = copy.deepcopy(POLICY[key])  # documented #!replace semantics
+        validate(result, check_dns=False)
+        self.assertEqual(result['proxies'], airport['proxies'])
+        self.assertEqual(result['dns'], airport['dns'])
+        self.assertNotIn('机场自带策略', {g['name'] for g in result['proxy-groups']})
+        self.assertNotIn('机场旧规则', result['rule-providers'])
 
     def test_duplicate_keys_rejected(self):
         with self.assertRaises(ValueError):
             load('dns: 1\ndns: 2\n')
 
-    def test_airport_swap_preserves_rules_and_groups(self):
-        original = copy.deepcopy(CONFIG)
+    def test_airport_url_change_preserves_rules_and_groups(self):
         for i in range(1, 4):
-            private = copy.deepcopy(AIRPORT)
-            provider = private['proxy-providers']['Airport']
-            provider['url'] = f'https://airport-{i}.invalid/private-fixture'
-            provider['path'] = f'./providers/private-v{i}.yaml'
-            result = merge(original, private)
+            result = copy.deepcopy(CONFIG)
+            result['proxy-providers']['Airport']['url'] = f'https://airport-{i}.invalid/private-fixture'
             self.assertEqual(result['rules'], CONFIG['rules'])
             self.assertEqual(result['proxy-groups'], CONFIG['proxy-groups'])
-            self.assertEqual(result['proxy-providers']['Airport']['url'], provider['url'])
+            self.assertEqual(result['proxy-providers']['Airport']['url'], f'https://airport-{i}.invalid/private-fixture')
             self.assertEqual(result['proxy-providers']['Airport']['interval'], 21600)
-            original = result
 
     def test_routing_fixtures(self):
         tests = {
