@@ -1,6 +1,6 @@
 name: Stash Pro 分流策略
 desc: 在已导入并能显示节点的机场配置上启用；使用机场配置中的节点，无需机场入口覆写。
-# revision 1.0.2 / 2026-09-24
+# revision 1.0.3 / 2026-09-25
 # 本覆写接管策略组和分流规则；机场订阅配置提供节点并保留其 DNS/隧道设置。
 # 可选的 App/YouTube 去广告覆写需单独启用。
 
@@ -9,9 +9,11 @@ mode: rule
 proxy-groups: #!replace
   - name: 默认代理
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
     proxies: [美国节点, 稳定切换, 手动节点, REJECT]
   - name: 稳定切换
     type: fallback
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
     include-all: true
     interval: 120
     lazy: false
@@ -19,55 +21,66 @@ proxy-groups: #!replace
     # 不用地区 filter，避免新机场命名不同导致空组被 Stash 当成 DIRECT。
   - name: 手动节点
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Static.png
     include-all: true
     interval: 600
     lazy: true
   - name: 美国节点
     type: fallback
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
     include-all: true
     filter: '(?i)(^|[^a-z])(us|usa|united states)([^a-z]|$)|美国|美國|美西|美东|美東|美中|🇺🇸'
     interval: 120
     lazy: false
   - name: 新加坡节点
     type: fallback
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
     include-all: true
     filter: '(?i)(^|[^a-z])(sg|singapore)([^a-z]|$)|新加坡|狮城|獅城|🇸🇬'
     interval: 120
     lazy: false
   - name: YouTube
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
     proxies: [美国节点, 稳定切换, 手动节点, REJECT]
   - name: AI
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Bot.png
     proxies: [美国节点, 默认代理, 手动节点]
-    include-all: true
-    # Google/Gemini 与 AI 同走美国池；手选单节点不会自动切换。
+    # 不展开机场节点；Google/Gemini 与 AI 同走美国池。
   - name: Google
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google.png
     proxies: [美国节点, AI, 默认代理, 手动节点]
     # 默认与 AI 共用美国池，使 Google 登录、Gemini API 出口对齐。
   - name: 国际媒体
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ForeignMedia.png
     proxies: [美国节点, 默认代理, 手动节点]
-    include-all: true
   - name: Spotify
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
     proxies: [新加坡节点, 美国节点, 手动节点, REJECT]
   - name: Telegram
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram.png
     proxies: [默认代理, 手动节点]
   - name: Apple
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png
     proxies: [DIRECT, 默认代理]
   - name: Microsoft
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png
     proxies: [DIRECT, 默认代理]
   - name: 广告过滤
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Advertising.png
     proxies: [REJECT, DIRECT]
     # DIRECT 仅用于诊断网络层误杀，不会关闭独立的 HTTP 去广告覆写。
   - name: 兜底流量
     type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
     proxies: [默认代理, DIRECT]
 
 # 采用 indexed domain/ipcidr 清单，不叠加多个庞大、重叠的广告规则集。

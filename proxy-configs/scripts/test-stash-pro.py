@@ -99,6 +99,11 @@ def validate(c, check_dns=True):
     assert groups['稳定切换']['lazy'] is False
     for name in ('默认代理', 'YouTube', 'AI', 'Google', '国际媒体'):
         assert groups[name]['proxies'][0] == '美国节点'
+    for name in ('AI', '国际媒体'):
+        assert 'include-all' not in groups[name] and 'use' not in groups[name], 'keep individual nodes in 手动节点'
+        assert '美国节点' in groups[name]['proxies']
+    assert all(group.get('icon', '').startswith('https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/')
+               and group['icon'].endswith('.png') for group in groups.values()), 'all groups need consistent icons'
     assert groups['Spotify']['proxies'][0] == '新加坡节点'
     assert groups['Apple']['proxies'][0] == 'DIRECT'
     assert groups['Microsoft']['proxies'][0] == 'DIRECT'

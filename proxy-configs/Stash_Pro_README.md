@@ -1,6 +1,6 @@
 # Stash Pro V26.00
 
-新配置，内部修订 `1.0.2`，2026-09-24。原有 Stash、Shadowrocket、Egern、Loon、Quantumult X 文件均不改动。
+新配置，内部修订 `1.0.3`，2026-09-25。原有 Stash、Shadowrocket、Egern、Loon、Quantumult X 文件均不改动。
 
 初版核对的 [App Store 正式版为 3.4.1](https://apps.apple.com/us/app/stash-rule-based-proxy/id1596063349)。本方案不依赖 Wiki 标注 3.6+ 的字段。桌面静态/脚本测试不等于 iPhone 原生验收。
 
@@ -35,7 +35,7 @@ https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_Pro_Y
 1. 在 Stash 中选中**已经单独导入成功、能够看到节点的机场配置**。保留它作为当前配置，先不要开启 VPN。
 2. 在 Override 中停用并移除旧的「Stash Pro 私有机场入口」。从上方 GitHub 地址导入并启用 **Stash Pro 分流策略**覆写。不要再选 `Stash_Pro_V26.00.yaml` 作为当前配置；机场节点由已选的机场配置提供。
 3. 更新机场配置，查看 `手动节点`、`稳定切换`、`美国节点`、`新加坡节点` 是否列出预期节点，并确认美国池至少两条测速成功；核对节点证书验证未被机场关闭。才开启 VPN。**空地区池可能退化为 DIRECT；如果美国池为空，保持 VPN 关闭并核对机场节点名，不能把空组当代理。**
-4. 新导入时 `默认代理`、`YouTube`、`AI`、`Google`、`国际媒体` 首选美国池；`Spotify` 首选新加坡池。Stash 可能保留同名策略组以前的手动选择；刷新后逐项查看当前选择，必要时手动选回“美国节点”或“新加坡节点”。需要固定单节点时可自行改选，但固定单节点不会自动切换。
+4. 新导入时 `默认代理`、`YouTube`、`AI`、`Google`、`国际媒体` 首选美国池；`Spotify` 首选新加坡池。`AI` 和 `国际媒体` 只展示策略组选项，不再把机场节点逐条铺在组内；需要固定单节点时进入 `手动节点`。Stash 可能保留同名策略组以前的手动选择；刷新后逐项查看当前选择，必要时手动选回“美国节点”或“新加坡节点”。固定单节点不会自动切换。
 5. 先验证基础连通，再逐个启用 App / YouTube 去广告覆写。启用 HTTPS 过滤需要在 Stash 内生成或选用**自己的** CA，安装并在 iOS 证书信任设置中完全信任，然后开启 MITM。公共文件不包含 CA、口令或真实订阅。
 6. 不要同时开启旧 `Stash_All`、`Stash_Script` 或其他重叠的 YouTube/App 去广告模块。若切换到另一份 Stash 配置，检查这些覆写是否仍适合该配置。
 
@@ -70,6 +70,7 @@ proxy-providers:
 - Stash 同一节点跨策略组共享测速结果。推荐策略覆写沿用机场配置的节点测速地址与超时，因此需核对其测速结果是否与 YouTube 实际可用性一致；备用独立模板在 `Airport` 上使用 Google HTTPS 204 探针。两者都不能以小包连通证明视频吞吐。
 - 探针仅证明该测试地址可访问，**不代表 YouTube CDN 带宽、无广告、Gemini 地区准入或账户状态合格**。两分钟不是恢复时限保证；切换不能迁移既有 TCP/QUIC 会话，YouTube 仍可能短暂缓冲，全部节点故障时无法恢复。
 - 美国池识别 `US1`/`US-1`/`USA`/`United States`、美国/美國/美西/美东/美中及 🇺🇸；新加坡池识别 `SG1`/`Singapore`、新加坡/狮城及 🇸🇬。边界匹配不会把 `AUS` 或 `RUS` 误认作 `US`。节点名是筛选依据，不证明实际出口国家；须在手机核对池内节点与出口 IP。机场改名或没有相应地区时池可能为空并退化为 DIRECT，不能自动切到别国，也不能在空池状态下启用代理。
+- 策略组图标使用同一套 [Qure Color](https://github.com/Koolson/Qure) PNG 地址；首次显示需要能访问 GitHub Raw。Stash 本机若设置过策略组图标的本地覆写，可能优先显示本机自选图标。
 
 ## 去广告范围与风险
 
