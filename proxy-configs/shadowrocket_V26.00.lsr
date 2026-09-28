@@ -2,8 +2,14 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-09-23 (v2.6.19 Google/Gemini 对齐、Meta 补漏、默认美国；待真机验收)
-# Predecessor: v2.6.18 (bedea93；回滚请仅撤销本批变更)
+# Updated: 2026-09-28 (v2.6.20 Meta AI 独立域名与常用业务域补漏；待真机验收)
+# Predecessor: v2.6.19 (c6a9ac4；回滚请仅撤销本批变更)
+#
+# v2.6.20 修订日志
+#   - 截图确认 hatch.metaaivm.com 命中 FINAL,DIRECT；补独立 metaaivm.com 后缀到 Meta 组。
+#   - 补常用 Meta 登录、消息与 CDN 独立域；Threads.com 仍归 Instagram 稳定组。
+#   - 不改已有广告拒绝、国内直连、HTTPS 解密、YouTube 脚本或策略组默认值。
+#   - 静态规则验证不代替手机端验收；客户端保留的手动选择仍以策略页为准。
 #
 # v2.6.19 修订日志
 #   - Gemini 仅跟随谷歌服务，登录/通用 API 与 Gemini 共用同一选择入口；
@@ -1684,6 +1690,8 @@ DOMAIN-SUFFIX,pscp.tv,Twitter
 DOMAIN-SUFFIX,muse.ai,Meta
 DOMAIN-SUFFIX,meta.ai,Meta
 DOMAIN-SUFFIX,meta.com,Meta
+# v2.6.20: hatch.metaaivm.com 实测落入 FINAL=DIRECT；独立域名需单列。
+DOMAIN-SUFFIX,metaaivm.com,Meta
 # v2.6.2 关键修复: IG 单独路由到 Instagram 策略组 (美国稳定池)
 # 日志证据: AutoSelect 在 11 分钟内把 IG 切了 4 个节点, 触发风控
 DOMAIN-SUFFIX,instagram.com,Instagram
@@ -1693,13 +1701,22 @@ DOMAIN,graph.instagram.com,Instagram
 
 # Threads 也是 Meta 长连接业务, 同样走稳定组
 DOMAIN-SUFFIX,threads.net,Instagram
+DOMAIN-SUFFIX,threads.com,Instagram
 
 # Facebook 登录/CDN 与 Muse 共用 Meta；WhatsApp 同属此选择器。
 DOMAIN-SUFFIX,facebook.com,Meta
+DOMAIN-SUFFIX,facebook.net,Meta
 DOMAIN-SUFFIX,fbcdn.net,Meta
+DOMAIN-SUFFIX,fbcdn.com,Meta
 DOMAIN-SUFFIX,fb.com,Meta
+DOMAIN-SUFFIX,fb.me,Meta
+DOMAIN-SUFFIX,m.me,Meta
+DOMAIN-SUFFIX,fbsbx.com,Meta
+DOMAIN-SUFFIX,fbsbx.net,Meta
+DOMAIN-SUFFIX,messenger.com,Meta
 DOMAIN-SUFFIX,whatsapp.com,Meta
 DOMAIN-SUFFIX,whatsapp.net,Meta
+DOMAIN-SUFFIX,wa.me,Meta
 
 # Reddit
 DOMAIN-SUFFIX,reddit.com,Proxy

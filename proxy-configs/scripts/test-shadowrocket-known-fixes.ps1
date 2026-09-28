@@ -240,7 +240,29 @@ foreach ($line in $v2618Expected) {
     }
 }
 Assert-True ($replaced19 -eq 15 -and $v2619Expected.Count -eq $v2618Expected.Count + 12) 'Unexpected v2.6.19 delta size'
-Assert-True (($v2619Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+$v2619 = @(Get-ActiveLines @(git -C $repoPath show 'c6a9ac4fafdb6080bae386b33da6c8197b6ee41c:proxy-configs/shadowrocket_V26.00.lsr'))
+Assert-True ($LASTEXITCODE -eq 0) 'Cannot read v2.6.19 baseline'
+Assert-True (($v2619Expected -join "`n") -ceq ($v2619 -join "`n")) 'Historical v2.6.19 invariant failed'
+
+# v2.6.20: only ten confirmed Meta/Threads suffixes may be added.
+$metaAdditions20 = @{
+    'DOMAIN-SUFFIX,meta.com,Meta' = @('DOMAIN-SUFFIX,metaaivm.com,Meta')
+    'DOMAIN-SUFFIX,threads.net,Instagram' = @('DOMAIN-SUFFIX,threads.com,Instagram')
+    'DOMAIN-SUFFIX,facebook.com,Meta' = @('DOMAIN-SUFFIX,facebook.net,Meta')
+    'DOMAIN-SUFFIX,fbcdn.net,Meta' = @('DOMAIN-SUFFIX,fbcdn.com,Meta')
+    'DOMAIN-SUFFIX,fb.com,Meta' = @('DOMAIN-SUFFIX,fb.me,Meta', 'DOMAIN-SUFFIX,m.me,Meta', 'DOMAIN-SUFFIX,fbsbx.com,Meta',
+        'DOMAIN-SUFFIX,fbsbx.net,Meta', 'DOMAIN-SUFFIX,messenger.com,Meta')
+    'DOMAIN-SUFFIX,whatsapp.net,Meta' = @('DOMAIN-SUFFIX,wa.me,Meta')
+}
+$v2620Expected = [Collections.Generic.List[string]]::new()
+foreach ($line in $v2619Expected) {
+    $v2620Expected.Add($line)
+    if ($metaAdditions20.ContainsKey($line)) {
+        foreach ($addition in $metaAdditions20[$line]) { $v2620Expected.Add($addition) }
+    }
+}
+Assert-True ($v2620Expected.Count -eq $v2619Expected.Count + 10) 'Unexpected v2.6.20 delta size'
+Assert-True (($v2620Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
 
 # Check relevant rule ordering independently of the full delta comparison.
 $ruleStart = [array]::IndexOf($active, '[Rule]')
@@ -341,8 +363,13 @@ $routingFixtures = @{
     'lh3.googleusercontent.com'='谷歌服务'; 'www.gstatic.com'='谷歌服务';
     'muse.ai'='Meta'; 'auth.muse.ai'='Meta'; 'hatch-api.meta.ai'='Meta'; 'api.meta.ai'='Meta';
     'ar.graph.meta.com'='Meta'; 'auth.meta.com'='Meta'; 'graph.facebook.com'='Meta';
-    'scontent.example.fbcdn.net'='Meta'; 'api.whatsapp.com'='Meta';
-    'i.instagram.com'='Instagram'; 'rr1.example.googlevideo.com'='YouTube';
+    'hatch.metaaivm.com'='Meta'; 'vm-123.metaaivm.com'='Meta';
+    'static.facebook.net'='Meta'; 'scontent.example.fbcdn.net'='Meta';
+    'static.fbcdn.com'='Meta'; 'cdn.fbsbx.com'='Meta'; 'api.fbsbx.net'='Meta';
+    'm.me'='Meta'; 'fb.me'='Meta'; 'www.messenger.com'='Meta';
+    'api.whatsapp.com'='Meta'; 'wa.me'='Meta';
+    'i.instagram.com'='Instagram'; 'www.threads.com'='Instagram';
+    'rr1.example.googlevideo.com'='YouTube';
     'youtubei.googleapis.com'='YouTube'; 'init-stream.maasea.workers.dev'='YouTube';
     'sample.xz.fbcdn.net'='REJECT-DROP'; 'sample.xy.fbcdn.net'='REJECT-DROP';
     'qq.com'='DIRECT'; 'api.zhihu.com'='DIRECT'; 'p6.douyinpic.com'='DIRECT';
@@ -353,10 +380,12 @@ foreach ($fixture in $routingFixtures.GetEnumerator()) {
     Assert-True ($match -and ($match -split ',')[-1] -ceq $fixture.Value) "Wrong local route for $($fixture.Key): $match"
 }
 # These local-only fixtures do NOT evaluate upstream ad/IP lists or iPhone policy state.
-foreach ($domain in @('meta.ai.evil.example', 'notmeta.ai', 'muse.ai.evil.example', 'notmuse.ai')) {
+foreach ($domain in @('meta.ai.evil.example', 'notmeta.ai', 'muse.ai.evil.example', 'notmuse.ai',
+    'notmetaaivm.com', 'metaaivm.com.evil.example', 'threads.com.evil.example')) {
     Assert-True ((First-LocalDomainRule $domain) -notmatch ',Meta$') "Meta suffix overmatch: $domain"
 }
-foreach ($rule in @($metaRules) + @($googleCoreRules) + @($googleAuthRules)) {
+foreach ($rule in @($metaRules) + @($googleCoreRules) + @($googleAuthRules) +
+    @($metaAdditions20.Values | ForEach-Object { $_ })) {
     Assert-True ([array]::IndexOf($active, $rule) -gt $firstAd) 'Core routing unexpectedly bypasses ad filtering'
 }
 $youtubeRemote = @($active | Where-Object { $_ -match '^RULE-SET,.*/YouTube/YouTube\.list,YouTube$' })
@@ -364,4 +393,4 @@ Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
 foreach ($rule in $googleAuthRules) {
     Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.19 scope invariants; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
+Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.20 scope invariants; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
