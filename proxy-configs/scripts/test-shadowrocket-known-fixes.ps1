@@ -262,7 +262,33 @@ foreach ($line in $v2619Expected) {
     }
 }
 Assert-True ($v2620Expected.Count -eq $v2619Expected.Count + 10) 'Unexpected v2.6.20 delta size'
-Assert-True (($v2620Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+
+# v2.6.21: keep Tailscale's CGNAT range in TUN and route tailnet identities
+# to the built-in Tailscale module; all other private-route behavior is intact.
+$tailnetRules = @(
+    'DOMAIN-SUFFIX,ts.net,TAILSCALE',
+    'IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve'
+)
+$v2621Expected = [Collections.Generic.List[string]]::new()
+foreach ($line in $v2620Expected) {
+    $updated = $line
+    if ($line.StartsWith('bypass-tun = ')) {
+        Assert-True ($line.Contains(', 100.64.0.0/10,')) 'v2.6.20 TUN exclusion baseline changed'
+        $updated = $line.Replace(', 100.64.0.0/10,', ',')
+    }
+    $v2621Expected.Add($updated)
+    if ($line -ceq '[Rule]') {
+        foreach ($rule in $tailnetRules) { $v2621Expected.Add($rule) }
+    }
+}
+Assert-True (($v2621Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+
+$bypassTun = @($active | Where-Object { $_.StartsWith('bypass-tun = ') })
+Assert-True ($bypassTun.Count -eq 1 -and !$bypassTun[0].Contains('100.64.0.0/10')) 'Tailscale IPv4 range must not bypass TUN'
+foreach ($rule in $tailnetRules) {
+    Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate Tailscale rule: $rule"
+    Assert-True ([array]::IndexOf($active, $rule) -gt [array]::IndexOf($active, '[Rule]')) "Tailscale rule outside [Rule]: $rule"
+}
 
 # Check relevant rule ordering independently of the full delta comparison.
 $ruleStart = [array]::IndexOf($active, '[Rule]')
@@ -369,7 +395,7 @@ $routingFixtures = @{
     'm.me'='Meta'; 'fb.me'='Meta'; 'www.messenger.com'='Meta';
     'api.whatsapp.com'='Meta'; 'wa.me'='Meta';
     'i.instagram.com'='Instagram'; 'www.threads.com'='Instagram';
-    'rr1.example.googlevideo.com'='YouTube';
+    'rr1.example.googlevideo.com'='YouTube'; 'device.example.ts.net'='TAILSCALE';
     'youtubei.googleapis.com'='YouTube'; 'init-stream.maasea.workers.dev'='YouTube';
     'sample.xz.fbcdn.net'='REJECT-DROP'; 'sample.xy.fbcdn.net'='REJECT-DROP';
     'qq.com'='DIRECT'; 'api.zhihu.com'='DIRECT'; 'p6.douyinpic.com'='DIRECT';
@@ -393,4 +419,4 @@ Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
 foreach ($rule in $googleAuthRules) {
     Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.20 scope invariants; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
+Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."

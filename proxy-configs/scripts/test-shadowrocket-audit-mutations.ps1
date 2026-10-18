@@ -31,7 +31,10 @@ $cases = @(
     @{ Name='Default Proxy not US'; From='Proxy = select, 美国节点, AutoSelect'; To='Proxy = select, AutoSelect, 美国节点' },
     @{ Name='Domestic fallback changed'; From='Final = select, DIRECT, Proxy'; To='Final = select, Proxy, DIRECT' },
     @{ Name='Meta tracking unblocked'; From='DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP'; To='DOMAIN-SUFFIX,xz.fbcdn.net,Meta' },
-    @{ Name='Google auth early guard missing'; From='DOMAIN,accounts.google.com,谷歌服务'; To='# removed by mutation' }
+    @{ Name='Google auth early guard missing'; From='DOMAIN,accounts.google.com,谷歌服务'; To='# removed by mutation' },
+    @{ Name='Tailscale range excluded from TUN'; From='bypass-tun = 10.0.0.0/8, 127.0.0.0/8'; To='bypass-tun = 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8' },
+    @{ Name='Tailscale IPv4 policy missing'; From='IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve'; To='# removed by mutation' },
+    @{ Name='Tailscale MagicDNS policy missing'; From='DOMAIN-SUFFIX,ts.net,TAILSCALE'; To='# removed by mutation' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {
