@@ -115,6 +115,7 @@
 #     防止 master 漂移在播放时引入未审计行为;
 #   - 不启用 youtube.request.js, 不把 *.googlevideo.com 加回 MITM:
 #     视频数据面保持端到端 TLS, 避免持续大流量解密造成发热/卡顿.
+#     >>> [已失效 — v2.6.14 已启用 request.js 并把 googlevideo 加回 MITM] <<<
 #
 # [P1 路由] 3. YouTube 核心域名本地兜底
 #   youtube/youtubei/googlevideo/ytimg/ggpht/gvt 全部先于远程 RULE-SET
@@ -225,13 +226,21 @@
 #   取三方共识中"零功能损失"的 5 项. 被否决的高风险建议见文末.
 #
 # [P0 能耗] 1. *.googlevideo.com 移出 MITM hostname
-#   三方共识最高优先级. YouTube 视频流是大流量持续连接, 全程 MITM
-#   解密 (拦截→重握手→解密→重加密) 是头号耗电+发热源, 而实际只为
-#   拦一个 initplayback 广告路径, 性价比极低.
-#   移出后: YouTube 播放发热/耗电显著下降.
-#   功能影响: 零. 去广告主力在 youtubei 接口脚本 (player/browse/next),
-#            浮窗/后台播放靠 youtubei 脚本 + UDP REJECT, 都不依赖
-#            googlevideo 解密. 配套移除了失效的 initplayback rewrite.
+#   >>> [已失效 — 本项已被 v2.6.14 推翻, 当前配置不再执行本项] <<<
+#   v2.6.14 经真机诊断改用 Maasea 官方三钩子完整闭环后, 已将
+#   *.googlevideo.com 重新加入 MITM hostname 并启用 YouTube.request.init,
+#   理由见 v2.6.14 段"信任边界与必要代价": initplayback 的 URL path 位于
+#   TLS 内, 不解密则无法处理加密 UMP, 服务端拼接的前贴片广告会漏。
+#   取舍结论: 本仓库优先级为 安全 > 稳定 > 去广告 > 低功耗, 去广告完整性
+#   高于低功耗, 故接受视频流解密带来的发热/耗电代价。
+#   下列原始论述仅作历史保留, 不代表当前实现:
+#   | 三方共识最高优先级. YouTube 视频流是大流量持续连接, 全程 MITM
+#   | 解密 (拦截→重握手→解密→重加密) 是头号耗电+发热源, 而实际只为
+#   | 拦一个 initplayback 广告路径, 性价比极低.
+#   | 移出后: YouTube 播放发热/耗电显著下降.
+#   | 功能影响: 零. 去广告主力在 youtubei 接口脚本 (player/browse/next),
+#   |          浮窗/后台播放靠 youtubei 脚本 + UDP REJECT, 都不依赖
+#   |          googlevideo 解密. 配套移除了失效的 initplayback rewrite.
 #
 # [P1 能耗] 2. 常规测速组 interval 600 → 900 秒
 #   6 个常规地区组 (AutoSelect/香港/台湾/日本/新加坡/美国) 测速间隔
@@ -2227,13 +2236,19 @@ localhost = 127.0.0.1
 ^https?:\/\/amap-aos-info-nogw\.amap\.com\/ws\/aos\/alimama\/splash_screen - reject-200
 
 # v2.6.9 移除: googlevideo initplayback &oad reject 规则
-# 原因: 该 rewrite 依赖对 *.googlevideo.com 做 MITM 解密才能匹配 path,
-#       但 v2.6.9 已将 googlevideo 移出 MITM (降耗 P0). 失去 MITM 后
-#       此 rewrite 无法生效, 故一并移除避免困惑.
-# 影响: 视频流前贴片广告改由 youtubei 的 player 接口脚本处理
-#       (Maasea youtube.response.js 移除广告 playback 配置),
-#       去广告效果基本不变. 实测如有个别前贴片漏网, 收益也远不及
-#       全程解密 googlevideo 大流量带来的发热/耗电代价.
+# [V26.00 更正] 本段原始理由(googlevideo 已移出 MITM)自 v2.6.14 起不再成立:
+#   googlevideo 现已重新解密, 且 initplayback 由 Maasea youtube.request.js
+#   的脚本钩子处理(见 [Script] 段 YouTube.request.init), 不再需要本条
+#   静态 &oad reject rewrite —— 上游脚本的处理粒度优于整路径拒绝。
+#   因此"本条规则不存在"的现状仍然正确, 但正确的原因已变更。
+# 下列原始论述仅作历史保留:
+# | 原因: 该 rewrite 依赖对 *.googlevideo.com 做 MITM 解密才能匹配 path,
+# |       但 v2.6.9 已将 googlevideo 移出 MITM (降耗 P0). 失去 MITM 后
+# |       此 rewrite 无法生效, 故一并移除避免困惑.
+# | 影响: 视频流前贴片广告改由 youtubei 的 player 接口脚本处理
+# |       (Maasea youtube.response.js 移除广告 playback 配置),
+# |       去广告效果基本不变. 实测如有个别前贴片漏网, 收益也远不及
+# |       全程解密 googlevideo 大流量带来的发热/耗电代价.
 
 
 # =====================================================================

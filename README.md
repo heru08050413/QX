@@ -37,11 +37,11 @@
 
 ## 三、YouTube 功能矩阵(去广告 + 画中画/后台播放)
 
-经逐套审查(2026-07),各套 YouTube 能力与实现链路如下:
+经逐套审查(2026-07,googlevideo 一列于 2026-10-22 据配置实况更正),各套 YouTube 能力与实现链路如下:
 
 | App | 去广告 | 画中画/后台播放 | 实现与取舍 |
 |---|---|---|---|
-| **Shadowrocket** | ✅ | ✅ | Maasea `youtube.response.js`(youtubei 响应改写)+ UDP 强制 TCP。googlevideo **不**解密(省电取向,极少数服务端拼接广告可能漏) |
+| **Shadowrocket** | ✅ | ✅ | Maasea 三钩子闭环(`youtube.response.js` + `youtube.request.js`,锁定 commit `65075cd`)+ UDP 强制 TCP。googlevideo **解密**(`initplayback` 的 path 在 TLS 内,不解密则服务端拼接广告会漏;代价是播放时发热/耗电上升) |
 | **Egern** | ✅(最完整) | ✅ | Enhance 模块 + googlevideo 广告流拦截 + ad_break/统计信标 reject(v6.3.0)。视频流解密,发热略增 |
 | **Loon** | ✅ | ✅ | Maasea `YouTube.Enhance.sgmodule` 插件(V26.00 补齐,此前缺失)+ `block-quic=true` 协同 |
 | **Quantumult X** | ❌ | ❌ | 架构限制:Maasea 方案依赖 `binary-body-mode`(protobuf 改写),QX 无此参数、上游无 QX 适配版。不放不可靠的移植 |
