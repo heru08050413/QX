@@ -2219,6 +2219,13 @@ localhost = 127.0.0.1
 # ② artistview 平台参数 iphone→ipad, 恢复歌手页正常展示 (上游同款 header 改写)
 ^https://(\w+-spclient|spclient\.wg)\.spotify\.com(:443)?/artistview/v1/artist/(.*)&platform=iphone https://spclient.wg.spotify.com/artistview/v1/artist/$3&platform=ipad header
 
+# V26.00 新增: 高德开屏新接口域 (静态 reject, 不依赖任何第三方脚本)
+# 开屏投放已从 m5.amap.com 迁移至 amap-aos-info-nogw.amap.com, 旧的
+# valueadded/alimama/splash_screen 脚本钩子匹配不到新路径 /ws/aos/alimama/。
+# 正则不带结尾锚, 同时覆盖 splash_screen 与 splash_screen_rt 两种写法。
+# 该域仅承载开屏投放, 故路径级 reject 无功能风险 (四个上游一致, 见下方依据)。
+^https?:\/\/amap-aos-info-nogw\.amap\.com\/ws\/aos\/alimama\/splash_screen - reject-200
+
 # v2.6.9 移除: googlevideo initplayback &oad reject 规则
 # 原因: 该 rewrite 依赖对 *.googlevideo.com 做 MITM 解密才能匹配 path,
 #       但 v2.6.9 已将 googlevideo 移出 MITM (降耗 P0). 失去 MITM 后
@@ -2332,8 +2339,20 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 # 高德地图
 # SOURCE:        https://github.com/ddgksf2013/Scripts
 # TRUST:         MEDIUM (单人维护, 历史上有过大幅重构)
-# LAST-VERIFIED: 2026-05-19
+# LAST-VERIFIED: 2026-10-22 (amap.js 实测 HTTP 200, 脚本内 version V1.0.34,
+#                上游标注更新日期 2025-08-30; Filter/ 目录整库重构未波及本文件)
 # NOTES:         此仓库下脚本变动较频繁, 建议每 30 天审计一次.
+#                脚本为 jsjiami.com.v7 混淆, 无法静态审计其改写字段, 故
+#                TRUST 维持 MEDIUM; 功能性回归只能靠真机观察。
+#
+# [V26.00 修订] pattern 与 MITM hostname 的覆盖关系(此前注释描述有误):
+#   三条 pattern 写的是 .*\.amap\.com 通配, 但能否命中完全取决于
+#   [MITM] hostname 是否解密该子域 —— 未解密的子域, 通配 pattern 永远
+#   匹配不到(表现为"规则在、但不生效")。当前解密 m5/restapi/mps 三个
+#   子域, 上游证据显示 valueadded/msgbox/faas 三个路径均位于 m5.amap.com。
+#   保留通配 pattern 而不收窄为 m5 专用: 高德历史上多次迁移子域
+#   (如 sns.amap.com/ws/msgbox/pull_mp), 通配可在仅追加 hostname 的
+#   前提下自动恢复覆盖, 收窄则每次迁移都要改两处。
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 高德开屏 = type=http-response,pattern=^https?://.*\.amap\.com/ws/valueadded/alimama/splash_screen,requires-body=1,max-size=-1,script-path=https://raw.githubusercontent.com/ddgksf2013/Scripts/master/amap.js
@@ -2446,10 +2465,15 @@ client-source-address = false
 # v2.6.5 改进: MITM hostname 进一步精确化
 #
 # v2.6.5 关键改动:
-#   - *.amap.com (通配) → 精确接口列表 (3 个广告接口域名)
+#   - *.amap.com (通配) → 精确接口列表
 #     原因: 通配会让所有 amap 子域走解密, 包括账户/钱包/搜索等无关流量.
 #           实测高德广告接口 90 天内稳定, 改为精确收益 > 维护成本.
-#           v2.6.5 仅列脚本实际处理的: 开屏/弹窗/横幅三接口对应的域.
+#     [V26.00 更正] 原注释称"3 个域对应开屏/弹窗/横幅三接口"并不准确:
+#           上游证据显示这三个路径同在 m5.amap.com; restapi/mps 未被任何
+#           现行脚本 pattern 专门使用, 其保留属历史沿用, 是否仍需解密待
+#           真机日志确认后再决定裁剪(本次不做无证据的删除)。
+#     [V26.00 新增] amap-aos-info-nogw.amap.com: 开屏投放迁移后的新域,
+#           配套 [URL Rewrite] 的静态 reject 生效所必需(path 在 TLS 内)。
 #
 # 已沿用 v2.6.3 的精确化 (历史):
 #   - *.bilibili.com   → 只保留 app.bilibili.com 等 5 个接口域名
@@ -2467,7 +2491,7 @@ client-source-address = false
 #   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
 #   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
 #     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, amap-aos-info-nogw.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
