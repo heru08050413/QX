@@ -32,8 +32,34 @@
 | 信息流脚本合集 | 知乎/小红书/微博/淘宝/京东等 14 App 信息流去广告 | 是 | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_Script_V26.00.stoverride` |
 
 > 导入位置:Stash → 配置 → **Override(覆写)** → 添加。**总覆写与三份分覆写二选一**,不要同时挂(规则重复)。
+> ⚠️ 仓库内另有 `Stash_Pro_YouTube_V26.00.stoverride`,属 **实验性·未经真机验证**,未列入上表。它与第三节 Stash 一行的 ❌ 并不矛盾:❌ 指"尚未验证可用",该文件是针对 Stash 原生 `binary-mode` 的适配尝试(脚本与 SR/Loon 同源并锁定 commit `65075cd`),但从未在真机证实去广告/PiP 生效,且含第三方 Worker 转发依赖。默认不建议启用;要试请先读 `proxy-configs/Stash_Pro_README.md` 的风险说明。
 > 脚本 JS 全部镜像在本仓库 `proxy-configs/scripts/`,`script-providers` 只引本仓库链接——无第三方死链风险。
 > 覆写不含任何银行/支付/政务/证件类 App 的 MITM。
+
+## 二-B、Shadowrocket 国内 App 开屏去广告(需手动加模块)
+
+⚠️ **这一步不会自动生效,必须手动操作。** `shadowrocket_V26.00.lsr` 自 V26.00 起
+**不再自带**国内 App(小红书/京东/拼多多/美团/网易云/爱奇艺/腾讯视频/芒果TV/12306/滴滴)
+的开屏去广告脚本——原依赖的 `ddgksf2013/Scripts` 的 `Filter/` 目录已被上游整库重构删除,
+10 条脚本全部 404,故连同对应 MITM hostname 一并移除(留着=无效解密纯耗电)。
+
+这块能力改由下面这个外部模块承担,**你需要在 Shadowrocket 里手动添加**:
+
+```
+https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+```
+
+**添加步骤**:Shadowrocket → 首页 **配置** → 选中当前配置右侧 **编辑** →
+**模块(Modules)** → ➕ 添加 → 粘贴上面链接 → 保存 → 回到首页重新选中该配置生效。
+添加后模块自带的 hostname 会自动追加到 MITM 列表,**无需手改配置文件**。
+
+- 覆盖约 730 款 App/小程序(上游自述),含高德在内的国内主流 App;
+- 2026-10-22 实测 HTTP 200,模块内 `#!date=2026-09-10`,仍在活跃维护;
+- 部分 App 需清缓存或重装才生效(上游说明);
+- 该模块与本仓库 Stash 覆写**功能重叠但互不冲突**(分属两个 App)。
+
+> 没加这个模块 = 国内 App 开屏广告完全没拦。配置文件里只能写注释提示,
+> 无法替你自动安装,这是 Shadowrocket 的模块机制决定的。
 
 ## 三、YouTube 功能矩阵(去广告 + 画中画/后台播放)
 

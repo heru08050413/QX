@@ -1,5 +1,5 @@
-name: Stash Pro YouTube 增强（需真机验证）
-desc: 去广告/PiP/隐藏上传按钮；需启用 MITM 并信任自己的 CA。锁定 Maasea 上游版本，作者只保证 Surge。本覆写含第三方 Worker 转发，启用前务必阅读 Stash_Pro_README.md 风险说明；播放异常可单独关闭，保留主分流。
+name: "[实验性·未验证] Stash Pro YouTube 增强"
+desc: "【实验性·未经真机验证·默认不建议启用】去广告/PiP/隐藏上传按钮。状态说明：主 README 第三节将 Stash 的 YouTube 去广告标注为 ❌，理由是 Maasea 方案依赖 protobuf 二进制改写，而 Stash 脚本层的该能力尚未在真机证实；本文件是针对 Stash 原生 binary-mode 的适配尝试，脚本本身与 Shadowrocket/Loon 侧同源并锁定 commit 65075cd，但从未在 iPhone 上验证过去广告、PiP 或隐藏上传按钮实际生效。另含第三方 Worker(init-stream.maasea.workers.dev)转发依赖，上游作者只保证 Surge。启用前务必阅读 Stash_Pro_README.md 的风险说明；若播放卡顿或异常，单独关闭本覆写即可，主分流不受影响。"
 # 适配 Stash 原生 binary-mode / require-body / Uint8Array / $done(response)。
 # 不可同时启用其他 YouTube 重写。未擅自生成证书或关闭服务器证书校验。
 http:
