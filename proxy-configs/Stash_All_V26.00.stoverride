@@ -119,6 +119,7 @@ http:
     - "rp.hpplay.cn"
     - "m5.amap.com"
     - "optimus-ads.amap.com"
+    - "amap-aos-info-nogw.amap.com"
     - "adproxy.autohome.com.cn"
     - "app2.autoimg.cn"
     - "gw.alicdn.com"
@@ -305,6 +306,11 @@ http:
       ^https?:\/\/m5\.amap\.com\/ws\/shield\/dsp\/app\/startup\/init\? - reject-dict
     - >-
       ^https?://optimus-ads.amap.com/uploadimg/[a-zA-Z0-9]+.gif - reject-200
+    # 高德开屏新接口域 (2026 上游迁移: m5 -> amap-aos-info-nogw)
+    # 覆盖 splash_screen 与 splash_screen_rt 两种路径; 该域仅承载开屏投放,
+    # 故可路径级 reject-200 (对齐 ddgksf2013 AmapAds.conf 2025-12-06 语义)
+    - >-
+      ^https?:\/\/amap-aos-info-nogw\.amap\.com\/ws\/aos\/alimama\/splash_screen - reject-200
     # 汽车之家
     - >-
       ^https?:\/\/adproxy\.autohome\.com\.cn\/AdvertiseService\/ - reject-img
