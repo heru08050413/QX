@@ -2,8 +2,16 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-10-18 (v2.6.21 Tailscale IPv4/MagicDNS 路由修复；待真机验收)
-# Predecessor: v2.6.20 (08ef0ed；回滚请仅撤销本批变更)
+# Updated: 2026-10-25 (v2.6.22 微博广告主机精确拦截；待真机验收)
+# Predecessor: v2.6.21 (ffd3351；回滚请仅撤销本批变更)
+#
+# v2.6.22 修订日志
+#   - 10/24–10/25 日志显示微博开屏预加载、广告策略和广告图主机被宽泛
+#     weibo.com DIRECT 提前放行；新增三个精确主机拦截，置于微博直连保护前。
+#   - sdkapp/wbapp 与信息流 API 保持可达，继续交给现有响应脚本处理；不整域
+#     拦截 uve.weibo.com，也不拦截共享新浪图片/视频 CDN。
+#   - 影响范围限于确认的开屏/广告策略/广告图端点；开屏、信息流显示与微博
+#     正常功能仍需在手机规则模式下实测，域名日志不能证明广告渲染结果。
 #
 # v2.6.21 修订日志
 #   - 移除 100.64.0.0/10 的 TUN 旁路排除，并将 Tailscale 节点 IPv4 与
@@ -1310,13 +1318,16 @@ DOMAIN-SUFFIX,ocsp.sca1b.amazontrust.com,DIRECT
 DOMAIN-SUFFIX,ocsp.rootca1.amazontrust.com,DIRECT
 
 # ---------------------------------------------------------------------
-# 1. 微博图片广告精确拒绝 → 业务域保护 → 通用广告表
-# 三个主机均在当前 Advertising_Domain.list 中；只处理精确主机，不扩至 SDK/API。
+# 1. 微博已确认广告主机精确拒绝 → 业务域保护 → 通用广告表
+# 仅拦截日志出现的开屏预加载/策略/广告图主机及既有精确图片广告主机；
 # sdkapp/wbapp 混合接口必须可达，交给现有响应脚本删广告，不能整域 REJECT。
 # ---------------------------------------------------------------------
 DOMAIN,fastimage.uve.weibo.com,REJECT
 DOMAIN,adimg.uve.weibo.com,REJECT
 DOMAIN,adimg.vue.weibo.com,REJECT
+DOMAIN,bootpreload.uve.weibo.com,REJECT-200
+DOMAIN,kadmimage.biz.weibo.com,REJECT
+DOMAIN,adstrategy.biz.weibo.com,REJECT
 DOMAIN-SUFFIX,weibo.cn,DIRECT
 DOMAIN-SUFFIX,weibo.com,DIRECT
 DOMAIN-SUFFIX,weibo.com.cn,DIRECT
