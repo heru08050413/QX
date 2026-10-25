@@ -2,8 +2,16 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-10-25 (v2.6.23 微博广告入口扩展拦截；IP A/B 实验)
-# Predecessor: v2.6.22 (d67d953；回滚请仅撤销本批变更)
+# Updated: 2026-10-25 (v2.6.24 AI Agent 应用专属域名代理)
+# Predecessor: v2.6.23 (ebb1a50；回滚请仅撤销本批变更)
+#
+# v2.6.24 修订日志
+#   - Cue AI (cueai.app)、Wabi (wabi.ai)、Hark (hark.com)、Today (today.ai)
+#     官方服务域明确送入 AI 组，默认使用美国节点，避免落入 Final 直连。
+#   - Muse (muse.ai/metaaivm.com) 已走默认美国的 Meta 组；Grok (grok.com/
+#     x.ai) 已走 AI 组，x.com 已走默认美国稳定组，本次保留现有分流。
+#   - Hark/Cue 等 App 的第三方登录、模型、CDN 或集成域仍按各自既有规则；
+#     真机日志可用于补齐未识别的服务域。手动更改策略组后实际出口可能不同。
 #
 # v2.6.23 修订日志
 #   - 新日志确认 uve/biz 微博广告相关主机仍被 weibo.com DIRECT 放行；
@@ -1647,6 +1655,11 @@ DOMAIN-SUFFIX,x.ai,AI
 DOMAIN-SUFFIX,grok.com,AI
 DOMAIN-SUFFIX,cohere.com,AI
 DOMAIN,copilot.microsoft.com,AI
+# v2.6.24: AI Agent App 一方服务域走 AI 组（默认美国节点）。
+DOMAIN-SUFFIX,cueai.app,AI
+DOMAIN-SUFFIX,wabi.ai,AI
+DOMAIN-SUFFIX,hark.com,AI
+DOMAIN-SUFFIX,today.ai,AI
 # v2.6.16:日志中 Copilot/Cursor API 落入 FINAL=DIRECT，补齐官方服务域.
 DOMAIN-SUFFIX,githubcopilot.com,AI
 DOMAIN-SUFFIX,cursor.sh,AI
