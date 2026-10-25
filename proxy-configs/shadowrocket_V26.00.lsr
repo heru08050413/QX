@@ -2,8 +2,23 @@
 # Shadowrocket Master Configuration — V26.00
 # (四套配置统一版本号 V26.00; 本文件历史沿革见下方 Revision 2.6.x 修订日志)
 # Codename: "YouTube Full-Chain Ad + HA"
-# Updated: 2026-10-25 (v2.6.22 微博广告主机精确拦截；待真机验收)
-# Predecessor: v2.6.21 (ffd3351；回滚请仅撤销本批变更)
+# Updated: 2026-10-25 (v2.6.23 微博广告入口扩展拦截；IP A/B 实验)
+# Predecessor: v2.6.22 (d67d953；回滚请仅撤销本批变更)
+#
+# v2.6.23 修订日志
+#   - 新日志确认 uve/biz 微博广告相关主机仍被 weibo.com DIRECT 放行；
+#     对 uve.weibo.com、biz.weibo.com 增加前置拦截，开屏脚本依赖的
+#     sdkapp/wbapp（含 mob）精确例外仍直连，交给现有响应脚本处理。
+#   - kadmimage、adstrategy、bootpreload、preload-impression 使用
+#     REJECT-200；将这四个已观察到的广告主机精确加入 MITM 白名单，
+#     供客户端在 HTTPS 下合成空 200。其余 suffix 命中仍会被阻断，
+#     但未列入 MITM 的主机不保证得到合成 200。
+#   - 两个同秒出现的纯 IP 增加临时 /32 REJECT A/B 规则。规则按 IP
+#     生效于所有 App/端口；日志尚不能证明它们属于微博广告，若其他
+#     App 异常应先撤销这两条，再判断广告是否变化。39.97.130.51 未纳入，
+#     因为日志仅出现一次且关联证据不足。
+#   - 不拦截 ad.us.sinaimg.cn 或 api.weibo.cn；前者承载共享媒体，后者
+#     由信息流脚本处理。真机需验证微博启动、信息流、开屏和媒体播放。
 #
 # v2.6.22 修订日志
 #   - 10/24–10/25 日志显示微博开屏预加载、广告策略和广告图主机被宽泛
@@ -1180,7 +1195,7 @@ Final = select, DIRECT, Proxy
 
 # =====================================================================
 # [Rule]
-# 自上而下匹配,先 DIRECT 保护区再 REJECT 广告区再业务分流
+# 自上而下匹配：基础旁路/协议约束 → 精确广告拦截及必要例外 → 业务分流
 # =====================================================================
 
 [Rule]
@@ -1204,6 +1219,14 @@ IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
 IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
 IP-CIDR6,fe80::/10,DIRECT,no-resolve
 IP-CIDR6,fc00::/7,DIRECT,no-resolve
+
+# ---------------------------------------------------------------------
+# v2.6.23 微博纯 IP 连接临时 A/B 拦截（观察证据不足，测试后复核）
+# 仅两个日志中与微博广告请求同秒出现的地址；按目标 IP 全局生效，
+# 不限 App/端口。若其他 App 出现故障，撤销对应 /32 规则。
+# ---------------------------------------------------------------------
+IP-CIDR,49.7.36.197/32,REJECT,no-resolve
+IP-CIDR,106.63.15.201/32,REJECT,no-resolve
 
 # ---------------------------------------------------------------------
 # 0.5 YouTube UDP/QUIC 阻断 (v2.6.8 上移至此, 浮窗功能的物理前提)
@@ -1318,16 +1341,24 @@ DOMAIN-SUFFIX,ocsp.sca1b.amazontrust.com,DIRECT
 DOMAIN-SUFFIX,ocsp.rootca1.amazontrust.com,DIRECT
 
 # ---------------------------------------------------------------------
-# 1. 微博已确认广告主机精确拒绝 → 业务域保护 → 通用广告表
-# 仅拦截日志出现的开屏预加载/策略/广告图主机及既有精确图片广告主机；
-# sdkapp/wbapp 混合接口必须可达，交给现有响应脚本删广告，不能整域 REJECT。
+# 1. 微博广告入口拒绝 → 必需脚本接口例外 → 业务域保护 → 通用广告表
+# uve/biz 后缀拦截基于本次日志中广告与追踪主机仍被放行的证据。
+# sdkapp/wbapp（含 mob）承载脚本处理的混合接口，必须先精确放行。
+# biz 后缀范围较广，可能影响微博统计/辅助功能，需真机观察。
 # ---------------------------------------------------------------------
 DOMAIN,fastimage.uve.weibo.com,REJECT
 DOMAIN,adimg.uve.weibo.com,REJECT
 DOMAIN,adimg.vue.weibo.com,REJECT
 DOMAIN,bootpreload.uve.weibo.com,REJECT-200
-DOMAIN,kadmimage.biz.weibo.com,REJECT
-DOMAIN,adstrategy.biz.weibo.com,REJECT
+DOMAIN,kadmimage.biz.weibo.com,REJECT-200
+DOMAIN,adstrategy.biz.weibo.com,REJECT-200
+DOMAIN,preload-impression.uve.weibo.com,REJECT-200
+DOMAIN,sdkapp.uve.weibo.com,DIRECT
+DOMAIN,wbapp.uve.weibo.com,DIRECT
+DOMAIN,sdkapp.mob.uve.weibo.com,DIRECT
+DOMAIN,wbapp.mob.uve.weibo.com,DIRECT
+DOMAIN-SUFFIX,uve.weibo.com,REJECT-200
+DOMAIN-SUFFIX,biz.weibo.com,REJECT-200
 DOMAIN-SUFFIX,weibo.cn,DIRECT
 DOMAIN-SUFFIX,weibo.com,DIRECT
 DOMAIN-SUFFIX,weibo.com.cn,DIRECT
@@ -2517,7 +2548,7 @@ client-source-address = false
 #   + app.biliapi.net (B站现行接口域) / + *-spclient.spotify.com (Spotify 新方案)
 #   - B站旧接口域 5 个、国内 App 12 个无脚本 hostname (脚本已死/移交
 #     blockAds 模块, 留着=无效解密纯耗电; 模块启用后自动 %APPEND% 接管)
-hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, amap-aos-info-nogw.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.icloud.com, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, bootpreload.uve.weibo.com, preload-impression.uve.weibo.com, kadmimage.biz.weibo.com, adstrategy.biz.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, restapi.amap.com, mps.amap.com, amap-aos-info-nogw.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================
