@@ -312,10 +312,10 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 兜底策略 (Final 指向)
-兜底策略 = select,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
+兜底策略 = select,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,其他节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
 
 # 代理节点 (插件用)
-代理节点 = select,兜底策略,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
+代理节点 = select,兜底策略,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,其他节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
 
 # 大陆网址 (首选 DIRECT, 极端情况备用代理)
 大陆网址 = select,DIRECT,自动选择,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN_02.png
@@ -381,7 +381,7 @@ Github = url-test,自动选择,香港节点,狮城节点,日本节点,美国节�
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 主测速组 (用于 Web / AI / 短交互, interval=600 tolerance=200)
-自动选择 = url-test,HK_Filter,TW_Filter,JP_Filter,SG_Filter,US_Filter,KR_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
+自动选择 = url-test,HK_Filter,TW_Filter,JP_Filter,SG_Filter,US_Filter,KR_Filter,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
 
 # 稳定选择 (select 聚合, 长连接业务用户可手动切换稳定地区)
 稳定选择 = select,自动选择,狮城稳定,日本稳定,美国稳定,香港稳定,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
@@ -426,7 +426,11 @@ YT-美国 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interv
 # 节点筛选器 (按地区正则)
 # =====================================================================
 [Remote Filter]
-OT_Filter = NameRegex, FilterKey = "^(?!.*(?:US|TW|JP|SG|美|韩|日本|新|港|澳|台|英|🇬🇧|🇺🇸|🇲🇴|🇸🇬|🇯🇵|🇭🇰|🇰🇷)).*$"
+# V26.00 全节点入组: OT_Filter 收"名字里没有地区词"的节点 —— 你手动导入的本地
+#   节点多数落在这里. 原先 其他节点 组定义了却没被任何组引用, 本地节点等于
+#   孤立; 现已并入 自动选择 与 兜底策略/代理节点 主入口. 同时补排除机场信息
+#   节点(剩余流量/到期/官网等), 免得它们混进自动测速. (样本回归 9 例全过)
+OT_Filter = NameRegex, FilterKey = "^(?!.*(?:US|TW|JP|SG|美|韩|日本|新|港|澳|台|英|🇬🇧|🇺🇸|🇲🇴|🇸🇬|🇯🇵|🇭🇰|🇰🇷|剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$"
 HK_Filter = NameRegex, FilterKey = "(?i)(🇭🇰|港|HK|HongKong|Hong Kong)"
 TW_Filter = NameRegex, FilterKey = "(?i)(🇹🇼|台|TW|Tai|Taiwan)"
 US_Filter = NameRegex, FilterKey = "(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley"
