@@ -312,10 +312,10 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # 兜底策略 (Final 指向)
-兜底策略 = select,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
+兜底策略 = select,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,自建节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
 
 # 代理节点 (插件用)
-代理节点 = select,兜底策略,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
+代理节点 = select,兜底策略,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,自建节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
 
 # 大陆网址 (首选 DIRECT, 极端情况备用代理)
 大陆网址 = select,DIRECT,自动选择,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN_02.png
@@ -420,19 +420,30 @@ YT-美国 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interv
 美国稳定 = fallback,US_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
 狮城稳定 = fallback,SG_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
 
+# V26.00 自建节点手选组: 仅收名字含"自建"的本地节点, select 手选不测速.
+#   自建节点已被所有地区池/自动组排除, 想用时在此或主入口手动切到本组.
+自建节点 = select,自建_Filter,DIRECT,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Server.png
+
 
 # =====================================================================
 # [Remote Filter]
 # 节点筛选器 (按地区正则)
 # =====================================================================
-[Remote Filter]
-OT_Filter = NameRegex, FilterKey = "^(?!.*(?:US|TW|JP|SG|美|韩|日本|新|港|澳|台|英|🇬🇧|🇺🇸|🇲🇴|🇸🇬|🇯🇵|🇭🇰|🇰🇷)).*$"
-HK_Filter = NameRegex, FilterKey = "(?i)(🇭🇰|港|HK|HongKong|Hong Kong)"
-TW_Filter = NameRegex, FilterKey = "(?i)(🇹🇼|台|TW|Tai|Taiwan)"
-US_Filter = NameRegex, FilterKey = "(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley"
-JP_Filter = NameRegex, FilterKey = "(?i)(🇯🇵|日本|JP|Japan)"
-KR_Filter = NameRegex, FilterKey = "(?i)(🇰🇷|KR|Korea|KOR|首尔|韩|韓)"
-SG_Filter = NameRegex, FilterKey = "(?i)(🇸🇬|新加坡|狮城|獅城|SG|Singapore)"
+# V26.00 自建节点隔离: Loon 的 NameRegex 过滤器【对本地节点与订阅节点一视同仁】
+#   (已核实官方行为, 无按来源区分的开关) → 唯一办法是按名字排除. 每个地区
+#   过滤器前置 (?!.*自建) 负向预查: 节点名含"自建"二字即被所有地区池/自动组
+#   排除, 仅由下方 自建_Filter / 自建节点 组手动选用.
+#   ★ 你需要把手动导入的本地节点改名带上"自建"二字(如: 美国自建VPS).
+#   注: US_Filter 保留 main 分支的词界写法(防 US 误命中 Business/Belarus 等),
+#       叠加自建排除(组合式已回归测试 13 例全过).
+OT_Filter = NameRegex, FilterKey = "^(?!.*(?:自建|US|TW|JP|SG|美|韩|日本|新|港|澳|台|英|🇬🇧|🇺🇸|🇲🇴|🇸🇬|🇯🇵|🇭🇰|🇰🇷)).*$"
+HK_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇭🇰|港|HK|HongKong|Hong Kong))"
+TW_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇹🇼|台|TW|Tai|Taiwan))"
+US_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇺🇸|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])))"
+JP_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇯🇵|日本|JP|Japan))"
+KR_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇰🇷|KR|Korea|KOR|首尔|韩|韓))"
+SG_Filter = NameRegex, FilterKey = "(?i)^(?!.*自建)(?=.*(?:🇸🇬|新加坡|狮城|獅城|SG|Singapore))"
+自建_Filter = NameRegex, FilterKey = "(?i)自建"
 
 
 # =====================================================================

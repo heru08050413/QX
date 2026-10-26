@@ -43,8 +43,13 @@
    - ⚠️ **`YT-Auto` 只给 `YouTube`(大流量视频)当默认;`谷歌服务` 默认必须留 `AutoSelect`**:谷歌服务承载 `accounts.google.com`/`googleapis` 等轻流量登录接口(AI 应用的会话续期也走这里),让它默认走 YT-Auto 会把 AI 一起拖进自愈组、拖慢——这是 fix2 里"AI 也变差"的传导路径。YT-Auto 只作谷歌服务的备选。
    - **QX**:`server_check_url` 是否支持按组覆盖无权威文档,真机验证前不动;**Egern**:探针 URL 是全局单值(`proxy_latency_test_url`),架构上做不了按组分探针,记录为已知限制。
 8. **UDP fail-fast(稳定性审查新增)**:"节点不支持 UDP 时的回落"必须 REJECT 而非 DIRECT(SR `udp-policy-not-supported-behaviour` / Loon `udp-fallback-mode`)。DIRECT 把境外 UDP 直连发出=被墙黑洞=应用挂死 60-90s;REJECT 立即失败=应用秒切 TCP。"保微信 VOIP"论据不成立:国内 UDP 在命中代理策略前已被 GEOIP CN 判 DIRECT,到不了该开关。
+9. **自建/本地节点不入自动分组(节点隔离审查新增)**:手动导入的本地节点不应混进地区池/AutoSelect(会被测速、被自动选中、拖慢大流量业务)。**按来源区分优先于按名字**,各引擎能力不同:
+   - **Egern**:地区池 `policies:[订阅]` 只摊平订阅组,本地节点不在 `订阅` 里 → **天生已排除**,无需改动。
+   - **Stash**:地区池/全部节点原用 `include-all:true`(含本地)→ 改为 `use:[Subscribe]`(仅订阅 provider),本地节点按来源排除、无需改名。另加 `本地节点`(select, include-all)供手选。`use:` 已被配置自身证实支持。
+   - **Loon**:官方已证实 `NameRegex` 过滤器【对本地+订阅节点一视同仁、无来源开关】→ **只能按名字排除**:每个地区过滤器前置 `(?!.*自建)`,用户须把本地节点改名带"自建"二字;另加 `自建_Filter` + `自建节点` 手选组。改前用 airport/local 样本回归测过。
+   - **SR**:本轮未审(用户只问 Stash/Loon/Egern);SR 地区池同为 `policy-regex-filter`,若需隔离按 Loon 同法(名字排除)。
 
-> 改动前后都跑一遍这 8 条。这一层不参与差异化。
+> 改动前后都跑一遍这 9 条。这一层不参与差异化。
 
 ---
 

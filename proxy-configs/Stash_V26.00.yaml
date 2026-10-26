@@ -98,6 +98,19 @@ proxy-groups:
   - 狮城节点
   - 美国节点
   - 全部节点
+  - 本地节点
+  - DIRECT
+# V26.00 自建节点隔离: 所有自动组/地区池已改为 use:[Subscribe](仅机场
+#   订阅节点), 本地手动导入的自建节点不再混入、不被测速、不被自动选中.
+#   本组用于【手动】选用自建节点. include-all 会列出全部节点(订阅+本地),
+#   翻到你的自建节点点选即可; 它是 select(手选)不测速, 自建节点不会被
+#   自动使用. (想只列本地节点, 可把 include-all 换成 include-all-proxies,
+#   但该键需真机确认 Stash 支持, 故默认用稳妥的 include-all.)
+- name: 本地节点
+  type: select
+  icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Server.png
+  include-all: true
+  proxies:
   - DIRECT
 - name: 国外网站
   type: select
@@ -316,7 +329,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   filter: (?i)🇭🇰|香港|港|\bHK\b|\bHong ?Kong\b
 - name: 台湾节点
   type: url-test
@@ -325,7 +339,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   # V26.00 [H1] 去掉 🇨🇳(机场回国节点常用标记)与单字"台|湾"(会命中
   # "台州中转"等国内节点), 否则国内节点混入台湾池, Bahamut 直接死.
   filter: (?i)🇹🇼|台湾|台灣|台北|新北|彰化|\bTWN?\b|\bTaiwan\b
@@ -336,7 +351,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   filter: (?i)🇯🇵|日本|日|东京|大阪|\bJP\b|\bJapan\b
 - name: 狮城节点
   type: url-test
@@ -345,7 +361,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   filter: (?i)🇸🇬|新加坡|狮城|狮|坡|\bSG\b|\bSingapore\b
 - name: 美国节点
   type: url-test
@@ -354,7 +371,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   filter: (?i)🇺🇸|🇺🇲|美国|美|洛杉矶|圣何塞|西雅图|\bUS\b|\bUnited ?States\b|\bAmerica\b
 - name: 全部节点
   type: url-test
@@ -363,7 +381,8 @@ proxy-groups:
   interval: 600
   tolerance: 200
   lazy: true
-  include-all: true
+  use:
+  - Subscribe
   filter: ^(?=.*(.))(?!.*((?i)群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|(\b(USE|USED|TOTAL|Traffic|Expire|EMAIL|Panel|Channel|Author)\b|(\d{4}-\d{2}-\d{2}|\d+G)))).*$
 rule-providers:
   Direct:
