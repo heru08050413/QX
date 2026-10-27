@@ -1,0 +1,1033 @@
+name: "Stash SR 移植版 V26.00"
+desc: "由 shadowrocket_V26.00.lsr 自动转换(scripts/sr2stash.py)。策略组/分流/去广告脚本/MITM 与小火箭一致; 所有测速组 lazy: 组闲置时不测速, YouTube 测速只在看 YouTube 时进行。叠加在能显示节点的机场或主配置上使用; 需开 MITM 并信任自己的 CA。YouTube 脚本含第三方 Worker 依赖, 未在 Stash 真机验证。"
+# 自动生成, 请勿手改: 改 shadowrocket_V26.00.lsr 后在 proxy-configs/ 下运行 python3 scripts/sr2stash.py。
+# 未移植(Stash 无对应或无法核实): [Host] 按域名 DNS(fake-ip 下已等效)、内置 Tailscale、
+#   bypass-tun(含 APNs 绕过)、MITM 排除项(Stash 只解密列出的主机)。
+# 已丢弃的 Tailscale 规则: DOMAIN-SUFFIX,ts.net,TAILSCALE | IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve
+
+proxy-groups: #!replace
+  - name: 'Proxy'
+    type: select
+    proxies: ['美国节点', 'AutoSelect', 'StableSelect', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'DIRECT']
+  - name: 'AI'
+    type: select
+    proxies: ['美国节点', '新加坡节点', '日本节点', 'AutoSelect']
+  - name: 'Gemini'
+    type: select
+    proxies: ['谷歌服务']
+  - name: 'Meta'
+    type: select
+    proxies: ['美国节点', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'AutoSelect']
+  - name: 'YouTube'
+    type: select
+    proxies: ['YT-Auto', 'YT-香港节点', 'YT-台湾节点', 'YT-日本节点', 'YT-新加坡节点', 'YT-美国节点', 'AutoSelect']
+  - name: 'Netflix'
+    type: select
+    proxies: ['美国节点', '香港节点', '日本节点', '新加坡节点']
+  - name: 'Spotify'
+    type: select
+    proxies: ['新加坡节点', '香港节点', '日本节点', '美国节点']
+  - name: 'TikTok'
+    type: select
+    proxies: ['美国节点', '日本节点', '台湾节点', '新加坡节点']
+  - name: 'Telegram'
+    type: select
+    proxies: ['美国节点', '新加坡节点', '香港节点', '日本节点', 'AutoSelect']
+  - name: 'Instagram'
+    type: select
+    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
+  - name: 'Twitter'
+    type: select
+    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
+  - name: '苹果服务'
+    type: select
+    proxies: ['美国节点', 'DIRECT', '香港节点']
+  - name: '谷歌服务'
+    type: select
+    proxies: ['美国节点', 'AutoSelect', 'YT-Auto', '香港节点', '台湾节点', '日本节点', '新加坡节点']
+  - name: '微软服务'
+    type: select
+    proxies: ['美国节点', 'DIRECT', '香港节点']
+  - name: '哔哩哔哩'
+    type: select
+    proxies: ['DIRECT', '香港节点', '台湾节点']
+  - name: 'AutoSelect'
+    type: url-test
+    include-all: true
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 'YT-香港节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG'
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 120
+    tolerance: 300
+    lazy: true
+  - name: 'YT-台湾节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化'
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 120
+    tolerance: 300
+    lazy: true
+  - name: 'YT-日本节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 120
+    tolerance: 300
+    lazy: true
+  - name: 'YT-新加坡节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 120
+    tolerance: 300
+    lazy: true
+  - name: 'YT-美国节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 120
+    tolerance: 300
+    lazy: true
+  - name: 'YT-Auto'
+    type: fallback
+    proxies: ['YT-美国节点', 'YT-香港节点', 'YT-台湾节点', 'YT-日本节点', 'YT-新加坡节点']
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 60
+    lazy: true
+  - name: 'StableSelect'
+    type: fallback
+    include-all: true
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    lazy: true
+  - name: 'Fallback'
+    type: fallback
+    include-all: true
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    lazy: true
+  - name: '香港节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG'
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: '台湾节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化'
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: '日本节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: '新加坡节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: '美国节点'
+    type: url-test
+    include-all: true
+    filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
+    url: 'http://cp.cloudflare.com/generate_204'
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: '美国稳定'
+    type: fallback
+    include-all: true
+    filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
+    url: 'https://cp.cloudflare.com/generate_204'
+    interval: 900
+    lazy: true
+  - name: '日本稳定'
+    type: fallback
+    include-all: true
+    filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
+    url: 'https://cp.cloudflare.com/generate_204'
+    interval: 900
+    lazy: true
+  - name: '新加坡稳定'
+    type: fallback
+    include-all: true
+    filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
+    url: 'https://cp.cloudflare.com/generate_204'
+    interval: 900
+    lazy: true
+  - name: 'Final'
+    type: select
+    proxies: ['DIRECT', 'Proxy']
+
+rule-providers: #!replace
+  Advertising:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Advertising/Advertising.yaml
+    path: ./rules/stash-sr-advertising.yaml
+    interval: 86400
+  Advertising_Domain:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Advertising/Advertising_Domain.yaml
+    path: ./rules/stash-sr-advertising_domain.yaml
+    interval: 86400
+  Privacy:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Privacy/Privacy.yaml
+    path: ./rules/stash-sr-privacy.yaml
+    interval: 86400
+  Hijacking:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Hijacking/Hijacking.yaml
+    path: ./rules/stash-sr-hijacking.yaml
+    interval: 86400
+  OpenAI:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/OpenAI/OpenAI.yaml
+    path: ./rules/stash-sr-openai.yaml
+    interval: 86400
+  YouTube:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/YouTube/YouTube.yaml
+    path: ./rules/stash-sr-youtube.yaml
+    interval: 86400
+  Netflix:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Netflix/Netflix_Classical.yaml
+    path: ./rules/stash-sr-netflix.yaml
+    interval: 86400
+  Spotify:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Spotify/Spotify.yaml
+    path: ./rules/stash-sr-spotify.yaml
+    interval: 86400
+  TikTok:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/TikTok/TikTok.yaml
+    path: ./rules/stash-sr-tiktok.yaml
+    interval: 86400
+  Telegram:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Telegram/Telegram.yaml
+    path: ./rules/stash-sr-telegram.yaml
+    interval: 86400
+  Google:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Google/Google.yaml
+    path: ./rules/stash-sr-google.yaml
+    interval: 86400
+  Microsoft:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Microsoft/Microsoft.yaml
+    path: ./rules/stash-sr-microsoft.yaml
+    interval: 86400
+  BiliBili:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/BiliBili/BiliBili.yaml
+    path: ./rules/stash-sr-bilibili.yaml
+    interval: 86400
+  ChinaMax_Domain:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/ChinaMax/ChinaMax_Domain.yaml
+    path: ./rules/stash-sr-chinamax_domain.yaml
+    interval: 86400
+  ChinaMax_IP:
+    behavior: ipcidr
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/ChinaMax/ChinaMax_IP.yaml
+    path: ./rules/stash-sr-chinamax_ip.yaml
+    interval: 86400
+  ChinaIPs:
+    behavior: ipcidr
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/ChinaIPs/ChinaIPs_IP.yaml
+    path: ./rules/stash-sr-chinaips.yaml
+    interval: 86400
+
+rules: #!replace
+  - 'DOMAIN-SUFFIX,local,DIRECT'
+  - 'DOMAIN-SUFFIX,localhost,DIRECT'
+  - 'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve'
+  - 'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve'
+  - 'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve'
+  - 'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve'
+  - 'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve'
+  - 'IP-CIDR,224.0.0.0/4,DIRECT,no-resolve'
+  - 'IP-CIDR6,fe80::/10,DIRECT,no-resolve'
+  - 'IP-CIDR6,fc00::/7,DIRECT,no-resolve'
+  - 'IP-CIDR,49.7.36.197/32,REJECT,no-resolve'
+  - 'IP-CIDR,106.63.15.201/32,REJECT,no-resolve'
+  - 'AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,youtubei-att.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'DOMAIN,init-stream.maasea.workers.dev,YouTube'
+  - 'AND,((DOMAIN,api.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,mapi.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,api.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,mapi.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,sdkapp.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,wbapp.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,sdkapp.mob.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,wbapp.mob.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,new.vip.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,bilibili.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,biliapi.net),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,amap.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,mp.weixin.qq.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-KEYWORD,spclient),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN,translate-pa.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,translate.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'AND,((DOMAIN-SUFFIX,translate.google.com),(NETWORK,udp),(DST-PORT,443)),REJECT'
+  - 'DOMAIN,translate-pa.googleapis.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,translate.googleapis.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,translate.google.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,tumblr.com,Proxy'
+  - 'DOMAIN-SUFFIX,quora.com,Proxy'
+  - 'DOMAIN-SUFFIX,quoracdn.net,Proxy'
+  - 'DOMAIN-SUFFIX,pinterest.com,Proxy'
+  - 'DOMAIN-SUFFIX,pinimg.com,Proxy'
+  - 'DOMAIN,ocsp.digicert.com,DIRECT'
+  - 'DOMAIN,ocsp.godaddy.com,DIRECT'
+  - 'DOMAIN,ocsp.sectigo.com,DIRECT'
+  - 'DOMAIN,ocsp.usertrust.com,DIRECT'
+  - 'DOMAIN,ocsp.comodoca.com,DIRECT'
+  - 'DOMAIN,ocsp.int-x3.letsencrypt.org,DIRECT'
+  - 'DOMAIN,ocsp.pki.goog,DIRECT'
+  - 'DOMAIN,ocsp.apple.com,DIRECT'
+  - 'DOMAIN,ocsp2.apple.com,DIRECT'
+  - 'DOMAIN,ocsp.globalsign.com,DIRECT'
+  - 'DOMAIN,ocsp.entrust.net,DIRECT'
+  - 'DOMAIN-SUFFIX,ocsp.identrust.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ocsp.sca1b.amazontrust.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ocsp.rootca1.amazontrust.com,DIRECT'
+  - 'DOMAIN,fastimage.uve.weibo.com,REJECT'
+  - 'DOMAIN,adimg.uve.weibo.com,REJECT'
+  - 'DOMAIN,adimg.vue.weibo.com,REJECT'
+  - 'DOMAIN,bootpreload.uve.weibo.com,DIRECT'
+  - 'DOMAIN,kadmimage.biz.weibo.com,DIRECT'
+  - 'DOMAIN,adstrategy.biz.weibo.com,DIRECT'
+  - 'DOMAIN,preload-impression.uve.weibo.com,DIRECT'
+  - 'DOMAIN,sdkapp.uve.weibo.com,DIRECT'
+  - 'DOMAIN,wbapp.uve.weibo.com,DIRECT'
+  - 'DOMAIN,sdkapp.mob.uve.weibo.com,DIRECT'
+  - 'DOMAIN,wbapp.mob.uve.weibo.com,DIRECT'
+  - 'DOMAIN-SUFFIX,uve.weibo.com,REJECT'
+  - 'DOMAIN-SUFFIX,biz.weibo.com,REJECT'
+  - 'DOMAIN-SUFFIX,weibo.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,weibo.com,DIRECT'
+  - 'DOMAIN-SUFFIX,weibo.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,weibocdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sinaimg.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,sina.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,sina.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,sinajs.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,miaopai.com,DIRECT'
+  - 'DOMAIN,dns.weixin.qq.com,DIRECT'
+  - 'DOMAIN-SUFFIX,weixin.qq.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,qq.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT'
+  - 'DOMAIN-SUFFIX,id6.me,DIRECT'
+  - 'DOMAIN-SUFFIX,cmpassport.com,DIRECT'
+  - 'DOMAIN,amdc.alipay.com,DIRECT'
+  - 'DOMAIN,fp-it.fengkongcloud.com,DIRECT'
+  - 'DOMAIN,kuaishou.httpdns.pro,DIRECT'
+  - 'DOMAIN,httpdns.c.cdnhwc2.com,DIRECT'
+  - 'DOMAIN,oneid.getui.net,DIRECT'
+  - 'DOMAIN,c-gtc.getui.net,DIRECT'
+  - 'DOMAIN,c-oneid.getui.net,DIRECT'
+  - 'DOMAIN,b-gtc.getui.net,DIRECT'
+  - 'DOMAIN,c-gtc.gepush.com,DIRECT'
+  - 'DOMAIN,b-gtc.gepush.com,DIRECT'
+  - 'DOMAIN,c-oneid.gepush.com,DIRECT'
+  - 'DOMAIN,oneid.gepush.com,DIRECT'
+  - 'DOMAIN,c-hzgt2.getui.com,DIRECT'
+  - 'DOMAIN,mtalk.google.com,谷歌服务'
+  - 'DOMAIN,umc.danuoyi.alicdn.com,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,mum.alibabachengdun.com,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,siftscience.com,REJECT-DROP'
+  - 'DOMAIN-KEYWORD,pangolin-sdk-toutiao,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,ctobsnssdk.com,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,px.ucweb.com,REJECT-DROP'
+  - 'DOMAIN-KEYWORD,umeng,REJECT-DROP'
+  - 'DOMAIN-KEYWORD,adsdk,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP'
+  - 'DOMAIN-SUFFIX,e.qq.com,REJECT-DROP'
+  - 'DOMAIN,cm.bilibili.com,REJECT'
+  - 'DOMAIN,cm.biliapi.net,REJECT'
+  - 'DOMAIN-SUFFIX,weibomingzi.com,REJECT'
+  - 'RULE-SET,Advertising,REJECT'
+  - 'RULE-SET,Advertising_Domain,REJECT'
+  - 'RULE-SET,Privacy,REJECT'
+  - 'RULE-SET,Hijacking,REJECT'
+  - 'DOMAIN-SUFFIX,adjust.com,REJECT'
+  - 'DOMAIN-SUFFIX,adjust.io,REJECT'
+  - 'DOMAIN-SUFFIX,appsflyer.com,REJECT'
+  - 'DOMAIN-SUFFIX,branch.io,REJECT'
+  - 'DOMAIN-SUFFIX,kochava.com,REJECT'
+  - 'DOMAIN-SUFFIX,mixpanel.com,REJECT'
+  - 'DOMAIN-SUFFIX,amplitude.com,REJECT'
+  - 'DOMAIN-SUFFIX,segment.com,REJECT'
+  - 'DOMAIN-SUFFIX,segment.io,REJECT'
+  - 'DOMAIN-SUFFIX,fullstory.com,REJECT'
+  - 'DOMAIN-SUFFIX,hotjar.com,REJECT'
+  - 'DOMAIN-SUFFIX,demdex.net,REJECT'
+  - 'DOMAIN-SUFFIX,bluekai.com,REJECT'
+  - 'DOMAIN-SUFFIX,liveramp.com,REJECT'
+  - 'DOMAIN-SUFFIX,scorecardresearch.com,REJECT'
+  - 'DOMAIN-SUFFIX,quantserve.com,REJECT'
+  - 'DOMAIN-SUFFIX,chartbeat.com,REJECT'
+  - 'DOMAIN-SUFFIX,moatads.com,REJECT'
+  - 'DOMAIN-SUFFIX,doubleverify.com,REJECT'
+  - 'DOMAIN-SUFFIX,adsafeprotected.com,REJECT'
+  - 'DOMAIN-SUFFIX,googlesyndication.com,REJECT'
+  - 'DOMAIN-SUFFIX,doubleclick.net,REJECT'
+  - 'DOMAIN-SUFFIX,google-analytics.com,REJECT'
+  - 'DOMAIN-SUFFIX,googletagmanager.com,REJECT'
+  - 'DOMAIN-SUFFIX,googletagservices.com,REJECT'
+  - 'DOMAIN-SUFFIX,googleadservices.com,REJECT'
+  - 'DOMAIN-SUFFIX,adservice.google.com,REJECT'
+  - 'DOMAIN-SUFFIX,criteo.com,REJECT'
+  - 'DOMAIN-SUFFIX,criteo.net,REJECT'
+  - 'DOMAIN-SUFFIX,taboola.com,REJECT'
+  - 'DOMAIN-SUFFIX,outbrain.com,REJECT'
+  - 'DOMAIN-SUFFIX,pubmatic.com,REJECT'
+  - 'DOMAIN-SUFFIX,rubiconproject.com,REJECT'
+  - 'DOMAIN-SUFFIX,openx.net,REJECT'
+  - 'DOMAIN-SUFFIX,appnexus.com,REJECT'
+  - 'DOMAIN-SUFFIX,amazon-adsystem.com,REJECT'
+  - 'DOMAIN-SUFFIX,adsrvr.org,REJECT'
+  - 'DOMAIN-SUFFIX,casalemedia.com,REJECT'
+  - 'DOMAIN-SUFFIX,indexexchange.com,REJECT'
+  - 'DOMAIN-SUFFIX,smartadserver.com,REJECT'
+  - 'DOMAIN-SUFFIX,freewheel.tv,REJECT'
+  - 'DOMAIN-SUFFIX,spotxchange.com,REJECT'
+  - 'DOMAIN-SUFFIX,teads.tv,REJECT'
+  - 'DOMAIN-SUFFIX,innovid.com,REJECT'
+  - 'DOMAIN-SUFFIX,sharethrough.com,REJECT'
+  - 'DOMAIN-SUFFIX,triplelift.com,REJECT'
+  - 'DOMAIN-SUFFIX,applovin.com,REJECT'
+  - 'DOMAIN-SUFFIX,unityads.unity3d.com,REJECT'
+  - 'DOMAIN-SUFFIX,chartboost.com,REJECT'
+  - 'DOMAIN-SUFFIX,ironsrc.com,REJECT'
+  - 'DOMAIN-SUFFIX,admob.com,REJECT'
+  - 'DOMAIN-SUFFIX,mopub.com,REJECT'
+  - 'DOMAIN-SUFFIX,vungle.com,REJECT'
+  - 'DOMAIN-SUFFIX,fyber.com,REJECT'
+  - 'DOMAIN-SUFFIX,inmobi.com,REJECT'
+  - 'DOMAIN-SUFFIX,adcolony.com,REJECT'
+  - 'DOMAIN-SUFFIX,flurry.com,REJECT'
+  - 'DOMAIN-SUFFIX,app-measurement.com,REJECT'
+  - 'DOMAIN-SUFFIX,pos.baidu.com,REJECT'
+  - 'DOMAIN-SUFFIX,hm.baidu.com,REJECT'
+  - 'DOMAIN-SUFFIX,cpro.baidu.com,REJECT'
+  - 'DOMAIN-SUFFIX,nsclick.baidu.com,REJECT'
+  - 'DOMAIN-SUFFIX,tanx.com,REJECT'
+  - 'DOMAIN-SUFFIX,mmstat.com,REJECT'
+  - 'DOMAIN-SUFFIX,wgo.mmstat.com,REJECT'
+  - 'DOMAIN,adstats.tencentmusic.com,REJECT'
+  - 'DOMAIN,ad.tencentmusic.com,REJECT'
+  - 'DOMAIN,adcdn.tencentmusic.com,REJECT'
+  - 'DOMAIN,adexpo.tencentmusic.com,REJECT'
+  - 'DOMAIN,monitor.music.qq.com,REJECT'
+  - 'DOMAIN,stat.y.qq.com,REJECT'
+  - 'DOMAIN,tmead.y.qq.com,REJECT'
+  - 'DOMAIN-SUFFIX,ls.apple.com,DIRECT'
+  - 'DOMAIN-SUFFIX,apple-dns.net,DIRECT'
+  - 'DOMAIN-SUFFIX,apple.com.akadns.net,DIRECT'
+  - 'DOMAIN-SUFFIX,cdn-apple.com.akadns.net,DIRECT'
+  - 'DOMAIN-SUFFIX,push-apple.com.akadns.net,DIRECT'
+  - 'DOMAIN-SUFFIX,aaplimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,mzstatic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,itunes.apple.com,DIRECT'
+  - 'DOMAIN-SUFFIX,apps.apple.com,DIRECT'
+  - 'DOMAIN-SUFFIX,icloud.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,icloud-content.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyin.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyincdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyinpic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyinstatic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyinvod.com,DIRECT'
+  - 'DOMAIN-SUFFIX,iesdouyin.com,DIRECT'
+  - 'DOMAIN-SUFFIX,amemv.com,DIRECT'
+  - 'DOMAIN-SUFFIX,snssdk.com,DIRECT'
+  - 'DOMAIN-SUFFIX,toutiao.com,DIRECT'
+  - 'DOMAIN-SUFFIX,toutiaocdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,toutiaoimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,toutiaovod.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ixigua.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ixiguavideo.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bytecdn.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,byteimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,pstatp.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ipstatp.com,DIRECT'
+  - 'DOMAIN-SUFFIX,feishu.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,feishucdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,volces.com,DIRECT'
+  - 'DOMAIN-SUFFIX,anthropic.com,AI'
+  - 'DOMAIN-SUFFIX,claude.ai,AI'
+  - 'DOMAIN-SUFFIX,openai.com,AI'
+  - 'DOMAIN-SUFFIX,chatgpt.com,AI'
+  - 'DOMAIN-SUFFIX,oaistatic.com,AI'
+  - 'DOMAIN-SUFFIX,oaiusercontent.com,AI'
+  - 'DOMAIN-SUFFIX,auth0.com,AI'
+  - 'DOMAIN-SUFFIX,client-api.arkoselabs.com,AI'
+  - 'DOMAIN-SUFFIX,arkoselabs.com,AI'
+  - 'DOMAIN-SUFFIX,chatgpt.livekit.cloud,AI'
+  - 'DOMAIN-SUFFIX,host.livekit.cloud,AI'
+  - 'DOMAIN-SUFFIX,turn.livekit.cloud,AI'
+  - 'DOMAIN-SUFFIX,livekit.cloud,AI'
+  - 'DOMAIN-SUFFIX,featuregates.org,AI'
+  - 'DOMAIN-SUFFIX,launchdarkly.com,AI'
+  - 'DOMAIN-SUFFIX,perplexity.ai,AI'
+  - 'DOMAIN-SUFFIX,poe.com,AI'
+  - 'DOMAIN-SUFFIX,huggingface.co,AI'
+  - 'DOMAIN-SUFFIX,mistral.ai,AI'
+  - 'DOMAIN-SUFFIX,x.ai,AI'
+  - 'DOMAIN-SUFFIX,grok.com,AI'
+  - 'DOMAIN-SUFFIX,cohere.com,AI'
+  - 'DOMAIN,copilot.microsoft.com,AI'
+  - 'DOMAIN-SUFFIX,cueai.app,AI'
+  - 'DOMAIN-SUFFIX,wabi.ai,AI'
+  - 'DOMAIN-SUFFIX,hark.com,AI'
+  - 'DOMAIN-SUFFIX,today.ai,AI'
+  - 'DOMAIN-SUFFIX,githubcopilot.com,AI'
+  - 'DOMAIN-SUFFIX,cursor.sh,AI'
+  - 'DOMAIN-SUFFIX,cursorapi.com,AI'
+  - 'DOMAIN-SUFFIX,cursor-cdn.com,AI'
+  - 'DOMAIN-SUFFIX,cursorvm.com,AI'
+  - 'DOMAIN-SUFFIX,statsigapi.net,AI'
+  - 'DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI'
+  - 'DOMAIN,ab.chatgpt.com,AI'
+  - 'DOMAIN,cdn.oaistatic.com,AI'
+  - 'DOMAIN,files.oaiusercontent.com,AI'
+  - 'DOMAIN,android.chat.openai.com,AI'
+  - 'DOMAIN,ios.chat.openai.com,AI'
+  - 'DOMAIN-SUFFIX,gemini.google.com,Gemini'
+  - 'DOMAIN-SUFFIX,bard.google.com,Gemini'
+  - 'DOMAIN-SUFFIX,aistudio.google.com,Gemini'
+  - 'DOMAIN-SUFFIX,generativelanguage.googleapis.com,Gemini'
+  - 'DOMAIN-SUFFIX,makersuite.google.com,Gemini'
+  - 'DOMAIN-SUFFIX,deepmind.com,Gemini'
+  - 'DOMAIN-SUFFIX,deepmind.google,Gemini'
+  - 'DOMAIN,alkalimakersuite-pa.clients6.google.com,Gemini'
+  - 'DOMAIN,alkalimakersuite.google.com,Gemini'
+  - 'DOMAIN,generativeai-pa.googleapis.com,Gemini'
+  - 'DOMAIN,labs.google,Gemini'
+  - 'DOMAIN,proactivebackend-pa.googleapis.com,Gemini'
+  - 'DOMAIN,geller-pa.googleapis.com,Gemini'
+  - 'DOMAIN,robinfrontend-pa.googleapis.com,Gemini'
+  - 'DOMAIN,gemini.gstatic.com,Gemini'
+  - 'DOMAIN,alkalicore-pa.clients6.google.com,Gemini'
+  - 'DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini'
+  - 'DOMAIN,accounts.google.com,谷歌服务'
+  - 'DOMAIN,oauth2.googleapis.com,谷歌服务'
+  - 'DOMAIN,securetoken.googleapis.com,谷歌服务'
+  - 'DOMAIN,identitytoolkit.googleapis.com,谷歌服务'
+  - 'RULE-SET,OpenAI,AI'
+  - 'DOMAIN-SUFFIX,youtube.com,YouTube'
+  - 'DOMAIN-SUFFIX,youtu.be,YouTube'
+  - 'DOMAIN-SUFFIX,youtube-nocookie.com,YouTube'
+  - 'DOMAIN,youtubei.googleapis.com,YouTube'
+  - 'DOMAIN,youtubei-att.googleapis.com,YouTube'
+  - 'DOMAIN,youtube.googleapis.com,YouTube'
+  - 'DOMAIN-SUFFIX,googlevideo.com,YouTube'
+  - 'DOMAIN-SUFFIX,ytimg.com,YouTube'
+  - 'DOMAIN-SUFFIX,ggpht.com,YouTube'
+  - 'DOMAIN-SUFFIX,gvt1.com,YouTube'
+  - 'DOMAIN-SUFFIX,gvt2.com,YouTube'
+  - 'RULE-SET,YouTube,YouTube'
+  - 'RULE-SET,Netflix,Netflix'
+  - 'RULE-SET,Spotify,Spotify'
+  - 'RULE-SET,TikTok,TikTok'
+  - 'DOMAIN-SUFFIX,disneyplus.com,Netflix'
+  - 'DOMAIN-SUFFIX,disney-plus.net,Netflix'
+  - 'DOMAIN-SUFFIX,bamgrid.com,Netflix'
+  - 'DOMAIN-SUFFIX,litix.io,Proxy'
+  - 'DOMAIN-SUFFIX,discomax.com,Proxy'
+  - 'DOMAIN-SUFFIX,brightline.tv,Proxy'
+  - 'DOMAIN-SUFFIX,twitch.tv,Proxy'
+  - 'DOMAIN-SUFFIX,ttvnw.net,Proxy'
+  - 'DOMAIN-SUFFIX,vimeo.com,Proxy'
+  - 'DOMAIN-SUFFIX,vimeocdn.com,Proxy'
+  - 'DOMAIN-SUFFIX,abema.tv,Proxy'
+  - 'RULE-SET,Telegram,Telegram'
+  - 'DOMAIN-SUFFIX,twitter.com,Twitter'
+  - 'DOMAIN-SUFFIX,twimg.com,Twitter'
+  - 'DOMAIN-SUFFIX,t.co,Twitter'
+  - 'DOMAIN-SUFFIX,x.com,Twitter'
+  - 'DOMAIN-SUFFIX,twitterstat.us,Twitter'
+  - 'DOMAIN-SUFFIX,pscp.tv,Twitter'
+  - 'DOMAIN-SUFFIX,muse.ai,Meta'
+  - 'DOMAIN-SUFFIX,meta.ai,Meta'
+  - 'DOMAIN-SUFFIX,meta.com,Meta'
+  - 'DOMAIN-SUFFIX,metaaivm.com,Meta'
+  - 'DOMAIN-SUFFIX,instagram.com,Instagram'
+  - 'DOMAIN-SUFFIX,cdninstagram.com,Instagram'
+  - 'DOMAIN,i.instagram.com,Instagram'
+  - 'DOMAIN,graph.instagram.com,Instagram'
+  - 'DOMAIN-SUFFIX,threads.net,Instagram'
+  - 'DOMAIN-SUFFIX,threads.com,Instagram'
+  - 'DOMAIN-SUFFIX,facebook.com,Meta'
+  - 'DOMAIN-SUFFIX,facebook.net,Meta'
+  - 'DOMAIN-SUFFIX,fbcdn.net,Meta'
+  - 'DOMAIN-SUFFIX,fbcdn.com,Meta'
+  - 'DOMAIN-SUFFIX,fb.com,Meta'
+  - 'DOMAIN-SUFFIX,fb.me,Meta'
+  - 'DOMAIN-SUFFIX,m.me,Meta'
+  - 'DOMAIN-SUFFIX,fbsbx.com,Meta'
+  - 'DOMAIN-SUFFIX,fbsbx.net,Meta'
+  - 'DOMAIN-SUFFIX,messenger.com,Meta'
+  - 'DOMAIN-SUFFIX,whatsapp.com,Meta'
+  - 'DOMAIN-SUFFIX,whatsapp.net,Meta'
+  - 'DOMAIN-SUFFIX,wa.me,Meta'
+  - 'DOMAIN-SUFFIX,reddit.com,Proxy'
+  - 'DOMAIN-SUFFIX,redd.it,Proxy'
+  - 'DOMAIN-SUFFIX,redditmedia.com,Proxy'
+  - 'DOMAIN-SUFFIX,redditstatic.com,Proxy'
+  - 'DOMAIN-SUFFIX,linkedin.com,美国稳定'
+  - 'DOMAIN-SUFFIX,licdn.com,美国稳定'
+  - 'DOMAIN-SUFFIX,linkedin.cn,美国稳定'
+  - 'DOMAIN-SUFFIX,github.com,Proxy'
+  - 'DOMAIN-SUFFIX,github.io,Proxy'
+  - 'DOMAIN-SUFFIX,githubusercontent.com,Proxy'
+  - 'DOMAIN-SUFFIX,githubassets.com,Proxy'
+  - 'DOMAIN-SUFFIX,ghcr.io,Proxy'
+  - 'DOMAIN-SUFFIX,docker.com,Proxy'
+  - 'DOMAIN-SUFFIX,docker.io,Proxy'
+  - 'DOMAIN-SUFFIX,gitlab.com,Proxy'
+  - 'DOMAIN-SUFFIX,bitbucket.org,Proxy'
+  - 'DOMAIN-SUFFIX,notion.so,Proxy'
+  - 'DOMAIN-SUFFIX,notion.site,Proxy'
+  - 'DOMAIN-SUFFIX,figma.com,Proxy'
+  - 'DOMAIN-SUFFIX,stackoverflow.com,Proxy'
+  - 'DOMAIN-SUFFIX,stackexchange.com,Proxy'
+  - 'DOMAIN-SUFFIX,larksuite.com,Proxy'
+  - 'DOMAIN-SUFFIX,larkoffice.com,Proxy'
+  - 'DOMAIN-SUFFIX,trustwallet.com,Proxy'
+  - 'DOMAIN-SUFFIX,walletconnect.org,Proxy'
+  - 'DOMAIN-SUFFIX,cloudflare.com,Proxy'
+  - 'DOMAIN-SUFFIX,cloudflareinsights.com,Proxy'
+  - 'DOMAIN-SUFFIX,wikipedia.org,Proxy'
+  - 'DOMAIN-SUFFIX,wikimedia.org,Proxy'
+  - 'DOMAIN-SUFFIX,medium.com,Proxy'
+  - 'DOMAIN-SUFFIX,substack.com,Proxy'
+  - 'DOMAIN-SUFFIX,wsj.com,Proxy'
+  - 'DOMAIN-SUFFIX,nytimes.com,Proxy'
+  - 'DOMAIN-SUFFIX,economist.com,Proxy'
+  - 'DOMAIN-SUFFIX,ted.com,Proxy'
+  - 'DOMAIN-SUFFIX,news.ycombinator.com,Proxy'
+  - 'DOMAIN-SUFFIX,disqus.com,Proxy'
+  - 'DOMAIN-SUFFIX,vox.com,Proxy'
+  - 'DOMAIN-SUFFIX,arxiv.org,Proxy'
+  - 'DOMAIN-SUFFIX,google.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,googleapis.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,gstatic.com,谷歌服务'
+  - 'DOMAIN-SUFFIX,googleusercontent.com,谷歌服务'
+  - 'RULE-SET,Google,谷歌服务'
+  - 'RULE-SET,Microsoft,微软服务'
+  - 'DOMAIN-SUFFIX,apple.news,Proxy'
+  - 'DOMAIN-SUFFIX,news-edge.apple.com,Proxy'
+  - 'RULE-SET,BiliBili,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,bilibili.com,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,biliapi.net,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,bilivideo.com,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,bilivideo.cn,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,hdslb.com,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,b23.tv,哔哩哔哩'
+  - 'DOMAIN-SUFFIX,zhihu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,zhimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xiaohongshu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xhscdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,taobao.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tmall.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tmall.hk,DIRECT'
+  - 'DOMAIN-SUFFIX,alipay.com,DIRECT'
+  - 'DOMAIN-SUFFIX,alicdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,aliyun.com,DIRECT'
+  - 'DOMAIN-SUFFIX,aliyuncs.com,DIRECT'
+  - 'DOMAIN-SUFFIX,alibaba.com,DIRECT'
+  - 'DOMAIN-SUFFIX,alibabacloud.com,DIRECT'
+  - 'DOMAIN-SUFFIX,1688.com,DIRECT'
+  - 'DOMAIN-SUFFIX,cainiao.com,DIRECT'
+  - 'DOMAIN-SUFFIX,dingtalk.com,DIRECT'
+  - 'DOMAIN-SUFFIX,uc.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,ucweb.com,DIRECT'
+  - 'DOMAIN-SUFFIX,youku.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ele.me,DIRECT'
+  - 'DOMAIN-SUFFIX,fliggy.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xianyu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,goofish.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qq.com,DIRECT'
+  - 'DOMAIN-SUFFIX,weixin.qq.com,DIRECT'
+  - 'DOMAIN-SUFFIX,wechat.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tencent.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tencentcs.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qcloud.com,DIRECT'
+  - 'DOMAIN-SUFFIX,myqcloud.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qpic.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,qlogo.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,qzone.com,DIRECT'
+  - 'DOMAIN-SUFFIX,gtimg.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,gtimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,idqqimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sogou.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sogoucdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bytedance.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bytednsdoc.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bdstatic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bdimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,baidu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,baidustatic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,baidubcr.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bcebos.com,DIRECT'
+  - 'DOMAIN-SUFFIX,baidupcs.com,DIRECT'
+  - 'DOMAIN-SUFFIX,baiducontent.com,DIRECT'
+  - 'DOMAIN-SUFFIX,hao123.com,DIRECT'
+  - 'DOMAIN-SUFFIX,iqiyi.com,DIRECT'
+  - 'DOMAIN-SUFFIX,iqiyipic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,71.com,DIRECT'
+  - 'DOMAIN-SUFFIX,jd.com,DIRECT'
+  - 'DOMAIN-SUFFIX,jdcloud.com,DIRECT'
+  - 'DOMAIN-SUFFIX,jcloud.com,DIRECT'
+  - 'DOMAIN-SUFFIX,360buyimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,jd.hk,DIRECT'
+  - 'DOMAIN-SUFFIX,meituan.com,DIRECT'
+  - 'DOMAIN-SUFFIX,meituan.net,DIRECT'
+  - 'DOMAIN-SUFFIX,dianping.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sankuai.com,DIRECT'
+  - 'DOMAIN-SUFFIX,pinduoduo.com,DIRECT'
+  - 'DOMAIN-SUFFIX,yangkeduo.com,DIRECT'
+  - 'DOMAIN-SUFFIX,pddpic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,163.com,DIRECT'
+  - 'DOMAIN-SUFFIX,126.com,DIRECT'
+  - 'DOMAIN-SUFFIX,127.net,DIRECT'
+  - 'DOMAIN-SUFFIX,netease.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ntes.com,DIRECT'
+  - 'DOMAIN-SUFFIX,nosdn.127.net,DIRECT'
+  - 'DOMAIN-SUFFIX,music.163.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sohu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sohucs.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ifeng.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ifengimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,360.com,DIRECT'
+  - 'DOMAIN-SUFFIX,360.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,360safe.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qhimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qhres.com,DIRECT'
+  - 'DOMAIN-SUFFIX,wscdns.com,DIRECT'
+  - 'DOMAIN-SUFFIX,doh.pub,DIRECT'
+  - 'DOMAIN-SUFFIX,dns.alidns.com,DIRECT'
+  - 'DOMAIN-SUFFIX,alidns.com,DIRECT'
+  - 'DOMAIN-SUFFIX,nic.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,cnnic.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,cn,DIRECT'
+  - 'DOMAIN-SUFFIX,12306.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,chinaeastair.com,DIRECT'
+  - 'DOMAIN-SUFFIX,csair.com,DIRECT'
+  - 'DOMAIN-SUFFIX,airchina.com.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,gov.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,edu.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,myhexin.com,DIRECT'
+  - 'DOMAIN-SUFFIX,eastmoney.com,DIRECT'
+  - 'DOMAIN-SUFFIX,dfcfw.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xueqiu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xqimg.com,DIRECT'
+  - 'DOMAIN-SUFFIX,futunn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,futu5.com,DIRECT'
+  - 'DOMAIN-SUFFIX,itiger.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tigerbrokers.com,DIRECT'
+  - 'DOMAIN-SUFFIX,gtja.com,DIRECT'
+  - 'DOMAIN-SUFFIX,citics.com,DIRECT'
+  - 'DOMAIN-SUFFIX,kuaishou.com,DIRECT'
+  - 'DOMAIN-SUFFIX,gifshow.com,DIRECT'
+  - 'DOMAIN-SUFFIX,kuaishouzt.com,DIRECT'
+  - 'DOMAIN-SUFFIX,yxixy.com,DIRECT'
+  - 'DOMAIN-SUFFIX,mgtv.com,DIRECT'
+  - 'DOMAIN-SUFFIX,hunantv.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douyu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,huya.com,DIRECT'
+  - 'DOMAIN-SUFFIX,msstatic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ximalaya.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xmcdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,kugou.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ctrip.com,DIRECT'
+  - 'DOMAIN-SUFFIX,tripcdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ctripcorp.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qunar.com,DIRECT'
+  - 'DOMAIN-SUFFIX,qunarzz.com,DIRECT'
+  - 'DOMAIN-SUFFIX,didiglobal.com,DIRECT'
+  - 'DOMAIN-SUFFIX,xiaojukeji.com,DIRECT'
+  - 'DOMAIN-SUFFIX,didichuxing.com,DIRECT'
+  - 'DOMAIN-SUFFIX,sf-express.com,DIRECT'
+  - 'DOMAIN-SUFFIX,zto.com,DIRECT'
+  - 'DOMAIN-SUFFIX,yundaex.com,DIRECT'
+  - 'DOMAIN-SUFFIX,bankcomm.com,DIRECT'
+  - 'DOMAIN-SUFFIX,citicbank.com,DIRECT'
+  - 'DOMAIN-SUFFIX,ecitic.com,DIRECT'
+  - 'DOMAIN-SUFFIX,pingan.com,DIRECT'
+  - 'DOMAIN-SUFFIX,webank.com,DIRECT'
+  - 'DOMAIN-SUFFIX,unionpay.com,DIRECT'
+  - 'DOMAIN-SUFFIX,95516.com,DIRECT'
+  - 'DOMAIN-SUFFIX,chinaums.com,DIRECT'
+  - 'DOMAIN-SUFFIX,wpscdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,aliyundrive.com,DIRECT'
+  - 'DOMAIN-SUFFIX,alipan.com,DIRECT'
+  - 'DOMAIN-SUFFIX,dewu.com,DIRECT'
+  - 'DOMAIN-SUFFIX,poizon.com,DIRECT'
+  - 'DOMAIN-SUFFIX,dxy.com,DIRECT'
+  - 'DOMAIN-SUFFIX,dxycdn.com,DIRECT'
+  - 'DOMAIN-SUFFIX,smzdm.com,DIRECT'
+  - 'DOMAIN-SUFFIX,youdao.com,DIRECT'
+  - 'DOMAIN-SUFFIX,douban.com,DIRECT'
+  - 'DOMAIN-SUFFIX,doubanio.com,DIRECT'
+  - 'RULE-SET,ChinaMax_Domain,DIRECT'
+  - 'RULE-SET,ChinaMax_IP,DIRECT,no-resolve'
+  - 'RULE-SET,ChinaIPs,DIRECT,no-resolve'
+  - 'GEOIP,CN,DIRECT,no-resolve'
+  - 'MATCH,Final'
+
+http:
+  mitm:
+    - 'api.weibo.cn'
+    - 'mapi.weibo.cn'
+    - 'api.weibo.com'
+    - 'mapi.weibo.com'
+    - 'sdkapp.uve.weibo.com'
+    - 'wbapp.uve.weibo.com'
+    - 'sdkapp.mob.uve.weibo.com'
+    - 'wbapp.mob.uve.weibo.com'
+    - 'bootpreload.uve.weibo.com'
+    - 'preload-impression.uve.weibo.com'
+    - 'kadmimage.biz.weibo.com'
+    - 'adstrategy.biz.weibo.com'
+    - 'new.vip.weibo.cn'
+    - 'app.bilibili.com'
+    - 'app.biliapi.net'
+    - 'mp.weixin.qq.com'
+    - 'api.zhihu.com'
+    - 'm5.amap.com'
+    - 'restapi.amap.com'
+    - 'mps.amap.com'
+    - 'amap-aos-info-nogw.amap.com'
+    - '*.googlevideo.com'
+    - 'youtubei.googleapis.com'
+    - 'youtubei-att.googleapis.com'
+    - 'spclient.wg.spotify.com'
+    - '*-spclient.spotify.com'
+  url-rewrite:
+    - '^https?://(www\.)?g\.cn https://www.google.com 302'
+    - '^https?://(www\.)?google\.cn https://www.google.com 302'
+    - '^https://(\w+-spclient|spclient\.wg)\.spotify\.com(:443)?/pendragon/ - reject-dict'
+    - '^https://(\w+-spclient|spclient\.wg)\.spotify\.com(:443)?/artistview/v1/artist/(.*)&platform=iphone https://spclient.wg.spotify.com/artistview/v1/artist/$3&platform=ipad transparent'
+    - '^https?:\/\/amap-aos-info-nogw\.amap\.com\/ws\/aos\/alimama\/splash_screen - reject-200'
+    - '^https?:\/\/bootpreload\.uve\.weibo\.com\/ - reject-200'
+    - '^https?:\/\/kadmimage\.biz\.weibo\.com\/ - reject-200'
+    - '^https?:\/\/adstrategy\.biz\.weibo\.com\/ - reject-200'
+    - '^https?:\/\/preload\-impression\.uve\.weibo\.com\/ - reject-200'
+  script:
+    # 微博主体去广告
+    - name: 'weibo_main'
+      match: '^https?://m?api\.weibo\.c(n|om)/2/(cardlist|searchall|page|messageflow|statuses/(unread_)?friends(/|_)timeline|groups/timeline|statuses/(container_timeline|unread_hot_timeline|extend|video_mixtimeline|repost_timeline|show)|profile/(me|info|container_timeline)|video/(community_tab|remind_info|tiny_stream_video_list)|checkin/show|\!/live/media_homelist|comments/(build_comments|hotflow)|container/get_item|search/(finder|container_timeline|container_discover)|photo/info|\!/client/active_box)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 微博开屏去广告
+    - name: 'weibo_launch'
+      match: '^https?://(sdk|wb)app\.(mob\.)?uve\.weibo\.com/(interface/sdk/sdkad\.php|wbapplua/wbpullad\.lua)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 微博开屏备用
+    - name: 'weibo_launch'
+      match: '^https?://m?api\.weibo\.c(n|om)/2/!/client/(wbpullad|sdkad|splash|launch|openscreen)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 微博Tab自定义
+    - name: 'weibo_main'
+      match: '^https://api\.weibo\.cn/2/!/client/light_skin'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 微博皮肤解锁
+    - name: 'weibo_main'
+      match: '^https://new\.vip\.weibo\.cn/littleskin/preview'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # B站首页
+    - name: 'bilibili'
+      match: '^https://(app\.biliapi\.net|app\.bilibili\.com)/x/v2/feed/index'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 微信公众号去广告
+    - name: 'Wechat'
+      match: '^https?://mp\.weixin\.qq\.com/mp/getappmsgad'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 知乎个人页
+    - name: 'zheye.min'
+      match: '^https?://api\.zhihu\.com/people/'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 知乎推荐流
+    - name: 'zheye.min'
+      match: '^https://api\.zhihu\.com/topstory/recommend'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 知乎评论
+    - name: 'zheye.min'
+      match: '^https?://api\.zhihu\.com/(comment_v5/)?(answers|comments?|articles|pins)/\d+/(root_|child_)?comments?'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 知乎问答
+    - name: 'zheye.min'
+      match: '^https?://api\.zhihu\.com/(v4/)?questions/\d+'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 知乎热榜
+    - name: 'zheye.min'
+      match: '^https?://api\.zhihu\.com/topstory/hot-lists?(\?|/)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 高德开屏
+    - name: 'amap'
+      match: '^https?://.*\.amap\.com/ws/valueadded/alimama/splash_screen'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 高德弹窗
+    - name: 'amap'
+      match: '^https?://.*\.amap\.com/ws/msgbox/pull'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # 高德横幅
+    - name: 'amap'
+      match: '^https?://.*\.amap\.com/ws/faas/amap-navigation/main-page'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 10
+    # YouTube.response
+    - name: 'youtube.response'
+      match: '^https://youtubei(?:-att)?\.googleapis\.com/(youtubei/v1/(browse|next|player|search|reel/reel_watch_sequence|guide|account/get_setting|get_watch|log_event|config))(\?(.*))?$'
+      type: response
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}'
+    # YouTube.request.init
+    - name: 'youtube.request'
+      match: '^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback.+&ack.*'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off"}'
+    # YouTube.request.log_event
+    - name: 'youtube.request'
+      match: '^https://youtubei(?:-att)?\.googleapis\.com/youtubei/v1/log_event'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+    # Spotify去广告
+    - name: 'Spotify.Crack.Dev'
+      match: '^https://(?:\w+-spclient|spclient\.wg)\.spotify\.com(?::443)?/(?:bootstrap|user-customization-service)'
+      type: response
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '[true,true]'
+
+script-providers:
+  'weibo_main':
+    url: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_main.js
+    interval: 86400
+  'weibo_launch':
+    url: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo_launch.js
+    interval: 86400
+  'bilibili':
+    url: https://raw.githubusercontent.com/zmqcherish/proxy-script/main/bilibili/bilibili.js
+    interval: 86400
+  'Wechat':
+    url: https://raw.githubusercontent.com/NobyDa/Script/master/QuantumultX/File/Wechat.js
+    interval: 86400
+  'zheye.min':
+    url: https://gist.githubusercontent.com/blackmatrix7/f5f780d0f56b319b6ad9848fd080bb18/raw/zheye.min.js
+    interval: 86400
+  'amap':
+    url: https://raw.githubusercontent.com/ddgksf2013/Scripts/master/amap.js
+    interval: 86400
+  'youtube.response':
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js
+    interval: 86400
+  'youtube.request':
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js
+    interval: 86400
+  'Spotify.Crack.Dev':
+    url: https://raw.githubusercontent.com/001ProMax/Surge/refs/heads/main/Script/Spotify.Crack.Dev.js
+    interval: 86400

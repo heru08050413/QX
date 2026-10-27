@@ -36,6 +36,20 @@
 > 脚本 JS 全部镜像在本仓库 `proxy-configs/scripts/`,`script-providers` 只引本仓库链接——无第三方死链风险。
 > 覆写不含任何银行/支付/政务/证件类 App 的 MITM。
 
+## 二-A、Stash 小火箭移植版(打开 YouTube 才测速)
+
+`Stash_SR_V26.00.stoverride` 由小火箭配置自动转换而来(`proxy-configs/scripts/sr2stash.py`),策略组、分流规则、去广告脚本、MITM 与小火箭一致。**所有测速组都开了 `lazy`**:策略组闲置时 Stash 跳过它的自动测速,所以 YouTube 相关的测速只在你看 YouTube 时进行,夜里不会整夜测速耗电。
+
+```
+https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_SR_V26.00.stoverride
+```
+
+- 用法:当前配置选能显示节点的 Stash 主配置(如 `Stash_V26.00.yaml` 填好订阅),Override 里添加上面的链接。它会整体替换策略组和规则,DNS 和节点沿用主配置。
+- **启用它时请关掉其他 Stash 覆写**(`Stash_All`、`Stash_AdBlock`、`Stash_AppAdBlock`、`Stash_Script`、`Stash_Pro_*`),否则规则和脚本会重复。
+- 需开 MITM 并信任自己的 CA。YouTube 脚本含第三方 Worker 依赖,且未在 Stash 真机验证;Spotify 解锁属灰色功能。
+- 未移植:按域名 DNS(fake-ip 下已等效)、内置 Tailscale、推送绕过隧道、MITM 排除项。
+- 小火箭改动后,在 `proxy-configs/` 下运行 `python3 scripts/sr2stash.py` 重新生成。
+
 ## 二-B、Shadowrocket 国内 App 开屏去广告(需手动加模块)
 
 ⚠️ **这一步不会自动生效,必须手动操作。** `shadowrocket_V26.00.lsr` 自 V26.00 起
@@ -71,7 +85,7 @@ https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds
 | **Egern** | ✅(最完整) | ✅ | Enhance 模块 + googlevideo 广告流拦截 + ad_break/统计信标 reject(v6.3.0)。视频流解密,发热略增 |
 | **Loon** | ✅ | ✅ | Maasea `YouTube.Enhance.sgmodule` 插件(V26.00 补齐,此前缺失)+ `block-quic=true` 协同 |
 | **Quantumult X** | ❌ | ❌ | 架构限制:Maasea 方案依赖 `binary-body-mode`(protobuf 改写),QX 无此参数、上游无 QX 适配版。不放不可靠的移植 |
-| **Stash** | ❌ | ❌ | 架构限制:同上,Stash 脚本层未验证 protobuf 二进制改写。保留分流 + QUIC→TCP |
+| **Stash** | ⚠️ 实验性 | ⚠️ 实验性 | `Stash_SR` / `Stash_Pro_YouTube` 用 Stash 原生 `binary-mode` 接入 Maasea 脚本,未在真机验证;含第三方 Worker 依赖 |
 
 **客户端配套(装了 SR/Egern/Loon 之后)**:YouTube App 内 设置 → 播放 → 开启「画中画」;设置 → 后台播放和下载 → 开启「后台播放」。首次生效建议杀掉 YouTube App 重开。
 

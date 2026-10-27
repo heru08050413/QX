@@ -49,7 +49,9 @@
    - **Stash**:地区池/全部节点用 `include-all: true`(含配置内全部节点),不要改成 `use:[Subscribe]`(那会把本地节点挡在外面)。本地节点建议放在 App 内的本地 Override 的 `proxies:` 里,远程配置更新不会冲掉。
    - **Egern**:所有组只从 `订阅`(external)取节点,本地节点默认不在任何组。官方有"手动添加的节点自动加入指定策略组"的设置,但字段名未经核实(官网对本会话不可达)前不写进配置;可行路径:按节点名写进组,或把本地节点做成订阅文件并加进 `订阅` 的 urls。
 
-> 改动前后都跑一遍这 9 条。这一层不参与差异化。
+10. **Stash_SR 是小火箭的派生物**:`Stash_SR_V26.00.stoverride` 由 `scripts/sr2stash.py` 从 `shadowrocket_V26.00.lsr` 生成,不要手改。改小火箭后必须重跑转换。转换取舍写在脚本文件头:测速组一律 `lazy: true`(Stash 测速结果按节点跨组共享,只给部分组开 lazy 省不了电);过滤器不用前瞻;`REJECT-200` 拆成 DIRECT + url-rewrite reject-200;Tailscale、`[Host]`、bypass-tun、MITM 排除项不移植。
+
+> 改动前后都跑一遍这 10 条。这一层不参与差异化。
 
 ---
 
