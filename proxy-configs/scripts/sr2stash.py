@@ -38,6 +38,7 @@ RULESETS = {
     'Advertising': [('Advertising', 'Advertising/Advertising.yaml', 'classical', False)],
     'Advertising_Domain': [('Advertising_Domain', 'Advertising/Advertising_Domain.yaml', 'domain', False)],
     'Privacy': [('Privacy', 'Privacy/Privacy.yaml', 'classical', False)],
+    'Privacy_Domain': [('Privacy_Domain', 'Privacy/Privacy_Domain.yaml', 'domain', False)],
     'Hijacking': [('Hijacking', 'Hijacking/Hijacking.yaml', 'classical', False)],
     'OpenAI': [('OpenAI', 'OpenAI/OpenAI.yaml', 'classical', False)],
     'YouTube': [('YouTube', 'YouTube/YouTube.yaml', 'classical', False)],

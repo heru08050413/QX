@@ -290,6 +290,13 @@ foreach ($apns in @('17.249.0.0/16', '17.252.0.0/16', '17.57.144.0/22', '17.188.
     Assert-True ($bypassTun[0].Contains(", $apns")) "APNs range missing from bypass-tun: $apns"
 }
 Assert-True (!$bypassTun[0].Contains('17.0.0.0/8')) 'Do not bypass all of 17.0.0.0/8 (breaks 苹果服务 routing)'
+# 2026-10-27: Privacy_Domain loaded, with carrier one-click-login exceptions ahead of it.
+$privacySet = [array]::IndexOf($active, 'DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Privacy/Privacy_Domain.list,REJECT')
+Assert-True ($privacySet -ge 0) 'Privacy_Domain list missing'
+foreach ($rule in @('DOMAIN-SUFFIX,cmpassport.com,DIRECT', 'DOMAIN-SUFFIX,id6.me,DIRECT', 'DOMAIN,opencloud.wostore.cn,DIRECT')) {
+    $i = [array]::IndexOf($active, $rule)
+    Assert-True ($i -ge 0 -and $i -lt $privacySet) "One-click login exception missing or after Privacy_Domain: $rule"
+}
 foreach ($rule in $tailnetRules) {
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate Tailscale rule: $rule"
     Assert-True ([array]::IndexOf($active, $rule) -gt [array]::IndexOf($active, '[Rule]')) "Tailscale rule outside [Rule]: $rule"

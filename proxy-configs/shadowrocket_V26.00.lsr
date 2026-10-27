@@ -1517,6 +1517,16 @@ DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/releas
 # v2.6.5 新增: Privacy 隐私拦截 (在微博保护区之后, 不会误伤微博埋点)
 # bm7 新版 Privacy.list 已与 Advertising 解耦, 不再含 weibo gdt
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Privacy/Privacy.list,REJECT
+# 2026-10-27 补隐私拦截: 上面的 Privacy.list 只有 8 条 IP, bm7 把 3.2 万条追踪域名
+#   拆到了 Privacy_Domain.list, 此前从未加载, 隐私拦截形同虚设. 补上前先放行:
+#   三大运营商本机号码一键登录(移动 cmpassport / 电信 id6.me / 联通 wostore,
+#   均在隐私列表中, 拦了会导致 App 一键登录失败); ChatGPT 遥测保持原 AI 分流.
+#   用户日志里新增被拦的只有 googletagmanager / google-analytics / yandex 统计.
+DOMAIN-SUFFIX,cmpassport.com,DIRECT
+DOMAIN-SUFFIX,id6.me,DIRECT
+DOMAIN,opencloud.wostore.cn,DIRECT
+DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI
+DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Privacy/Privacy_Domain.list,REJECT
 
 # 运营商/网络劫持拦截
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Hijacking/Hijacking.list,REJECT

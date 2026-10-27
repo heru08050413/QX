@@ -200,6 +200,12 @@ rule-providers: #!replace
     url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Privacy/Privacy.yaml
     path: ./rules/stash-sr-privacy.yaml
     interval: 86400
+  Privacy_Domain:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Privacy/Privacy_Domain.yaml
+    path: ./rules/stash-sr-privacy_domain.yaml
+    interval: 86400
   Hijacking:
     behavior: classical
     format: yaml
@@ -395,6 +401,11 @@ rules: #!replace
   - 'RULE-SET,Advertising,REJECT'
   - 'RULE-SET,Advertising_Domain,REJECT'
   - 'RULE-SET,Privacy,REJECT'
+  - 'DOMAIN-SUFFIX,cmpassport.com,DIRECT'
+  - 'DOMAIN-SUFFIX,id6.me,DIRECT'
+  - 'DOMAIN,opencloud.wostore.cn,DIRECT'
+  - 'DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI'
+  - 'RULE-SET,Privacy_Domain,REJECT'
   - 'RULE-SET,Hijacking,REJECT'
   - 'DOMAIN-SUFFIX,adjust.com,REJECT'
   - 'DOMAIN-SUFFIX,adjust.io,REJECT'
