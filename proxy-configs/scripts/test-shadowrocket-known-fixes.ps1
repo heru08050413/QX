@@ -285,6 +285,11 @@ Assert-True (($v2621Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected 
 
 $bypassTun = @($active | Where-Object { $_.StartsWith('bypass-tun = ') })
 Assert-True ($bypassTun.Count -eq 1 -and !$bypassTun[0].Contains('100.64.0.0/10')) 'Tailscale IPv4 range must not bypass TUN'
+# 2026-10-27: Apple's APNs-only ranges bypass the tunnel (support.apple.com/102266).
+foreach ($apns in @('17.249.0.0/16', '17.252.0.0/16', '17.57.144.0/22', '17.188.128.0/18', '17.188.20.0/23')) {
+    Assert-True ($bypassTun[0].Contains(", $apns")) "APNs range missing from bypass-tun: $apns"
+}
+Assert-True (!$bypassTun[0].Contains('17.0.0.0/8')) 'Do not bypass all of 17.0.0.0/8 (breaks 苹果服务 routing)'
 foreach ($rule in $tailnetRules) {
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate Tailscale rule: $rule"
     Assert-True ([array]::IndexOf($active, $rule) -gt [array]::IndexOf($active, '[Rule]')) "Tailscale rule outside [Rule]: $rule"
@@ -323,7 +328,12 @@ Assert-True ($ytGroups.Count -eq 6) 'YouTube must retain five region pools plus 
 foreach ($group in $ytGroups) {
     Assert-True ($group.Contains('url=https://www.gstatic.com/generate_204')) 'YouTube probe is not HTTPS'
     Assert-True (!$group.Contains('DIRECT')) 'YouTube pool unexpectedly contains DIRECT'
-    Assert-True ($group -match ', interval=30(?:,|$)') 'YouTube detection interval must be 30 seconds'
+    # 2026-10-27 battery fix: 30s probes kept the radio awake all night (user log evidence).
+    if ($group.StartsWith('YT-Auto = ')) {
+        Assert-True ($group -match ', interval=300(?:,|$)') 'YouTube outer fallback interval must be 300 seconds'
+    } else {
+        Assert-True ($group -match ', interval=600(?:,|$)') 'YouTube region interval must be 600 seconds'
+    }
     Assert-True ($group -match ', timeout=5(?:,|$)') 'YouTube timeout must stay at 5 seconds'
     if (!$group.StartsWith('YT-Auto = ')) {
         Assert-True ($group.Contains('= url-test,') -and $group.Contains(', tolerance=300,')) 'YouTube region type/tolerance changed'
@@ -332,7 +342,7 @@ foreach ($group in $ytGroups) {
 foreach ($name in @('美国稳定', '日本稳定', '新加坡稳定')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
     Assert-True ($group.Count -eq 1 -and $group[0].Contains('= fallback,') -and
-        $group[0].Contains('interval=300, timeout=5')) "Invalid stable pool: $name"
+        $group[0].Contains('url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5')) "Invalid stable pool: $name"
 }
 $ytScripts = @($active | Where-Object { $_ -match '^YouTube\.(response|request\.(init|log_event)) = ' })
 Assert-True ($ytScripts.Count -eq 3) 'YouTube hook count changed'
@@ -419,4 +429,4 @@ Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
 foreach ($rule in $googleAuthRules) {
     Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 30s/5s; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
+Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; 6 HTTPS YouTube probes at 600s/300s/5s; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."

@@ -970,7 +970,15 @@ skip-proxy = 127.0.0.1, 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10
 # ---------- TUN 旁路 ----------
 # Tailscale 节点地址 100.64.0.0/10 必须留在 Shadowrocket TUN 内，
 # 再由下方 TAILSCALE 规则交给内置 Tailscale 模组；其余排除网段暂不变。
-bypass-tun = 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 239.255.255.250/32, 255.255.255.255/32
+# 2026-10-27 推送稳定性: Apple 推送(APNs)服务器段绕过隧道, 交给 iOS 原生处理.
+#   日志实证: 00:00-04:13 推送长连接稳定; 04:13 起每 ~127s 断开重连一次(到 05:48
+#   共 40+ 次, 白天中位间隔 752s), 每次唤醒射频. 推测(未证实): 小火箭在用户态
+#   终结 TCP, 隧道内的 TCP keepalive 被本地应答, 刷新不到真实出站连接在运营商
+#   NAT 上的表项, NAT 空闲超时(约 2 分钟)后连接被掐. 绕过隧道后 iOS 用自己的
+#   自适应 keepalive. 推送本就是 FINAL→DIRECT, 分流不变; Apple 也要求推送流量
+#   不被检查或改道. 网段取 Apple 官方推送专用段(support.apple.com/102266),
+#   不绕整个 17.0.0.0/8, 以免影响 苹果服务 组对其他 Apple 服务的分流.
+bypass-tun = 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.0.0.0/24, 192.0.2.0/24, 192.88.99.0/24, 192.168.0.0/16, 198.18.0.0/15, 198.51.100.0/24, 203.0.113.0/24, 224.0.0.0/4, 239.255.255.250/32, 255.255.255.255/32, 17.249.0.0/16, 17.252.0.0/16, 17.57.144.0/22, 17.188.128.0/18, 17.188.20.0/23
 
 # ---------- DNS (v2.6.2: 重大重构) ----------
 #
@@ -1161,15 +1169,22 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #     优先地区恢复后可能回切,不承诺只切一次或完全无感;
 #   - 不使用裸节点总池,避免订阅顺序决定首选且 204 小包掩盖拥堵.
 #   - 探测负担增加;30s 是检测配置,不是故障恢复时限.需受控故障真机验证.
+# ⚠️ 2026-10-27 耗电修正(用户夜间日志实证): 30s HTTPS 探测在锁屏整夜不停,
+#   约 2000 次/小时,射频无法回到空闲态 —— 00:00-04:13 应用流量每小时仅
+#   9-43 条, 小火箭照样严重耗电. 小火箭无"仅使用时测速"(lazy)选项, 故改为:
+#   YT-* 地区池 30→600s, YT-Auto 30→300s, 三个稳定池 300→900s; 探针仍用
+#   HTTPS(保留 TLS 可达性验证, 开销随频率同步下降约 20 倍).
+#   代价: 节点对 Google 失联后自动切走最长约 10 分钟; 播放卡顿时可在
+#   YouTube 组手动点一次测速立即切换. 以上 30s 描述为历史记录.
 # 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
 
-YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-YT-Auto = fallback, YT-美国节点, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, url=https://www.gstatic.com/generate_204, interval=30, timeout=5
+YT-Auto = fallback, YT-美国节点, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
@@ -1190,9 +1205,9 @@ Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, ti
 # v2.6.17: IG/Twitter 专用稳定池改为按优先级故障转移，不再按延迟排名换点。
 # 300s 比原 900s 更快发现硬故障，探测更频繁；timeout=5 为 TLS 握手留余量。
 # 这是低频故障恢复，不是吞吐测试；订阅排序决定优先级，恢复后可能回切。
-美国稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
-日本稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-新加坡稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+美国稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+日本稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 
 # ---------- 漏网之鱼 ----------
 # v2.6.1 关键修复: 默认指向 DIRECT (v2.6.0 默认 Proxy)
