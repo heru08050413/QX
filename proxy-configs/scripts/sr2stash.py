@@ -53,6 +53,31 @@ RULESETS = {
                  ('ChinaMax_IP', 'ChinaMax/ChinaMax_IP.yaml', 'ipcidr', True)],
     'ChinaIPs': [('ChinaIPs', 'ChinaIPs/ChinaIPs_IP.yaml', 'ipcidr', True)],
 }
+QURE = 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/'
+# Shadowrocket groups carry no img-url, so Stash would show generic icons.
+# Service groups get the app's icon; region pools (incl. YT-* / *稳定) get the flag.
+ICONS = {
+    'Proxy': 'Proxy', 'AI': 'ChatGPT', 'Meta': 'Facebook', 'YouTube': 'YouTube',
+    'Netflix': 'Netflix', 'Spotify': 'Spotify', 'TikTok': 'TikTok', 'Telegram': 'Telegram',
+    'Instagram': 'Instagram', 'Twitter': 'Twitter', '苹果服务': 'Apple', '谷歌服务': 'Google_Search',
+    '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', 'AutoSelect': 'Auto', 'YT-Auto': 'Speedtest',
+    'StableSelect': 'Available', 'Fallback': 'Available_1', 'Final': 'Final',
+}
+REGION_ICONS = {'香港': 'Hong_Kong', '台湾': 'Taiwan', '日本': 'Japan', '新加坡': 'Singapore', '美国': 'United_States'}
+EXTRA_ICONS = {'Gemini': 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png'}
+
+
+def icon_for(name):
+    if name in EXTRA_ICONS:
+        return EXTRA_ICONS[name]
+    if name in ICONS:
+        return QURE + ICONS[name] + '.png'
+    for k, v in REGION_ICONS.items():
+        if k in name:
+            return QURE + v + '.png'
+    return None
+
+
 SCRIPT_KEYS = ('type', 'pattern', 'requires-body', 'max-size', 'binary-body-mode',
                'script-path', 'argument', 'engine', 'timeout', 'script-update-interval')
 
@@ -109,8 +134,9 @@ def convert_groups(lines):
         name, gtype, members, opts = parse_group(line)
         names.append(name)
         g = [f'  - name: {q(name)}', f'    type: {gtype}']
-        if opts.get('img-url'):
-            g.append(f"    icon: {q(opts['img-url'])}")
+        icon = opts.get('img-url') or icon_for(name)
+        if icon:
+            g.append(f'    icon: {q(icon)}')
         if gtype in ('url-test', 'fallback'):
             if members:
                 g.append('    proxies: [' + ', '.join(q(m) for m in members) + ']')

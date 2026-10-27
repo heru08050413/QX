@@ -8,51 +8,67 @@ desc: "由 shadowrocket_V26.00.lsr 自动转换(scripts/sr2stash.py)。策略组
 proxy-groups: #!replace
   - name: 'Proxy'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Proxy.png'
     proxies: ['美国节点', 'AutoSelect', 'StableSelect', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'DIRECT']
   - name: 'AI'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ChatGPT.png'
     proxies: ['美国节点', '新加坡节点', '日本节点', 'AutoSelect']
   - name: 'Gemini'
     type: select
+    icon: 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png'
     proxies: ['谷歌服务']
   - name: 'Meta'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Facebook.png'
     proxies: ['美国节点', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'AutoSelect']
   - name: 'YouTube'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png'
     proxies: ['YT-Auto', 'YT-香港节点', 'YT-台湾节点', 'YT-日本节点', 'YT-新加坡节点', 'YT-美国节点', 'AutoSelect']
   - name: 'Netflix'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png'
     proxies: ['美国节点', '香港节点', '日本节点', '新加坡节点']
   - name: 'Spotify'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png'
     proxies: ['新加坡节点', '香港节点', '日本节点', '美国节点']
   - name: 'TikTok'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok.png'
     proxies: ['美国节点', '日本节点', '台湾节点', '新加坡节点']
   - name: 'Telegram'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram.png'
     proxies: ['美国节点', '新加坡节点', '香港节点', '日本节点', 'AutoSelect']
   - name: 'Instagram'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Instagram.png'
     proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
   - name: 'Twitter'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Twitter.png'
     proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
   - name: '苹果服务'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png'
     proxies: ['美国节点', 'DIRECT', '香港节点']
   - name: '谷歌服务'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google_Search.png'
     proxies: ['美国节点', 'AutoSelect', 'YT-Auto', '香港节点', '台湾节点', '日本节点', '新加坡节点']
   - name: '微软服务'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png'
     proxies: ['美国节点', 'DIRECT', '香港节点']
   - name: '哔哩哔哩'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili.png'
     proxies: ['DIRECT', '香港节点', '台湾节点']
   - name: 'AutoSelect'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto.png'
     include-all: true
     url: 'http://cp.cloudflare.com/generate_204'
     interval: 900
@@ -60,6 +76,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-香港节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png'
     include-all: true
     filter: '(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG'
     url: 'https://www.gstatic.com/generate_204'
@@ -68,6 +85,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-台湾节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png'
     include-all: true
     filter: '(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化'
     url: 'https://www.gstatic.com/generate_204'
@@ -76,6 +94,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-日本节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png'
     include-all: true
     filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
     url: 'https://www.gstatic.com/generate_204'
@@ -84,6 +103,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-新加坡节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png'
     include-all: true
     filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
     url: 'https://www.gstatic.com/generate_204'
@@ -92,6 +112,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-美国节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png'
     include-all: true
     filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
     url: 'https://www.gstatic.com/generate_204'
@@ -100,24 +121,28 @@ proxy-groups: #!replace
     lazy: true
   - name: 'YT-Auto'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Speedtest.png'
     proxies: ['YT-美国节点', 'YT-香港节点', 'YT-台湾节点', 'YT-日本节点', 'YT-新加坡节点']
     url: 'https://www.gstatic.com/generate_204'
     interval: 60
     lazy: true
   - name: 'StableSelect'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png'
     include-all: true
     url: 'http://cp.cloudflare.com/generate_204'
     interval: 900
     lazy: true
   - name: 'Fallback'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available_1.png'
     include-all: true
     url: 'http://cp.cloudflare.com/generate_204'
     interval: 900
     lazy: true
   - name: '香港节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png'
     include-all: true
     filter: '(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG'
     url: 'http://cp.cloudflare.com/generate_204'
@@ -126,6 +151,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '台湾节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png'
     include-all: true
     filter: '(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化'
     url: 'http://cp.cloudflare.com/generate_204'
@@ -134,6 +160,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '日本节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png'
     include-all: true
     filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
     url: 'http://cp.cloudflare.com/generate_204'
@@ -142,6 +169,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '新加坡节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png'
     include-all: true
     filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
     url: 'http://cp.cloudflare.com/generate_204'
@@ -150,6 +178,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '美国节点'
     type: url-test
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png'
     include-all: true
     filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
     url: 'http://cp.cloudflare.com/generate_204'
@@ -158,6 +187,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '美国稳定'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png'
     include-all: true
     filter: '(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley'
     url: 'https://cp.cloudflare.com/generate_204'
@@ -165,6 +195,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '日本稳定'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png'
     include-all: true
     filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
     url: 'https://cp.cloudflare.com/generate_204'
@@ -172,6 +203,7 @@ proxy-groups: #!replace
     lazy: true
   - name: '新加坡稳定'
     type: fallback
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png'
     include-all: true
     filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
     url: 'https://cp.cloudflare.com/generate_204'
@@ -179,6 +211,7 @@ proxy-groups: #!replace
     lazy: true
   - name: 'Final'
     type: select
+    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png'
     proxies: ['DIRECT', 'Proxy']
 
 rule-providers: #!replace
