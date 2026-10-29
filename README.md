@@ -45,6 +45,7 @@ https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_SR_V2
 ```
 
 - 用法:当前配置选能显示节点的 Stash 主配置(如 `Stash_V26.00.yaml` 填好订阅),Override 里添加上面的链接。它会整体替换策略组和规则,DNS 和节点沿用主配置。
+- **去广告已全部集成在这一份里**:小火箭配置自带的去广告,加上 `Stash_AppAdBlock`(14+ 个 App 开屏拦截)和 `Stash_Script`(小红书、京东、淘宝、爱奇艺等信息流脚本)合并进来的扩展层;重叠的微博、知乎用小火箭的版本。
 - **启用它时请关掉其他 Stash 覆写**(`Stash_All`、`Stash_AdBlock`、`Stash_AppAdBlock`、`Stash_Script`、`Stash_Pro_*`),否则规则和脚本会重复。
 - 需开 MITM 并信任自己的 CA。YouTube 脚本含第三方 Worker 依赖,且未在 Stash 真机验证;Spotify 解锁属灰色功能。
 - 未移植:按域名 DNS(fake-ip 下已等效)、内置 Tailscale、推送绕过隧道、MITM 排除项。

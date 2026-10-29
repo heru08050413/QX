@@ -234,6 +234,60 @@ def convert_rewrites(lines):
     return out
 
 
+# ---------------------------------------------------------------------------
+# Extra ad-block layer: Shadowrocket's main domestic-app ad-block is the blockAds
+# module, which is added inside the app and is not part of the .lsr, so a pure
+# port lacks it. Merge the repo's earlier standalone Stash overrides instead,
+# minus the parts that overlap the Shadowrocket scripts already ported.
+EXTRA_APP_ADBLOCK = Path('Stash_AppAdBlock_V26.00.stoverride')   # splash/endpoint rejects
+EXTRA_SCRIPTS = Path('Stash_Script_V26.00.stoverride')           # feed-ad scripts
+# Weibo and Zhihu are already covered by the ported Shadowrocket scripts
+# (zmqcherish weibo_main / blackmatrix7 zheye); running both would process the
+# same responses twice.
+EXCLUDED_EXTRA_PROVIDERS = {'weibo', 'zhihu'}
+
+
+def hook_host_regex(pattern):
+    m = re.match(r'^\^https\??:(?:\\/|/){2}(.+?)(?:\\/|/)', pattern)
+    return re.compile('^(?:' + m.group(1) + ')$') if m else None
+
+
+def merge_extra_layer(rules, mitm, rewrites, hooks, sproviders):
+    import yaml
+    app = yaml.safe_load(EXTRA_APP_ADBLOCK.read_text(encoding='utf-8'))
+    scr = yaml.safe_load(EXTRA_SCRIPTS.read_text(encoding='utf-8'))
+    # rules: insert right before the first generic ad list, i.e. after
+    # Shadowrocket's protection zones (they keep priority on conflicts).
+    at = next(i for i, r in enumerate(rules) if r.startswith('RULE-SET,Advertising'))
+    extra_rules = [r for r in app.get('rules', []) if r not in rules]
+    rules[at:at] = extra_rules
+    rewrites += [r for r in app['http'].get('url-rewrite', []) if r not in rewrites]
+    kept = [h for h in scr['http']['script'] if h['name'] not in EXCLUDED_EXTRA_PROVIDERS]
+    dropped_res = [hook_host_regex(h['match']) for h in scr['http']['script']
+                   if h['name'] in EXCLUDED_EXTRA_PROVIDERS]
+    # Keep every extra MITM host except those only the excluded Weibo/Zhihu
+    # scripts decrypt (hosts the app rewrites need come from the AppAdBlock list).
+    need = list(app['http'].get('mitm', []))
+    for host in scr['http'].get('mitm', []):
+        if not any(rx and rx.match(host) for rx in dropped_res):
+            need.append(host)
+    for host in need:
+        if host not in mitm:
+            mitm.append(host)
+    for h in kept:
+        block = [f"    # 扩展层: {h['name']}", f"    - name: {q(h['name'])}", f"      match: {q(h['match'])}",
+                 f"      type: {h['type']}"]
+        for k in ('require-body', 'binary-mode', 'max-size', 'timeout', 'argument'):
+            if k in h:
+                v = h[k]
+                block.append(f'      {k}: ' + ('true' if v is True else q(v) if isinstance(v, str) else str(v)))
+        hooks.append('\n'.join(block))
+    for name, p in scr['script-providers'].items():
+        if name not in EXCLUDED_EXTRA_PROVIDERS:
+            sproviders[name] = p['url']
+    return len(extra_rules), len(kept)
+
+
 def main():
     sec = sections(SRC.read_text(encoding='utf-8'))
     mitm_line = next(l for l in active(sec['MITM']) if l.startswith('hostname'))
@@ -242,6 +296,7 @@ def main():
     rules, rproviders, dropped, rw_extra = convert_rules(sec['Rule'], set(mitm))
     hooks, sproviders = convert_scripts(sec['Script'])
     rewrites = convert_rewrites(sec['URL Rewrite']) + rw_extra
+    n_extra_rules, n_extra_hooks = merge_extra_layer(rules, mitm, rewrites, hooks, sproviders)
 
     L = ['name: "Stash SR 移植版 V26.00"',
          'desc: "由 shadowrocket_V26.00.lsr 自动转换(scripts/sr2stash.py)。策略组/分流/去广告脚本/MITM 与小火箭一致; '
@@ -250,6 +305,8 @@ def main():
          '# 自动生成, 请勿手改: 改 shadowrocket_V26.00.lsr 后在 proxy-configs/ 下运行 python3 scripts/sr2stash.py。',
          '# 未移植(Stash 无对应或无法核实): [Host] 按域名 DNS(fake-ip 下已等效)、内置 Tailscale、',
          '#   bypass-tun(含 APNs 绕过)、MITM 排除项(Stash 只解密列出的主机)。',
+         '# 扩展去广告层(补小火箭只能在 App 内手动加的 blockAds 模块): 合并 Stash_AppAdBlock 与 Stash_Script,',
+         '#   去掉与小火箭已移植脚本重叠的微博/知乎脚本。启用本覆写后不要再开那两份旧覆写。',
          '# 已丢弃的 Tailscale 规则: ' + ' | '.join(dropped),
          '',
          'proxy-groups: #!replace']
@@ -268,7 +325,8 @@ def main():
     OUT.write_text('\n'.join(L) + '\n', encoding='utf-8')
     print(f'groups={len(groups)} rules={len(rules)} rule-providers={len(rproviders)} '
           f'mitm={len(mitm)} url-rewrite={len(rewrites)} scripts={len(hooks)} '
-          f'script-providers={len(sproviders)} dropped={len(dropped)}', file=sys.stderr)
+          f'script-providers={len(sproviders)} dropped={len(dropped)} '
+          f'extra-rules={n_extra_rules} extra-hooks={n_extra_hooks}', file=sys.stderr)
 
 
 if __name__ == '__main__':

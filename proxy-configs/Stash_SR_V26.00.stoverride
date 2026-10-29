@@ -3,6 +3,8 @@ desc: "由 shadowrocket_V26.00.lsr 自动转换(scripts/sr2stash.py)。策略组
 # 自动生成, 请勿手改: 改 shadowrocket_V26.00.lsr 后在 proxy-configs/ 下运行 python3 scripts/sr2stash.py。
 # 未移植(Stash 无对应或无法核实): [Host] 按域名 DNS(fake-ip 下已等效)、内置 Tailscale、
 #   bypass-tun(含 APNs 绕过)、MITM 排除项(Stash 只解密列出的主机)。
+# 扩展去广告层(补小火箭只能在 App 内手动加的 blockAds 模块): 合并 Stash_AppAdBlock 与 Stash_Script,
+#   去掉与小火箭已移植脚本重叠的微博/知乎脚本。启用本覆写后不要再开那两份旧覆写。
 # 已丢弃的 Tailscale 规则: DOMAIN-SUFFIX,ts.net,TAILSCALE | IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve
 
 proxy-groups: #!replace
@@ -353,6 +355,21 @@ rules: #!replace
   - 'DOMAIN,cm.bilibili.com,REJECT'
   - 'DOMAIN,cm.biliapi.net,REJECT'
   - 'DOMAIN-SUFFIX,weibomingzi.com,REJECT'
+  - 'DOMAIN,ads-img-qc.xhscdn.com,REJECT'
+  - 'DOMAIN,ads-img-al.xhscdn.com,REJECT'
+  - 'DOMAIN,ads-video-al.xhscdn.com,REJECT'
+  - 'DOMAIN,ads-video-qc.xhscdn.com,REJECT'
+  - 'DOMAIN,t-ads.xiaohongshu.com,REJECT'
+  - 'DOMAIN,appcloud.zhihu.com,REJECT'
+  - 'DOMAIN,appcloud2.in.zhihu.com,REJECT'
+  - 'DOMAIN,crash2.zhihu.com,REJECT'
+  - 'DOMAIN,mqtt.zhihu.com,REJECT'
+  - 'DOMAIN,sugar.zhihu.com,REJECT'
+  - 'DOMAIN,zxid-m.mobileservice.cn,REJECT'
+  - 'IP-CIDR,103.41.167.237/32,REJECT,no-resolve'
+  - 'IP-CIDR,118.89.204.198/32,REJECT,no-resolve'
+  - 'IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128,REJECT,no-resolve'
+  - 'DOMAIN-KEYWORD,iyes.youku.com,REJECT'
   - 'RULE-SET,Advertising,REJECT'
   - 'RULE-SET,Advertising_Domain,REJECT'
   - 'RULE-SET,Privacy,REJECT'
@@ -839,6 +856,79 @@ http:
     - 'youtubei-att.googleapis.com'
     - 'spclient.wg.spotify.com'
     - '*-spclient.spotify.com'
+    - 'api.m.jd.com'
+    - 'acs.m.taobao.com'
+    - 'guide-acs.m.taobao.com'
+    - 'edith.xiaohongshu.com'
+    - 'www.xiaohongshu.com'
+    - 'ci.xiaohongshu.com'
+    - 'www.zhihu.com'
+    - 'zhuanlan.zhihu.com'
+    - 'zhstatic.zhihu.com'
+    - 'appcloud2.zhihu.com'
+    - 'link.zhihu.com'
+    - 'pan.baidu.com'
+    - 'ndstatic.cdn.bcebos.com'
+    - 'staticsns.cdn.bcebos.com'
+    - 'issuecdn.baidupcs.com'
+    - 'update.pan.baidu.com'
+    - 'fc-video.cdn.bcebos.com'
+    - 'rp.hpplay.cn'
+    - 'optimus-ads.amap.com'
+    - 'adproxy.autohome.com.cn'
+    - 'app2.autoimg.cn'
+    - 'gw.alicdn.com'
+    - 'img.alicdn.com'
+    - 'dict.youdao.com'
+    - 'api-overmind.youdao.com'
+    - 'cdke.youdao.com'
+    - 'dictvip-business.youdao.com'
+    - 'dsp-impr2.youdao.com'
+    - 'impservice.dictapp.youdao.com'
+    - 'oral.youdao.com'
+    - '*.ydstatic.com'
+    - 'api.alipan.com'
+    - 'member.alipan.com'
+    - 'm.client.10010.com'
+    - 'm1.ad.10010.com'
+    - 'res.mall.10010.cn'
+    - 'cloud.189.cn'
+    - 'zt-app.go189.cn'
+    - 'api.pinduoduo.com'
+    - 'api.yangkeduo.com'
+    - 'acs.m.goofish.com'
+    - 'xyst.yuanfudao.com'
+    - 'so.xiaohongshu.com'
+    - 'rec.xiaohongshu.com'
+    - 'poplayer.template.alibaba.com'
+    - 'cards.iqiyi.com'
+    - 'access.if.iqiyi.com'
+    - 'comment-card.iqiyi.com'
+    - 'iface2.iqiyi.com'
+    - 'search.video.iqiyi.com'
+    - 'kjp.cupid.iqiyi.com'
+    - 't7z.cupid.iqiyi.com'
+    - 'acs.youku.com'
+    - 'un-acs.youku.com'
+    - 'push.m.youku.com'
+    - 'me.bz.mgtv.com'
+    - 'mob-st.bz.mgtv.com'
+    - 'dc.bz.mgtv.com'
+    - 'dc2.bz.mgtv.com'
+    - 'mobile.api.mgtv.com'
+    - 'mobile-thor.api.mgtv.com'
+    - 'mobileso.bz.mgtv.com'
+    - '*.smzdm.com'
+    - 'ct.xiaojukeji.com'
+    - 'freight.xiaojukeji.com'
+    - 'res.xiaojukeji.com'
+    - 'conf.diditaxi.com.cn'
+    - 'common.diditaxi.com.cn'
+    - 'daijia.kuaidadi.com'
+    - 'img.meituan.net'
+    - 'ddplus.meituan.net'
+    - 'open-cms-api.uc.cn'
+    - 'open-cms-api.quark.cn'
   url-rewrite:
     - '^https?://(www\.)?g\.cn https://www.google.com 302'
     - '^https?://(www\.)?google\.cn https://www.google.com 302'
@@ -849,6 +939,100 @@ http:
     - '^https?:\/\/kadmimage\.biz\.weibo\.com\/ - reject-200'
     - '^https?:\/\/adstrategy\.biz\.weibo\.com\/ - reject-200'
     - '^https?:\/\/preload\-impression\.uve\.weibo\.com\/ - reject-200'
+    - '^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=getWidgetV1052 - reject'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alibaba\.advertisementservice\.getadv - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alimama\.etao\.config\.query\/.+?etao_advertise - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alimusic\.common\.mobileservice\.startinit - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.etao\.noah\.query\/.+tao_splash - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.film\.mtopadvertiseapi\.queryadvertise - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.o2o\.ad\.gateway\.get - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.taobao\.idle\.home\.welcome - reject-dict'
+    - '^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.trip\.activity\.querytmsresources - reject-dict'
+    - '^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.(volvo\.secondfloor\.getconfig|wireless\.home\.newface\.awesome\.get) - reject-dict'
+    - '^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v1\/surprisebox\/(?:get_style|open|submit_action) - reject-dict'
+    - '^https?:\/\/www\.xiaohongshu\.com\/api\/marketing\/box\/trigger\? - reject-dict'
+    - '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/guide\? - reject-dict'
+    - '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/detailfeed\/preload\? - reject-dict'
+    - '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/guide\/user_banner - reject-dict'
+    - '^https?:\/\/www\.xiaohongshu\.com\/api\/sns\/(v\d+\/ads\/resource|v\d+\/hey\/\w+\/hey_gallery) - reject-dict'
+    - '^https?:\/\/ci\.xiaohongshu\.com\/system_config\/watermark - reject-img'
+    - '^https:\/\/api\.zhihu\.com\/unlimited\/go\/my_card - reject'
+    - '^https:\/\/api\.zhihu\.com\/ab\/api\/v1\/products\/zhihu\/platforms\/ios\/config - reject'
+    - '^https:\/\/link\.zhihu\.com\/\?target=(?:https?)?(?:%3A|:)?(?:\/\/|%2F%2F)?(.*) http://$1 302'
+    - '^https:\/\/www\.zhihu\.com\/api\/v4\/hot_recommendation - reject'
+    - '^https:\/\/www\.zhihu\.com\/api\/v4\/mcn\/v2\/linkcards\? - reject'
+    - '^https:\/\/www\.zhihu\.com\/api\/v4/(?:answers|questions)\/\d+/related-readings - reject'
+    - '^https:\/\/www\.zhihu\.com\/commercial_api\/banners_v3\/mobile_banner - reject'
+    - '^https:\/\/zhuanlan\.zhihu\.com\/api\/articles\/\d+\/recommendation - reject'
+    - '^https:\/\/zhstatic\.zhihu\.com\/brand-ad - reject'
+    - '^https:\/\/api\.zhihu\.com\/commercial_api\/(?:answer\/\d+\/bottom-v2|article\/\d+\/bottom-v2|banners_v3\/app_topstory_banner|launch_v2|real_time_launch_v2) - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/content-distribution-core\/bubble\/common\/settings - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/(?:moments\/lastread|drama\/hot-drama-list) - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/root\/window - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/(?:bazaar\/float_window|market\/popovers_v2) - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/me\/guides - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/search\/(hot_search|preset_words) - reject-dict'
+    - '^https:\/\/www\.zhihu\.com\/api\/v4\/search\/related_queries\/(?:article|answer)\/\d+ - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/comment_v5\/(?:articles|answers)\/\d+\/list-headers - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/prague\/related_suggestion_native\/feed\? - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/v5\.1\/topics\/answer\/\d+\/relation - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/ad-style-service\/request - reject-dict'
+    - '^https:\/\/appcloud2\.zhihu\.com\/v3\/resource\?group_name=mp - reject-dict'
+    - '^https:\/\/api\.zhihu\.com\/distribute\/rhea\/qa_ad_card\/h5\/recommendation\? - reject-dict'
+    - '^https?:\/\/pan\.baidu\.com\/rest\/\d\.\d\/pcs\/adx - reject'
+    - '^https?:\/\/pan\.baidu\.com\/rest\/2\.0\/pcs\/ad - reject'
+    - '^https?:\/\/pan\.baidu\.com\/act\/v\d\/(bchannel|welfare)\/list - reject'
+    - '^https?:\/\/pan\.baidu\.com\/act\/api\/activityentry - reject'
+    - '^https?:\/\/pan\.baidu\.com\/pmall\/order\/privilege\/info - reject'
+    - '^https?:\/\/pan\.baidu\.com\/rest\/.+\/pcs\/adx - reject'
+    - '^https?:\/\/pan\.baidu\.com\/api\/useractivity\/activity - reject'
+    - '^https?:\/\/pan\.baidu\.com\/act\/.+\/bchannel\/list - reject'
+    - '^https?:\/\/pan\.baidu\.com\/api\/certuser\/get - reject'
+    - '^https?:\/\/pan\.baidu\.com\/component\/view\/(1510|1130)\?vip - reject'
+    - '^https?:\/\/ndstatic\.cdn\.bcebos\.com\/activity\/welfare\/js\/.+\.js - reject'
+    - '^https?:\/\/ndstatic\.cdn\.bcebos\.com\/activity\/welfare\/index\.html - reject'
+    - '^https?:\/\/staticsns\.cdn\.bcebos\.com\/amis\/.+/banner.png - reject'
+    - '^https?:\/\/issuecdn\.baidupcs\.com\/issue\/netdisk\/guanggao - reject'
+    - '^https?:\/\/update\.pan\.baidu\.com\/statistics - reject'
+    - '^https?:\/\/fc-video\.cdn\.bcebos\.com - reject'
+    - '^https?:\/\/rp\.hpplay\.cn\/logouts - reject'
+    - '^https?:\/\/m5\.amap\.com\/ws\/valueadded\/ - reject'
+    - '^https?:\/\/m5\.amap\.com\/ws\/shield\/dsp\/app\/startup\/init\? - reject-dict'
+    - '^https?://optimus-ads.amap.com/uploadimg/[a-zA-Z0-9]+.gif - reject-200'
+    - '^https?:\/\/adproxy\.autohome\.com\.cn\/AdvertiseService\/ - reject-img'
+    - '^https?:\/\/app2\.autoimg\.cn\/apppdfs\/ - reject-img'
+    - '^https?:\/\/(gw|img)\.alicdn\.com\/imgextra\/.+\/[\w!]+\d+-\d+-.+-\b([8-9]\d{2,}|[1-9]\d{3,})\b-\b([5-9]\d{2,}|[1-9]\d{3,})\b - reject-dict'
+    - '^https?:\/\/oimage([a-z])([0-9])\.ydstatic\.com\/.+adpublish - reject'
+    - '^https?:\/\/dict\.youdao\.com\/course\/tab\/translateTab - reject-dict'
+    - '^https?:\/\/api-overmind\.youdao\.com\/openapi\/get\/luna\/dict\/dict-mobile\/prod\/dictCommonConfig - reject-dict'
+    - '^https?:\/\/cdke\.youdao\.com\/course3\/recommend\/dict\/startup - reject-dict'
+    - '^https?:\/\/dict\.youdao\.com\/commonsearch - reject-dict'
+    - '^https?:\/\/dict\.youdao\.com\/vip\/activity\/couponinfo - reject-dict'
+    - '^https?:\/\/dict\.youdao\.com\/dictusertask\/system - reject-dict'
+    - '^https?:\/\/dictvip-business\.youdao\.com\/home\/ad - reject-dict'
+    - '^https?:\/\/oimage\w\d\.ydstatic\.com\/image\?.+?=adpublish - reject-img'
+    - '^https?:\/\/dsp-impr2\.youdao\.com\/adload - reject-200'
+    - '^https?:\/\/impservice\.dictapp\.youdao\.com\/imp\/request - reject-img'
+    - '^https?:\/\/oral\.youdao\.com\/oral\/adInfo - reject-img'
+    - '^https:\/\/api\.alipan\.com\/adrive\/v1\/file\/getTopFolders - reject-dict'
+    - '^https:\/\/member\.alipan\.com\/v2\/activity\/sign_in_luckyBottle - reject-dict'
+    - '^https?:\/\/m\.client\.10010\.com\/mobileService\/(activity|customer)\/(accountListData|get_client_adv|get_startadv) - reject-img'
+    - '^https?:\/\/m\.client\.10010\.com\/mobileService\/customer\/getclientconfig\.htm - reject-dict'
+    - '^https?:\/\/m\.client\.10010\.com\/uniAdmsInterface\/(getHomePageAd|getWelcomeAd) - reject-img'
+    - '^https?:\/\/m1\.ad\.10010\.com\/noticeMag\/images\/imageUpload\/2\d{3} - reject-img'
+    - '^https?:\/\/res\.mall\.10010\.cn\/mall\/common\/js\/fa\.js?referer= - reject-img'
+    - '^https?:\/\/cloud\.189\.cn\/include\/splash\/ - reject'
+    - '^https?:\/\/zt-app\.go189\.cn\/zt-app\/welcome\/.*?Animation - reject-img'
+    - '^https?:\/\/api\.(pinduoduo|yangkeduo)\.com\/api\/cappuccino\/splash - reject'
+    - '^https?:\/\/api\.pinduoduo\.com\/api\/aquarius\/hungary\/global\/homepage\? - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.playboy\.recommend\/1\.0 - reject'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlemtopsearch\.item\.search\.activate\/2\.0 - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlemtopsearch\.search\.discover\/1\.0 - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.item\.resell\.recommendorhotcate\/1\.0 - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlehome\.idle\.coin\.nextfresh\/1\.0 - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.item\.buy\.feeds - reject-dict'
+    - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlecommerce\.splash\.ads - reject-dict'
+    - '^https?:\/\/xyst\.yuanfudao\.com\/iphone\/splashesV\d - reject-200'
   script:
     # 微博主体去广告
     - name: 'weibo_main'
@@ -990,6 +1174,426 @@ http:
       max-size: 5242880
       timeout: 10
       argument: '[true,true]'
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/(banner|hot)_list'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/(hint|trending)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/(so|edith)\.xiaohongshu\.com\/api\/sns\/v\d+\/search\/notes\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/system_service\/config\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/system_service\/splash_config'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/widgets'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/(imagefeed|live_photo\/save)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/v\d+\/(followfeed|homefeed)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/(v2\/note\/feed|v3\/note\/videofeed)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https?:\/\/(edith|rec|www)\.xiaohongshu\.com\/api\/sns\/(v4\/note\/videofeed|v10\/note\/video\/save)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/(v5\/note\/comment\/list|v3\/note\/comment\/sub_comments)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: xiaohongshu
+    - name: 'xiaohongshu'
+      match: '^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v1\/interaction\/comment\/video\/download\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: myBlockAds
+    - name: 'myBlockAds'
+      match: '^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.(cloudvideo\.video\.query|wireless\.home\.splash\.awesome\.get)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: myBlockAds
+    - name: 'myBlockAds'
+      match: '^https?:\/\/poplayer\.template\.alibaba\.com\/\w+\.json'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: jingdong
+    - name: 'jingdong'
+      match: '^https:\/\/api\.m\.jd\.com\/client\.action\?functionId=(deliverLayer|getTabHomeInfo|myOrderInfo|orderTrackBusiness|personinfoBusiness|start|welcomeHome)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/[\d\.]+\/3f1\/cards\.iqiyi\.com\/(views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/access\.if\.iqiyi\.com\/3f1\/cards\.iqiyi\.com\/(views_category\/3\.0\/category_home|views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/cards\.iqiyi\.com\/views_category\/3\.0\/(category_home|categorylib_content|film_hybrid)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/cards\.iqiyi\.com\/(views_home\/3\.0\/qy_home|waterfall\/3\.0\/feed)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/cards\.iqiyi\.com\/views_plt\/3\.0\/player_tabs_v2\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/cards\.iqiyi\.com\/views_search\/3\.0\/(hot_query_)?search\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/comment-card\.iqiyi\.com\/views_comment\/3\.0\/long_video_comments\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/iface2\.iqiyi\.com\/aggregate\/3\.0\/getMyMenus\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/iface2\.iqiyi\.com\/control\/3\.0\/init_proxy\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/iface2\.iqiyi\.com\/fusion\/3\.0\/common_switch\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/iface2\.iqiyi\.com\/views\/3\.0\/(bottom_theme|home_top_menu)\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/search\.video\.iqiyi\.com\/q\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/(kjp|t7z)\.cupid\.iqiyi\.com\/mixer\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.columbus\.(gateway\.new\.execute|home\.feed|home\.query|uc\.query|ycp\.query)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.haidai\.lantern\.appconfig\.get'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.huluwa\.dispatcher\.youthmode\.config2'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/acs\.youku\.com\/gw\/mtop\.youku\.soku\.yksearch'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/push\.m\.youku\.com\/collect-api\/get_push_interval_config_wx\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/un-acs\.youku\.com\/gw\/mtop\.youku\.play\.ups\.appinfo\.get'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/me\.bz\.mgtv\.com\/v3\/module\/list\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/mob-st\.bz\.mgtv\.com\/odin\/c1\/channel\/index\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/dc2?\.bz\.mgtv\.com\/dynamic\/v1\/channel\/(index|vrsList)\/\w'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/mobile\.api\.mgtv\.com\/mobile\/config\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/mobile\.api\.mgtv\.com\/v10\/video\/info\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/mobile-thor\.api\.mgtv\.com\/v1\/vod\/info\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: cnftp
+    - name: 'cnftp'
+      match: '^https?:\/\/mobileso\.bz\.mgtv\.com\/mobile\/recommend\/v2\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: smzdm_ads
+    - name: 'smzdm_ads'
+      match: '^https?:\/\/haojia\.m\.smzdm\.com\/detail_modul\/user_related_modul\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: smzdm_ads
+    - name: 'smzdm_ads'
+      match: '^https?:\/\/haojia-api\.smzdm\.com\/ranking_list\/articles\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: smzdm_ads
+    - name: 'smzdm_ads'
+      match: '^https?:\/\/s-api\.smzdm\.com\/sou\/filter\/tags\/hot_tags\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: smzdm_ads
+    - name: 'smzdm_ads'
+      match: '^https?:\/\/s-api\.smzdm\.com\/sou\/list_v10\?'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: smzdm_ads
+    - name: 'smzdm_ads'
+      match: '^https?:\/\/user-api\.smzdm\.com\/vip\/creator_user_center'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/user-api\.smzdm\.com\/vip$'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/app-api\.smzdm\.com\/util\/loading'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/app-api\.smzdm\.com\/util\/update'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/user-api\.smzdm\.com\/vip\/bottom_card_list'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/haojia-api\.smzdm\.com\/home\/list'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/homepage-api\.smzdm\.com\/v3\/home'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/article-api\.smzdm\.com\/publish\/get_bubble'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: Smzdm
+    - name: 'Smzdm'
+      match: '^https?:\/\/qianbao\.smzdm\.com\/v\d\/app\/home'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/ct\.xiaojukeji\.com\/agent\/v3\/feeds'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/freight\.xiaojukeji\.com\/gateway'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/res\.xiaojukeji\.com\/resapi\/activity\/xpget'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/res\.xiaojukeji\.com\/resapi\/activity\/mget'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/conf\.diditaxi\.com\.cn\/homepage\/v\d\/other\/fast'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/conf\.diditaxi\.com\.cn\/dynamic\/conf'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/common\.diditaxi\.com\.cn\/common\/v\d\/usercenter\/me'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/daijia\.kuaidadi\.com\/gateway'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/daijia\.kuaidadi\.com:443\/gateway'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: didiAds
+    - name: 'didiAds'
+      match: '^https?:\/\/common\.diditaxi\.com\.cn\/common\/v5'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: dianping
+    - name: 'dianping'
+      match: '^https?:\/\/img\.meituan\.net\/(?:dpmobile|goodsawardpic)\/'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: dianping
+    - name: 'dianping'
+      match: '^https?:\/\/ddplus\.meituan\.net\/v\d\/mss_\w+\/picassovc'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: quark
+    - name: 'quark'
+      match: '^https?:\/\/open-cms-api\.(uc|quark)\.cn\/open-cms'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: dict-youdao-ad
+    - name: 'dict-youdao-ad'
+      match: '^https?:\/\/dict\.youdao\.com\/(homepage\/promotion|course\/tab\/home|homepage\/tile)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: adrive
+    - name: 'adrive'
+      match: '^https:\/\/api\.alipan\.com\/apps\/v2\/users\/home\/(news|widgets)'
+      type: response
+      require-body: true
+      timeout: 60
+    # 扩展层: adrive
+    - name: 'adrive'
+      match: '^https:\/\/member\.alipan\.com\/v1\/users\/onboard_list'
+      type: response
+      require-body: true
+      timeout: 60
 
 script-providers:
   'weibo_main':
@@ -1018,4 +1622,37 @@ script-providers:
     interval: 86400
   'Spotify.Crack.Dev':
     url: https://raw.githubusercontent.com/001ProMax/Surge/refs/heads/main/Script/Spotify.Crack.Dev.js
+    interval: 86400
+  'xiaohongshu':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/xiaohongshu.js
+    interval: 86400
+  'myBlockAds':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/myBlockAds.js
+    interval: 86400
+  'jingdong':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/jingdong.js
+    interval: 86400
+  'cnftp':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/cnftp.js
+    interval: 86400
+  'smzdm_ads':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/smzdm_ads.js
+    interval: 86400
+  'Smzdm':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/Smzdm.js
+    interval: 86400
+  'didiAds':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/didiAds.js
+    interval: 86400
+  'dianping':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dianping.js
+    interval: 86400
+  'quark':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/quark.js
+    interval: 86400
+  'dict-youdao-ad':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dict-youdao-ad.js
+    interval: 86400
+  'adrive':
+    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/adrive.js
     interval: 86400
