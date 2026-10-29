@@ -1104,7 +1104,7 @@ Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡
 
 # ---------- 流媒体 ----------
 # v2.6.12: 默认走 YT-Auto 两级高可用; 其余 YT 地区池保留作手动灾备.
-YouTube = select, YT-Auto, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
+YouTube = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 Netflix = select, 美国节点, 香港节点, 日本节点, 新加坡节点
 Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
 TikTok = select, 美国节点, 日本节点, 台湾节点, 新加坡节点
@@ -1116,17 +1116,17 @@ Telegram = select, 美国节点, 新加坡节点, 香港节点, 日本节点, Au
 # 日志 2 证据: AutoSelect 在 11 分钟内把 IG 切换 4 个不同节点,
 #              同一秒并发到 2 个节点, 触发服务端风控
 # 设计: 绑死到单一地区池 (美国稳定), 失败才降级
-Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, AutoSelect
+Instagram = select, 美国节点, 日本节点, 新加坡节点, AutoSelect
 
 # ---------- v2.6.2 新增: Twitter / X 专用 (同样长连接特性) ----------
-Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, AutoSelect
+Twitter = select, 美国节点, 日本节点, 新加坡节点, AutoSelect
 
 # ---------- 大厂 ----------
 苹果服务 = select, DIRECT, 美国节点, 香港节点
 # v2.6.19: 覆盖旧 fix2 默认 AutoSelect 的偏好；Google 与 Gemini 统一由此选点。
 #   默认美国节点，不默认进入 YouTube 的 30s 两级池；其他地区保留手动选择。
 #   共享 Google 登录可能也被其他 App 使用；换点后旧连接需自行重建。
-谷歌服务 = select, 美国节点, AutoSelect, YT-Auto, 香港节点, 台湾节点, 日本节点, 新加坡节点
+谷歌服务 = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点
 微软服务 = select, 美国节点, DIRECT, 香港节点
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
@@ -1185,7 +1185,8 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 # 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
 
 
-YT-Auto = fallback, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5
+# 2026-10-29 YT-Auto 已按用户要求删除: 地区池已用 Google 探针, 池内单节点故障会自动换;
+#   整个地区连不上 Google 时需在 YouTube 组手动切地区.
 
 # 2026-10-29 删除 StableSelect 与 Fallback: 两组定义完全相同(全部节点按订阅顺序的
 #   fallback, 每 900s 测全部节点), 选点取决于订阅排序而非质量; 前者只是 Proxy 的一个
@@ -1205,9 +1206,6 @@ YT-Auto = fallback, 美国节点, 香港节点, 台湾节点, 日本节点, 新�
 # v2.6.17: IG/Twitter 专用稳定池改为按优先级故障转移，不再按延迟排名换点。
 # 300s 比原 900s 更快发现硬故障，探测更频繁；timeout=5 为 TLS 握手留余量。
 # 这是低频故障恢复，不是吞吐测试；订阅排序决定优先级，恢复后可能回切。
-美国稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
-日本稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-新加坡稳定 = fallback, url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 
 # ---------- 漏网之鱼 ----------
 # v2.6.1 关键修复: 默认指向 DIRECT (v2.6.0 默认 Proxy)
@@ -1838,9 +1836,9 @@ DOMAIN-SUFFIX,redditstatic.com,Proxy
 # 注: 不并入"微软服务"组——该组默认 DIRECT (供 Office/Teams 国内
 #     直连), LinkedIn 并进去会被直连, 反而连不上.
 # ---------------------------------------------------------------------
-DOMAIN-SUFFIX,linkedin.com,美国稳定
-DOMAIN-SUFFIX,licdn.com,美国稳定
-DOMAIN-SUFFIX,linkedin.cn,美国稳定
+DOMAIN-SUFFIX,linkedin.com,美国节点
+DOMAIN-SUFFIX,licdn.com,美国节点
+DOMAIN-SUFFIX,linkedin.cn,美国节点
 
 # ---------------------------------------------------------------------
 # 9. 开发 / 协作 / 工具

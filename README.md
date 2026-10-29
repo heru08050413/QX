@@ -93,7 +93,7 @@ https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds
 
 针对"代理开着但 YouTube 打不开,需重开 App/手动切节点"的症状:
 
-- **探针同源**:SR/Loon/Stash 新增 `YT-Auto` 自愈组,用 Google 自家 `gstatic/generate_204` 探针——节点"能到 Cloudflare 但到不了 Google"时自动切换,不再需要手动干预。**YouTube 组请保持选中 `YT-Auto`**。
+- **探针同源**:小火箭、Loon 的地区池测速改用 Google 自家 `gstatic/generate_204` 探针,池内节点"能到 Cloudflare 但到不了 Google"时自动换到同地区其他节点。小火箭已按用户要求删除 `YT-Auto` 和三个稳定池(2026-10-29),整个地区都连不上 Google 时,需在 YouTube 组手动换地区;Loon / Egern / Stash 主配置仍保留各自的 YT-Auto。
 - **UDP fail-fast**:节点不支持 UDP 时立即失败回落 TCP,不再直连进墙内黑洞挂死。
 - 详见 `proxy-configs/CLAUDE.md` 安全基线第 7、8 条。
 

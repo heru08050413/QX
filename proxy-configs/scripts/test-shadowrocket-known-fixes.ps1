@@ -17,7 +17,7 @@ function Get-ActiveLines([string[]]$Lines) {
 $lines = if ($PSBoundParameters.ContainsKey('ConfigText')) { @($ConfigText -split '\r?\n') }
     else { @(Get-Content -LiteralPath $ConfigPath -Encoding utf8) }
 $active = @(Get-ActiveLines $lines)
-$usGroups = @('美国节点', '美国稳定')
+$usGroups = @('美国节点')
 $positive = @('US', 'USA', 'us-01', 'US01', 'USA01', '机场-US-01',
     '美国01', '🇺🇸 01', 'United States 01', 'America 01', '洛杉矶01', 'SiliconValley')
 $negative = @('Russia', 'RUS-01', 'Australia', 'AUS-01', 'RUS01', 'AUS01',
@@ -338,24 +338,16 @@ Assert-True ([array]::IndexOf($active, 'DOMAIN,dns.weixin.qq.com,DIRECT') -lt $f
 Assert-True (!$active.Contains('DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -or
     [array]::IndexOf($active, 'DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -gt $firstAd) 'WeChat ads bypass the advertising list'
 
-# 2026-10-29 simplification: dedicated YT-* region pools removed (same nodes and filters as the
-# generic pools). Generic region pools now probe Google over HTTPS, and YT-Auto fails over across them.
-$ytGroups = @($active | Where-Object { $_ -match '^YT-.+ = ' })
-Assert-True ($ytGroups.Count -eq 1 -and $ytGroups[0].StartsWith('YT-Auto = ')) 'Only YT-Auto may remain as a YouTube-specific group'
-Assert-True ($ytGroups[0] -ceq 'YT-Auto = fallback, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5') 'YT-Auto must fail over across the generic region pools'
+# 2026-10-29 simplification (user request): no YouTube-specific groups and no stable pools.
+# Generic region pools probe Google over HTTPS, so in-region failover still checks Google reachability.
+Assert-True (@($active | Where-Object { $_ -match '^YT-.+ = ' }).Count -eq 0) 'YouTube-specific groups are back'
 foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
     Assert-True ($group.Count -eq 1 -and $group[0].StartsWith("$name = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5,")) "Region pool must probe Google over HTTPS at 900s: $name"
 }
-Assert-True (@($active | Where-Object { $_.StartsWith('YouTube = select, YT-Auto, 美国节点,') }).Count -eq 1) 'YouTube selector must default to YT-Auto'
-# 2026-10-29: StableSelect / Fallback were identical all-node fallbacks in subscription order (removed).
-foreach ($name in @('StableSelect', 'Fallback')) {
-    Assert-True (@($active | Where-Object { $_.StartsWith("$name = ") -or $_ -match ", $name(,|$)" }).Count -eq 0) "Removed all-node fallback group is back: $name"
-}
-foreach ($name in @('美国稳定', '日本稳定', '新加坡稳定')) {
-    $group = @($active | Where-Object { $_.StartsWith("$name = ") })
-    Assert-True ($group.Count -eq 1 -and $group[0].Contains('= fallback,') -and
-        $group[0].Contains('url=https://cp.cloudflare.com/generate_204, interval=900, timeout=5')) "Invalid stable pool: $name"
+Assert-True (@($active | Where-Object { $_.StartsWith('YouTube = select, 美国节点,') }).Count -eq 1) 'YouTube selector must default to 美国节点'
+foreach ($name in @('StableSelect', 'Fallback', 'YT-Auto', '美国稳定', '日本稳定', '新加坡稳定')) {
+    Assert-True (@($active | Where-Object { $_.StartsWith("$name = ") -or $_ -match "(, |,)$name(,|$)" }).Count -eq 0) "Removed group is back or still referenced: $name"
 }
 $ytScripts = @($active | Where-Object { $_ -match '^YouTube\.(response|request\.(init|log_event)) = ' })
 Assert-True ($ytScripts.Count -eq 3) 'YouTube hook count changed'
@@ -394,7 +386,7 @@ function Resolve-DefaultPool([string]$Name, [hashtable]$Selections = @{}) {
 $expectedDefaults = @{
     Proxy='美国节点'; AI='美国节点'; Gemini='美国节点'; Meta='美国节点';
     YouTube='美国节点'; Netflix='美国节点'; Spotify='新加坡节点'; TikTok='美国节点';
-    Telegram='美国节点'; Instagram='美国稳定'; Twitter='美国稳定';
+    Telegram='美国节点'; Instagram='美国节点'; Twitter='美国节点';
     苹果服务='DIRECT'; 谷歌服务='美国节点'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
 }
 foreach ($entry in $expectedDefaults.GetEnumerator()) {
@@ -442,4 +434,4 @@ Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
 foreach ($rule in $googleAuthRules) {
     Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; YT-Auto over Google-probed region pools; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
+Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; Google-probed region pools, no YT/stable groups; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."

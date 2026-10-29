@@ -6,8 +6,8 @@ Re-run after every Shadowrocket change so the Stash port stays in sync.
 
 Porting decisions (see the generated file's header for the user-facing summary):
 - Every url-test / fallback group gets lazy: true. Stash then skips a group's
-  automatic latency test once it has gone unused for a while, so the YouTube
-  pools only probe while YouTube traffic flows. Benchmark results are shared
+  automatic latency test once it has gone unused for a while, so groups only
+  probe while traffic flows through them. Benchmark results are shared
   per node across groups, so lazy must be on every group or idle groups keep
   probing the same nodes.
 - Filters avoid regex lookaround (not verified for Stash; Stash_Pro avoids it).
@@ -30,7 +30,6 @@ SRC = Path('shadowrocket_V26.00.lsr')
 OUT = Path('Stash_SR_V26.00.stoverride')
 BM7 = 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash'
 
-YT_AUTO_INTERVAL = 60   # YT-Auto only probes while YouTube is in use (lazy)
 
 # Shadowrocket list name -> [(provider name, bm7 Clash file, behavior, no-resolve)]
 RULESETS = {
@@ -56,12 +55,12 @@ RULESETS = {
 }
 QURE = 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/'
 # Shadowrocket groups carry no img-url, so Stash would show generic icons.
-# Service groups get the app's icon; region pools (incl. YT-* / *稳定) get the flag.
+# Service groups get the app's icon; region pools get the flag.
 ICONS = {
     'Proxy': 'Proxy', 'AI': 'ChatGPT', 'Meta': 'Facebook', 'YouTube': 'YouTube',
     'Netflix': 'Netflix', 'Spotify': 'Spotify', 'TikTok': 'TikTok', 'Telegram': 'Telegram',
     'Instagram': 'Instagram', 'Twitter': 'Twitter', '苹果服务': 'Apple', '谷歌服务': 'Google_Search',
-    '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', 'AutoSelect': 'Auto', 'YT-Auto': 'Speedtest',
+    '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', 'AutoSelect': 'Auto',
     'Final': 'Final',
 }
 REGION_ICONS = {'香港': 'Hong_Kong', '台湾': 'Taiwan', '日本': 'Japan', '新加坡': 'Singapore', '美国': 'United_States'}
@@ -149,8 +148,6 @@ def convert_groups(lines):
             if opts.get('url'):
                 g.append(f"    url: {q(opts['url'])}")
             interval = int(opts.get('interval', 600))
-            if name == 'YT-Auto':
-                interval = YT_AUTO_INTERVAL
             g.append(f'    interval: {interval}')
             if gtype == 'url-test' and opts.get('tolerance'):
                 g.append(f"    tolerance: {opts['tolerance']}")
