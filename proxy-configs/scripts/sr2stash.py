@@ -42,6 +42,8 @@ RULESETS = {
     'OpenAI': [('OpenAI', 'OpenAI/OpenAI.yaml', 'classical', False)],
     'YouTube': [('YouTube', 'YouTube/YouTube.yaml', 'classical', False)],
     'Netflix': [('Netflix', 'Netflix/Netflix_Classical.yaml', 'classical', False)],
+    'Apple': [('Apple', 'Apple/Apple.yaml', 'classical', False)],
+    'Apple_Domain': [('Apple_Domain', 'Apple/Apple_Domain.yaml', 'domain', False)],
     'Spotify': [('Spotify', 'Spotify/Spotify.yaml', 'classical', False)],
     'TikTok': [('TikTok', 'TikTok/TikTok.yaml', 'classical', False)],
     'Telegram': [('Telegram', 'Telegram/Telegram.yaml', 'classical', False)],

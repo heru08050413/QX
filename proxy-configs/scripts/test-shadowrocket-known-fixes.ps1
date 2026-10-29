@@ -297,6 +297,14 @@ foreach ($rule in @('DOMAIN-SUFFIX,cmpassport.com,DIRECT', 'DOMAIN-SUFFIX,id6.me
     $i = [array]::IndexOf($active, $rule)
     Assert-True ($i -ge 0 -and $i -lt $privacySet) "One-click login exception missing or after Privacy_Domain: $rule"
 }
+# 2026-10-29: 苹果服务 is wired to bm7 Apple lists; critical Apple DIRECT rules stay ahead of them.
+$appleSet = [array]::IndexOf($active, 'DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Apple/Apple_Domain.list,苹果服务')
+Assert-True ($appleSet -ge 0) 'Apple_Domain list not routed to 苹果服务'
+foreach ($rule in @('DOMAIN,ocsp.apple.com,DIRECT', 'DOMAIN-SUFFIX,ls.apple.com,DIRECT', 'DOMAIN-SUFFIX,mzstatic.com,DIRECT',
+        'DOMAIN-SUFFIX,itunes.apple.com,DIRECT', 'DOMAIN-SUFFIX,apps.apple.com,DIRECT', 'DOMAIN-SUFFIX,icloud.com.cn,DIRECT')) {
+    $i = [array]::IndexOf($active, $rule)
+    Assert-True ($i -ge 0 -and $i -lt $appleSet) "Critical Apple DIRECT rule missing or after the Apple list: $rule"
+}
 foreach ($rule in $tailnetRules) {
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate Tailscale rule: $rule"
     Assert-True ([array]::IndexOf($active, $rule) -gt [array]::IndexOf($active, '[Rule]')) "Tailscale rule outside [Rule]: $rule"
@@ -383,7 +391,7 @@ $expectedDefaults = @{
     Proxy='美国节点'; AI='美国节点'; Gemini='美国节点'; Meta='美国节点';
     YouTube='美国节点'; Netflix='美国节点'; Spotify='新加坡节点'; TikTok='美国节点';
     Telegram='美国节点'; Instagram='美国稳定'; Twitter='美国稳定';
-    苹果服务='美国节点'; 谷歌服务='美国节点'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
+    苹果服务='DIRECT'; 谷歌服务='美国节点'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
 }
 foreach ($entry in $expectedDefaults.GetEnumerator()) {
     Assert-True ((Resolve-DefaultPool $entry.Key) -ceq $entry.Value) "Wrong initial region/pool: $($entry.Key)"

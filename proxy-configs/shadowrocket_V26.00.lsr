@@ -1122,7 +1122,7 @@ Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
 
 # ---------- 大厂 ----------
-苹果服务 = select, 美国节点, DIRECT, 香港节点
+苹果服务 = select, DIRECT, 美国节点, 香港节点
 # v2.6.19: 覆盖旧 fix2 默认 AutoSelect 的偏好；Google 与 Gemini 统一由此选点。
 #   默认美国节点，不默认进入 YouTube 的 30s 两级池；其他地区保留手动选择。
 #   共享 Google 登录可能也被其他 App 使用；换点后旧连接需自行重建。
@@ -1926,6 +1926,15 @@ DOMAIN-SUFFIX,redcircle.com,Proxy
 DOMAIN-SUFFIX,podtrac.com,Proxy
 DOMAIN-SUFFIX,chtbl.com,Proxy
 DOMAIN-SUFFIX,pdst.fm,Proxy
+
+# 2026-10-29 苹果服务组接上规则(此前组存在但没有任何规则指向它).
+#   前面的 Apple 直连规则(OCSP 证书校验/定位/国区 iCloud/App Store 与 iTunes CDN/
+#   mzstatic/akadns)保持优先, 无论本组选什么都直连; Apple News 仍走 Proxy.
+#   其余 Apple 流量交本组, 默认 DIRECT(与改前经 FINAL 直连等效), 需要时可切美国/香港.
+#   bm7 把 Apple 拆成两份: Apple.list(UA/关键词/IP, 含 17.0.0.0/8 no-resolve) +
+#   Apple_Domain.list(约 1560 条域名). 不用 AppleProxy: 与上面必须直连的规则重叠.
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Apple/Apple.list,苹果服务
+DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Apple/Apple_Domain.list,苹果服务
 
 # ---------------------------------------------------------------------
 # 11. 国内服务直连

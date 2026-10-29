@@ -53,7 +53,7 @@ proxy-groups: #!replace
   - name: '苹果服务'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png'
-    proxies: ['美国节点', 'DIRECT', '香港节点']
+    proxies: ['DIRECT', '美国节点', '香港节点']
   - name: '谷歌服务'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google_Search.png'
@@ -247,6 +247,18 @@ rule-providers: #!replace
     format: yaml
     url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Microsoft/Microsoft.yaml
     path: ./rules/stash-sr-microsoft.yaml
+    interval: 86400
+  Apple:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Apple/Apple.yaml
+    path: ./rules/stash-sr-apple.yaml
+    interval: 86400
+  Apple_Domain:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Apple/Apple_Domain.yaml
+    path: ./rules/stash-sr-apple_domain.yaml
     interval: 86400
   BiliBili:
     behavior: classical
@@ -683,6 +695,8 @@ rules: #!replace
   - 'DOMAIN-SUFFIX,podtrac.com,Proxy'
   - 'DOMAIN-SUFFIX,chtbl.com,Proxy'
   - 'DOMAIN-SUFFIX,pdst.fm,Proxy'
+  - 'RULE-SET,Apple,苹果服务'
+  - 'RULE-SET,Apple_Domain,苹果服务'
   - 'RULE-SET,BiliBili,哔哩哔哩'
   - 'DOMAIN-SUFFIX,bilibili.com,哔哩哔哩'
   - 'DOMAIN-SUFFIX,biliapi.net,哔哩哔哩'
