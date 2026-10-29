@@ -9,7 +9,7 @@ proxy-groups: #!replace
   - name: 'Proxy'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Proxy.png'
-    proxies: ['美国节点', 'AutoSelect', 'StableSelect', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'DIRECT']
+    proxies: ['美国节点', 'AutoSelect', '香港节点', '台湾节点', '日本节点', '新加坡节点', 'DIRECT']
   - name: 'AI'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ChatGPT.png'
@@ -45,11 +45,11 @@ proxy-groups: #!replace
   - name: 'Instagram'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Instagram.png'
-    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
+    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'AutoSelect']
   - name: 'Twitter'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Twitter.png'
-    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'Fallback']
+    proxies: ['美国稳定', '日本稳定', '新加坡稳定', 'AutoSelect']
   - name: '苹果服务'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png'
@@ -80,20 +80,6 @@ proxy-groups: #!replace
     proxies: ['美国节点', '香港节点', '台湾节点', '日本节点', '新加坡节点']
     url: 'https://www.gstatic.com/generate_204'
     interval: 60
-    lazy: true
-  - name: 'StableSelect'
-    type: fallback
-    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png'
-    include-all: true
-    url: 'http://cp.cloudflare.com/generate_204'
-    interval: 900
-    lazy: true
-  - name: 'Fallback'
-    type: fallback
-    icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available_1.png'
-    include-all: true
-    url: 'http://cp.cloudflare.com/generate_204'
-    interval: 900
     lazy: true
   - name: '香港节点'
     type: url-test

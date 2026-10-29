@@ -348,6 +348,10 @@ foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡�
     Assert-True ($group.Count -eq 1 -and $group[0].StartsWith("$name = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5,")) "Region pool must probe Google over HTTPS at 900s: $name"
 }
 Assert-True (@($active | Where-Object { $_.StartsWith('YouTube = select, YT-Auto, 美国节点,') }).Count -eq 1) 'YouTube selector must default to YT-Auto'
+# 2026-10-29: StableSelect / Fallback were identical all-node fallbacks in subscription order (removed).
+foreach ($name in @('StableSelect', 'Fallback')) {
+    Assert-True (@($active | Where-Object { $_.StartsWith("$name = ") -or $_ -match ", $name(,|$)" }).Count -eq 0) "Removed all-node fallback group is back: $name"
+}
 foreach ($name in @('美国稳定', '日本稳定', '新加坡稳定')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
     Assert-True ($group.Count -eq 1 -and $group[0].Contains('= fallback,') -and

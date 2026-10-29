@@ -1093,7 +1093,7 @@ update-interval = 86400
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # ---------- 主选择器 ----------
-Proxy = select, 美国节点, AutoSelect, StableSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, DIRECT
+Proxy = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, DIRECT
 
 # ---------- AI 服务 ----------
 AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect
@@ -1116,10 +1116,10 @@ Telegram = select, 美国节点, 新加坡节点, 香港节点, 日本节点, Au
 # 日志 2 证据: AutoSelect 在 11 分钟内把 IG 切换 4 个不同节点,
 #              同一秒并发到 2 个节点, 触发服务端风控
 # 设计: 绑死到单一地区池 (美国稳定), 失败才降级
-Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
+Instagram = select, 美国稳定, 日本稳定, 新加坡稳定, AutoSelect
 
 # ---------- v2.6.2 新增: Twitter / X 专用 (同样长连接特性) ----------
-Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, Fallback
+Twitter = select, 美国稳定, 日本稳定, 新加坡稳定, AutoSelect
 
 # ---------- 大厂 ----------
 苹果服务 = select, DIRECT, 美国节点, 香港节点
@@ -1187,11 +1187,10 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 
 YT-Auto = fallback, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5
 
-# 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
-StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
-
-# 全局兜底 fallback (Final 用)
-Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
+# 2026-10-29 删除 StableSelect 与 Fallback: 两组定义完全相同(全部节点按订阅顺序的
+#   fallback, 每 900s 测全部节点), 选点取决于订阅排序而非质量; 前者只是 Proxy 的一个
+#   备选, 后者是 Instagram/Twitter 的末位备选(改为 AutoSelect). 删后每 900s 少测两轮
+#   全部节点. 长连接防漂移由 美国/日本/新加坡稳定 三个地区内 fallback 池负责.
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 地区节点池 (url-test, 每个 regex 锁定单一地区, 不跨地区漂移)

@@ -62,7 +62,7 @@ ICONS = {
     'Netflix': 'Netflix', 'Spotify': 'Spotify', 'TikTok': 'TikTok', 'Telegram': 'Telegram',
     'Instagram': 'Instagram', 'Twitter': 'Twitter', '苹果服务': 'Apple', '谷歌服务': 'Google_Search',
     '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', 'AutoSelect': 'Auto', 'YT-Auto': 'Speedtest',
-    'StableSelect': 'Available', 'Fallback': 'Available_1', 'Final': 'Final',
+    'Final': 'Final',
 }
 REGION_ICONS = {'香港': 'Hong_Kong', '台湾': 'Taiwan', '日本': 'Japan', '新加坡': 'Singapore', '美国': 'United_States'}
 EXTRA_ICONS = {'Gemini': 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png'}
