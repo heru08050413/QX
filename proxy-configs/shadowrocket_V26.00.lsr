@@ -1104,7 +1104,7 @@ Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡
 
 # ---------- 流媒体 ----------
 # v2.6.12: 默认走 YT-Auto 两级高可用; 其余 YT 地区池保留作手动灾备.
-YouTube = select, YT-Auto, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, YT-美国节点, AutoSelect
+YouTube = select, YT-Auto, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 Netflix = select, 美国节点, 香港节点, 日本节点, 新加坡节点
 Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点
 TikTok = select, 美国节点, 日本节点, 台湾节点, 新加坡节点
@@ -1176,15 +1176,16 @@ AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, 
 #   HTTPS(保留 TLS 可达性验证, 开销随频率同步下降约 20 倍).
 #   代价: 节点对 Google 失联后自动切走最长约 10 分钟; 播放卡顿时可在
 #   YouTube 组手动点一次测速立即切换. 以上 30s 描述为历史记录.
+# ★ 2026-10-29 简化(用户要求"更高效稳定"): 删除五个 YT-* 专用地区池.
+#   它们与五个普通地区池是同一批节点、同样的地区过滤, 只是探针不同, 等于每个
+#   节点被测两遍. 改法: 普通地区池探针由 Cloudflare 换成 Google HTTPS 204 ——
+#   池内照样只挑"能连 Google"的节点(专用池的好处保留, 对所有服务都更严格),
+#   探测次数不增加; YT-Auto 直接建在普通地区池上, 每轮只测各池当前选中的
+#   5 个节点, 负责跨地区自愈. 以上 YT-* 专用池相关描述均为历史记录.
 # 注意:自动切换只能让新连接走备用节点,无法迁移已建立的 TCP 会话.
 
-YT-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-YT-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-YT-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-YT-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-YT-美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=300, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
-YT-Auto = fallback, YT-美国节点, YT-香港节点, YT-台湾节点, YT-日本节点, YT-新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5
+YT-Auto = fallback, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, url=https://www.gstatic.com/generate_204, interval=300, timeout=5
 
 # 稳定降级组 (failover, 不主动测速, 只在当前节点失败时切换)
 StableSelect = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, timeout=3, policy-regex-filter=(?i)^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset)).*$
@@ -1196,11 +1197,11 @@ Fallback = fallback, url=http://cp.cloudflare.com/generate_204, interval=900, ti
 # 地区节点池 (url-test, 每个 regex 锁定单一地区, 不跨地区漂移)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-香港节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-台湾节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-日本节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-新加坡节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-美国节点 = url-test, url=http://cp.cloudflare.com/generate_204, interval=900, tolerance=200, timeout=3, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
+香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
+台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
+日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 
 # v2.6.17: IG/Twitter 专用稳定池改为按优先级故障转移，不再按延迟排名换点。
 # 300s 比原 900s 更快发现硬故障，探测更频繁；timeout=5 为 TLS 握手留余量。
@@ -1901,6 +1902,30 @@ RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/
 # Apple News / Apple TV+
 DOMAIN-SUFFIX,apple.news,Proxy
 DOMAIN-SUFFIX,news-edge.apple.com,Proxy
+# 2026-10-29 Apple Podcasts: 目录/接口 amp-api.podcasts.apple.com 走直连没问题(Apple 国内
+#   有节点); 但节目音频放在节目方自选的海外托管平台, 原先落到 FINAL 直连. 用户日志实证:
+#   s3.wasabisys.com 上的音频 4 秒内被重试 3 次. bm7 无通用播客托管列表, 此为手工整理的
+#   主流托管平台与统计跳转域(跳转前缀不走代理也会卡在第一跳). 国内节目音频不受影响.
+DOMAIN-SUFFIX,wasabisys.com,Proxy
+DOMAIN-SUFFIX,megaphone.fm,Proxy
+DOMAIN-SUFFIX,simplecast.com,Proxy
+DOMAIN-SUFFIX,libsyn.com,Proxy
+DOMAIN-SUFFIX,buzzsprout.com,Proxy
+DOMAIN-SUFFIX,art19.com,Proxy
+DOMAIN-SUFFIX,acast.com,Proxy
+DOMAIN-SUFFIX,omny.fm,Proxy
+DOMAIN-SUFFIX,omnycontent.com,Proxy
+DOMAIN-SUFFIX,captivate.fm,Proxy
+DOMAIN-SUFFIX,transistor.fm,Proxy
+DOMAIN-SUFFIX,podbean.com,Proxy
+DOMAIN-SUFFIX,spreaker.com,Proxy
+DOMAIN-SUFFIX,audioboom.com,Proxy
+DOMAIN-SUFFIX,anchor.fm,Proxy
+DOMAIN-SUFFIX,blubrry.com,Proxy
+DOMAIN-SUFFIX,redcircle.com,Proxy
+DOMAIN-SUFFIX,podtrac.com,Proxy
+DOMAIN-SUFFIX,chtbl.com,Proxy
+DOMAIN-SUFFIX,pdst.fm,Proxy
 
 # ---------------------------------------------------------------------
 # 11. 国内服务直连

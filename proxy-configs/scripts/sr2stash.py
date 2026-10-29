@@ -30,8 +30,7 @@ SRC = Path('shadowrocket_V26.00.lsr')
 OUT = Path('Stash_SR_V26.00.stoverride')
 BM7 = 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash'
 
-YT_REGION_INTERVAL = 120   # only runs while YouTube is in use (lazy)
-YT_AUTO_INTERVAL = 60
+YT_AUTO_INTERVAL = 60   # YT-Auto only probes while YouTube is in use (lazy)
 
 # Shadowrocket list name -> [(provider name, bm7 Clash file, behavior, no-resolve)]
 RULESETS = {
@@ -148,8 +147,8 @@ def convert_groups(lines):
             if opts.get('url'):
                 g.append(f"    url: {q(opts['url'])}")
             interval = int(opts.get('interval', 600))
-            if name.startswith('YT-'):
-                interval = YT_AUTO_INTERVAL if name == 'YT-Auto' else YT_REGION_INTERVAL
+            if name == 'YT-Auto':
+                interval = YT_AUTO_INTERVAL
             g.append(f'    interval: {interval}')
             if gtype == 'url-test' and opts.get('tolerance'):
                 g.append(f"    tolerance: {opts['tolerance']}")

@@ -111,13 +111,17 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
     Assert ($groups['油管视频'][1] -eq 'YT-Auto') 'Wrong YouTube default'
     Assert ($groups['谷歌服务'][1] -eq '自动选择') 'Google default coupled to YouTube'
     Assert ($groups['Gemini'][1] -eq '美国节点') 'Wrong Gemini default'
-    Assert (($groups['YT-Auto'][0..4] -join ',') -eq 'fallback,YT-香港,YT-狮城,YT-日本,YT-美国') 'YouTube must use dedicated regional pools'
-    foreach ($item in @('url = https://www.gstatic.com/generate_204','interval = 60','max-timeout = 5000')) {
+    # 2026-10-29 simplification: dedicated YT-* pools removed; generic region pools probe Google
+    # over HTTPS and YT-Auto fails over across them (no lazy in Loon, so no duplicate probing).
+    Assert (($groups['YT-Auto'][0..4] -join ',') -eq 'fallback,香港节点,狮城节点,日本节点,美国节点') 'YT-Auto must fail over across generic region pools'
+    foreach ($item in @('url = https://www.gstatic.com/generate_204','interval = 300','max-timeout = 5000')) {
         Assert ($item -in $groups['YT-Auto']) "Missing YT-Auto field: $item"
     }
-    foreach ($name in $ytGroups.Keys) {
-        Assert (($groups[$name] -join ',') -eq "url-test,$($ytGroups[$name]),url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300") "Invalid YouTube regional pool: $name"
+    foreach ($name in $ytGroups.Keys) { Assert (!$groups.Contains($name)) "Dedicated YouTube pool reintroduced: $name" }
+    foreach ($pool in @('香港节点','狮城节点','日本节点','美国节点')) {
+        Assert ('url = https://www.gstatic.com/generate_204' -in $groups[$pool]) "Region pool must probe Google: $pool"
     }
+    foreach ($name in $stableGroups.Keys) { Assert ('interval = 900' -in $groups[$name]) "Stable pool must probe every 900s: $name" }
     foreach ($name in $stableGroups.Keys) {
         Assert (($groups[$name] -join ',') -eq "fallback,$($stableGroups[$name]),url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000") "Invalid stable group: $name"
     }
@@ -159,9 +163,9 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
 Check-Config $text
 $mutations = [ordered]@{
     httpdns = @("$httpdns, enabled=false", "$httpdns, enabled=true")
-    probe = @('YT-香港 = url-test,HK_Filter,url = https://www.gstatic.com', 'YT-香港 = url-test,HK_Filter,url = http://www.gstatic.com')
-    interval = @('interval = 60,max-timeout', 'interval = 600,max-timeout')
-    genericPool = @('fallback,YT-香港,YT-狮城,YT-日本,YT-美国,', 'fallback,香港节点,狮城节点,日本节点,美国节点,')
+    probe = @('香港节点 = url-test,HK_Filter,url = https://www.gstatic.com', '香港节点 = url-test,HK_Filter,url = http://cp.cloudflare.com')
+    interval = @('generate_204,interval = 300,max-timeout = 5000', 'generate_204,interval = 30,max-timeout = 5000')
+    dedicatedPool = @('fallback,香港节点,狮城节点,日本节点,美国节点,url = https://www.gstatic.com', 'fallback,YT-香港,狮城节点,日本节点,美国节点,url = https://www.gstatic.com')
     usFilter = @($usPattern, '(?i)(US|美)')
     worker = @('DOMAIN,init-stream.maasea.workers.dev,油管视频', 'DOMAIN,init-stream.maasea.workers.dev,DIRECT')
     gemini = @('DOMAIN,geller-pa.googleapis.com,Gemini', 'DOMAIN,geller-pa.googleapis.com,谷歌服务')

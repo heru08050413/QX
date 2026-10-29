@@ -387,38 +387,38 @@ Github = url-test,自动选择,香港节点,狮城节点,日本节点,美国节�
 稳定选择 = select,自动选择,狮城稳定,日本稳定,美国稳定,香港稳定,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
 
 # StableFallback (fallback 类型, Loon 原生支持, 顺序选第一个可用)
-StableFallback = fallback,狮城稳定,日本稳定,美国稳定,香港稳定,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
+StableFallback = fallback,狮城稳定,日本稳定,美国稳定,香港稳定,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
 
+# ★ 2026-10-29 简化: 删除四个 YT-* 专用地区池(与普通地区池同一批节点同样过滤, 每节点被
+#   测两遍, 且 Loon 无 lazy, 120s HTTPS 整夜不停). 普通地区池探针改为 Google HTTPS 204,
+#   池内照样只挑能连 Google 的节点; YT-Auto 直接建在普通地区池上, 每轮只测 4 个当前节点,
+#   300s. 四个稳定池与 StableFallback 300s→900s(对齐小火箭的耗电修正). 下方为历史记录.
 # ---------- v2.3.0 YouTube 专用探测, 不改变普通 Google/AI 默认组 ----------
 # 地区内 url-test 120s / 300ms 防抖; 地区间 fallback 60s / 5000ms 阈值。
 # gstatic HTTPS 仅测 Google 探针的 TLS 可达性, 不代表视频带宽/账号可用。
 # fallback 选列表首个可用项, 高优先级恢复可能回切; 不迁移已建立连接。
 # 代价: 较 600s 增加探测开销; 不保证 60s 内恢复或无感零中断。
-YT-Auto = fallback,YT-香港,YT-狮城,YT-日本,YT-美国,url = https://www.gstatic.com/generate_204,interval = 60,max-timeout = 5000
-YT-香港 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
-YT-狮城 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
-YT-日本 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
-YT-美国 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 120,tolerance = 300
+YT-Auto = fallback,香港节点,狮城节点,日本节点,美国节点,url = https://www.gstatic.com/generate_204,interval = 300,max-timeout = 5000
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 地区节点池 (普通: 600s/200ms 用于短交互)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-香港节点 = url-test,HK_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
-台湾节点 = url-test,TW_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
-美国节点 = url-test,US_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
-日本节点 = url-test,JP_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
-韩国节点 = url-test,KR_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
-狮城节点 = url-test,SG_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+香港节点 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+台湾节点 = url-test,TW_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+美国节点 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+日本节点 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+韩国节点 = url-test,KR_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
+狮城节点 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
 其他节点 = url-test,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 稳定地区池 (fallback 300s, IG/Twitter/Telegram)
 # 不再因更低延迟主动选优; 首个可用节点恢复时仍可能回切, 不是粘性会话。
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-香港稳定 = fallback,HK_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
-日本稳定 = fallback,JP_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
-美国稳定 = fallback,US_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
-狮城稳定 = fallback,SG_Filter,url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000
+香港稳定 = fallback,HK_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
+日本稳定 = fallback,JP_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
+美国稳定 = fallback,US_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
+狮城稳定 = fallback,SG_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
 
 
 # =====================================================================
