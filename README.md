@@ -1,6 +1,6 @@
 # iOS 代理配置仓库(V26.00)
 
-五套 iOS 代理 App 配置 + Stash 去广告覆写。目标优先级:**安全 > 稳定 > 去广告 > 低功耗**。
+六套 iOS 代理 App 配置 + Stash 去广告覆写。目标优先级:**安全 > 稳定 > 去广告 > 低功耗**。
 维护准则见 [`proxy-configs/CLAUDE.md`](proxy-configs/CLAUDE.md)。
 
 ## 一、主配置导入链接
@@ -12,6 +12,7 @@
 | **Egern** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Egern_Pro_V26.00.yml` |
 | **Loon** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Loon_V26.00` |
 | **Stash** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_V26.00.yaml` |
+| **Clash by Hako**(clash.md) | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/Clash_iso_V26.00.yaml` |
 
 **导入方法**
 - **Shadowrocket**:首页 ➕ → 类型选「配置文件」→ 粘贴链接 → 下载后设为当前配置。
@@ -19,7 +20,8 @@
 - **Egern**:配置 → 从 URL 导入 → 粘贴链接。
 - **Loon**:配置 → 远程配置(或粘贴导入)→ 粘贴链接。
 - **Stash**:配置 → 新建 → 从 URL 下载 → 粘贴链接,然后把 `proxy-providers` 里的订阅占位符换成你的机场订阅。
-- 导入后均需:**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
+- **Clash by Hako**:导入后在 App 里编辑配置,把 `proxy-providers` 的订阅占位符换成机场订阅,自建节点写进 `proxies:`;详见 [`Clash_iso/README.md`](Clash_iso/README.md)。无 MITM,不需要证书。
+- 导入后均需(Hako 除外):**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
 - ⚠️ **导入/切换配置前先停掉隧道,导入后再启动**(真机踩坑实录:隧道开着直接热导入,新旧路由/fake-ip 状态叠加,会出现"订阅正常、节点齐全、隧道显示已连,但流量 0 B/s"的假死;停一次重启即恢复)。
 
 ## 二、Stash 去广告覆写(Override,可与主配置叠加)
@@ -86,6 +88,7 @@ https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds
 | **Egern** | ✅(最完整) | ✅ | Enhance 模块 + googlevideo 广告流拦截 + ad_break/统计信标 reject(v6.3.0)。视频流解密,发热略增 |
 | **Loon** | ✅ | ✅ | Maasea `YouTube.Enhance.sgmodule` 插件(V26.00 补齐,此前缺失)+ `block-quic=true` 协同 |
 | **Quantumult X** | ❌ | ❌ | 架构限制:Maasea 方案依赖 `binary-body-mode`(protobuf 改写),QX 无此参数、上游无 QX 适配版。不放不可靠的移植 |
+| **Clash by Hako** | ❌(仅域名级去广告) | ⚠️ 走美国节点 | mihomo 内核无 MITM/脚本,视频内插播广告拦不掉;画中画靠 YouTube 对美国免费用户的官方开放(非音乐视频),YouTube 组默认美国节点 |
 | **Stash** | ⚠️ 实验性 | ⚠️ 实验性 | `Stash_SR` / `Stash_Pro_YouTube` 用 Stash 原生 `binary-mode` 接入 Maasea 脚本,未在真机验证;含第三方 Worker 依赖 |
 
 **客户端配套(装了 SR/Egern/Loon 之后)**:YouTube App 内 设置 → 播放 → 开启「画中画」;设置 → 后台播放和下载 → 开启「后台播放」。首次生效建议杀掉 YouTube App 重开。

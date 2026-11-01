@@ -19,7 +19,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 
-FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_V26.00.yaml Stash_AdBlock_V26.00.stoverride Stash_AppAdBlock_V26.00.stoverride Stash_Script_V26.00.stoverride Stash_All_V26.00.stoverride Stash_SR_V26.00.stoverride)
+FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_V26.00.yaml Stash_AdBlock_V26.00.stoverride Stash_AppAdBlock_V26.00.stoverride Stash_Script_V26.00.stoverride Stash_All_V26.00.stoverride Stash_SR_V26.00.stoverride ../Clash_iso/Clash_iso_V26.00.yaml)
 
 # 外部维护的去广告模块/脚本(被 Loon/Egern/SR 引用, 或供 Stash 用户参考),
 # 生效行里, 故显式列出让本脚本一并盯着 —— 这正是"去广告模块静默失效"的看门狗)
@@ -58,8 +58,8 @@ mapfile -t URLS < <(
     [ -f "$f" ] || continue
     grep -vE '^\s*[#;]' "$f" | grep -ohE 'https?://[A-Za-z0-9./_%@:()~-]+' | sed 's/[",;]*$//'
   done | grep -vE 'IconSet|/icons?/|/Color/|/Alpha/|/flag/|/mini/|Qure|Orz-3|iconlibrary|profile_img|Twoandz9' \
-       | grep -vE 'YOUR_AIRPORT|YOUR_SERVICE|example|localhost|127\.0\.0\.1' \
-       | grep -iE '\.(list|js|sgmodule|plugin|conf|module|lpx|snippet|mmdb|scripts|yaml|json)(\?[^ ]*)?$|/rule/|/dns-query$|^quic://' \
+       | grep -vE 'YOUR_AIRPORT|YOUR_SERVICE|REPLACE-WITH|example|localhost|127\.0\.0\.1' \
+       | grep -iE '\.(list|js|sgmodule|plugin|conf|module|lpx|snippet|mmdb|mrs|scripts|yaml|json)(\?[^ ]*)?$|/rule/|/dns-query$|^quic://' \
        | sort -u
 )
 

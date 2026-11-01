@@ -1,0 +1,566 @@
+# =====================================================================
+# Clash_iso V26.00 · Clash by Hako(clash.md)iPhone 完整配置
+# 2026-11-01
+#
+# 用法(详见同目录 README.md):
+#   1. 把下面 proxy-providers → 机场订阅 → url 换成你的机场订阅链接。
+#   2. 自建节点写在 proxies: 下面(有示例)。
+#   3. 两者的所有节点都会自动进入分组:地区池按节点名里的地区词分,
+#      没有地区词的进「其他节点」;「自动选择」「全部节点」收全部节点。
+#
+# 设计取舍:
+#   - 内核是 mihomo,配置里没有 MITM 和脚本。去广告靠域名拦截;
+#     YouTube 视频里插播的广告和视频走同一域名,拦不掉。
+#   - YouTube 画中画:YouTube 对美国地区的免费用户开放画中画(非音乐视频),
+#     所以 YouTube 组默认走美国节点。后台播放仍需 Premium。
+#   - 省电:测速组全部 lazy(组没人用就不测速),间隔 900 秒;
+#     订阅不做健康检查;规则用 MRS 二进制格式;日志级别 warning。
+#   - 稳定:地区池用 Google 自家 204 探针,能到 Cloudflare 但到不了 Google
+#     的节点会被换掉;YouTube 的 UDP 443 拒绝,强制走 TCP。
+#   - 不含任何订阅 token,不关闭证书校验。
+# =====================================================================
+
+mode: rule
+log-level: warning
+ipv6: false
+allow-lan: false
+unified-delay: true
+tcp-concurrent: true
+find-process-mode: off
+keep-alive-idle: 600
+keep-alive-interval: 30
+geo-auto-update: false
+
+profile:
+  store-selected: true     # 记住你手动选的节点
+  store-fake-ip: true
+
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:
+    - "*.lan"
+    - "+.local"
+    - "+.localhost"
+    - "+.ts.net"
+    - "+.push.apple.com"
+    - "time.*.com"
+    - "time.*.apple.com"
+    - "ntp.*.com"
+    - "+.msftconnecttest.com"
+    - "+.msftncsi.com"
+    - "localhost.ptlogin2.qq.com"
+    - "stun.*.*"
+    - "stun.*.*.*"
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+  proxy-server-nameserver:
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+
+# ---------------------------------------------------------------------
+# 自建节点:去掉 # 号并填写。名字里带地区词(如 美国 / US / 🇺🇸)会进对应地区池,
+# 不带就进「其他节点」。无论哪种,都在「自动选择」「全部节点」里。
+# ---------------------------------------------------------------------
+proxies:
+  # - name: "🇺🇸 自建-洛杉矶"
+  #   type: vless
+  #   server: your.server.com
+  #   port: 443
+  #   uuid: 00000000-0000-0000-0000-000000000000
+  #   network: tcp
+  #   tls: true
+  #   udp: true
+  #   flow: xtls-rprx-vision
+  #   servername: your.server.com
+  #   client-fingerprint: chrome
+  #   reality-opts:
+  #     public-key: YOUR_PUBLIC_KEY
+  #     short-id: YOUR_SHORT_ID
+  #
+  # - name: "自建-Hysteria2"
+  #   type: hysteria2
+  #   server: your.server.com
+  #   port: 443
+  #   password: YOUR_PASSWORD
+  #   sni: your.server.com
+
+# ---------------------------------------------------------------------
+# 机场订阅:把 url 换成你的订阅链接。多个机场就复制一段、改名字和 path。
+# ---------------------------------------------------------------------
+proxy-providers:
+  机场订阅:
+    type: http
+    url: "https://REPLACE-WITH-YOUR-SUBSCRIPTION-URL"
+    interval: 86400
+    path: ./providers/airport-1.yaml
+    proxy: DIRECT
+    header:
+      User-Agent:
+        - "clash.meta"
+    health-check:
+      enable: false        # 测速交给下面的 lazy 分组,订阅本身不测,省电
+  # 机场订阅2:
+  #   type: http
+  #   url: "https://REPLACE-WITH-YOUR-SECOND-SUBSCRIPTION-URL"
+  #   interval: 86400
+  #   path: ./providers/airport-2.yaml
+  #   proxy: DIRECT
+  #   header:
+  #     User-Agent:
+  #       - "clash.meta"
+  #   health-check:
+  #     enable: false
+
+# ---------------------------------------------------------------------
+# 策略组
+#   include-all: true = 收入 proxies 里的自建节点 + 所有订阅里的节点
+#   exclude-filter 去掉「剩余流量/到期时间」之类的信息节点
+# ---------------------------------------------------------------------
+proxy-groups:
+  - name: 节点选择
+    type: select
+    proxies: [美国节点, 自动选择, 香港节点, 台湾节点, 日本节点, 新加坡节点, 其他节点, 全部节点, DIRECT]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Proxy.png
+
+  - name: YouTube
+    type: select
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 香港节点, 自动选择, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+
+  - name: AI
+    type: select
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 自动选择, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ChatGPT.png
+
+  - name: 谷歌服务
+    type: select
+    proxies: [节点选择, 美国节点, 香港节点, 日本节点, 新加坡节点, 台湾节点, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google_Search.png
+
+  - name: Telegram
+    type: select
+    proxies: [节点选择, 新加坡节点, 香港节点, 美国节点, 日本节点, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram.png
+
+  - name: 社交媒体
+    type: select
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 节点选择, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Twitter.png
+
+  - name: 流媒体
+    type: select
+    proxies: [节点选择, 新加坡节点, 香港节点, 台湾节点, 日本节点, 美国节点, 全部节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
+
+  - name: 苹果服务
+    type: select
+    proxies: [DIRECT, 节点选择, 美国节点, 香港节点]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png
+
+  - name: 微软服务
+    type: select
+    proxies: [DIRECT, 节点选择]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png
+
+  # REJECT = 拦截;PASS = 暂停拦截(继续匹配后面的规则,不是改成直连)
+  - name: 广告拦截
+    type: select
+    proxies: [REJECT, PASS]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Advertising.png
+
+  - name: 漏网之鱼
+    type: select
+    proxies: [节点选择, DIRECT]
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
+
+  # ---- 以下为节点池,全部 lazy:没有流量用到这个池时不测速 ----
+  - name: 自动选择
+    type: url-test
+    include-all: true
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://cp.cloudflare.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 150
+    timeout: 3000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto.png
+
+  - name: 全部节点
+    type: select
+    include-all: true
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
+
+  - name: 美国节点
+    type: url-test
+    include-all: true
+    filter: "(?i)🇺🇸|美国|美國|洛杉矶|洛杉磯|西雅图|芝加哥|纽约|凤凰城|硅谷|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?:$|[^a-z])"
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 200
+    timeout: 5000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+
+  - name: 香港节点
+    type: url-test
+    include-all: true
+    filter: "(?i)🇭🇰|香港|深港|沪港|京港|(?:^|[^a-z])(?:hk|hkg|hong[ _-]?kong)(?:$|[^a-z])"
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 200
+    timeout: 5000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+
+  - name: 台湾节点
+    type: url-test
+    include-all: true
+    filter: "(?i)🇹🇼|台湾|台灣|台北|台中|新北|彰化|(?:^|[^a-z])(?:tw|twn|taiwan|taipei)(?:$|[^a-z])"
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 200
+    timeout: 5000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+
+  - name: 日本节点
+    type: url-test
+    include-all: true
+    filter: "(?i)🇯🇵|日本|东京|東京|大阪|(?:^|[^a-z])(?:jp|japan|tokyo|osaka)(?:$|[^a-z])"
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 200
+    timeout: 5000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+
+  - name: 新加坡节点
+    type: url-test
+    include-all: true
+    filter: "(?i)🇸🇬|新加坡|狮城|獅城|(?:^|[^a-z])(?:sg|sgp|singapore)(?:$|[^a-z])"
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
+    url: https://www.gstatic.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 200
+    timeout: 5000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+
+  # 名字里没有上面五个地区词的节点(其他国家、或你没写地区的自建节点)
+  - name: 其他节点
+    type: url-test
+    include-all: true
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset|🇺🇸|🇭🇰|🇹🇼|🇯🇵|🇸🇬|美国|美國|洛杉矶|洛杉磯|西雅图|芝加哥|纽约|凤凰城|硅谷|香港|深港|沪港|京港|台湾|台灣|台北|台中|新北|彰化|日本|东京|東京|大阪|新加坡|狮城|獅城|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley|hk|hkg|hong[ _-]?kong|tw|twn|taiwan|taipei|jp|japan|tokyo|osaka|sg|sgp|singapore)(?:$|[^a-z])"
+    url: https://cp.cloudflare.com/generate_204
+    expected-status: 204
+    interval: 900
+    tolerance: 150
+    timeout: 3000
+    lazy: true
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
+
+# ---------------------------------------------------------------------
+# 规则集:全部 MRS 二进制格式(体积小、加载快、iOS 内存占用低),每天更新一次
+# ---------------------------------------------------------------------
+rule-providers:
+  广告:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockmihomo.mrs
+    path: ./ruleset/ads.mrs
+    interval: 86400
+    proxy: 节点选择
+  YouTube:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs
+    path: ./ruleset/youtube.mrs
+    interval: 86400
+    proxy: 节点选择
+  OpenAI:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/openai.mrs
+    path: ./ruleset/openai.mrs
+    interval: 86400
+    proxy: 节点选择
+  Gemini:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google-gemini.mrs
+    path: ./ruleset/gemini.mrs
+    interval: 86400
+    proxy: 节点选择
+  Claude:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/anthropic.mrs
+    path: ./ruleset/claude.mrs
+    interval: 86400
+    proxy: 节点选择
+  AI海外:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ai-!cn.mrs
+    path: ./ruleset/ai-not-cn.mrs
+    interval: 86400
+    proxy: 节点选择
+  Google:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs
+    path: ./ruleset/google.mrs
+    interval: 86400
+    proxy: 节点选择
+  GoogleIP:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/google.mrs
+    path: ./ruleset/google-ip.mrs
+    interval: 86400
+    proxy: 节点选择
+  Telegram:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.mrs
+    path: ./ruleset/telegram.mrs
+    interval: 86400
+    proxy: 节点选择
+  TelegramIP:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/telegram.mrs
+    path: ./ruleset/telegram-ip.mrs
+    interval: 86400
+    proxy: 节点选择
+  Twitter:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/twitter.mrs
+    path: ./ruleset/twitter.mrs
+    interval: 86400
+    proxy: 节点选择
+  Facebook:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/facebook.mrs
+    path: ./ruleset/facebook.mrs
+    interval: 86400
+    proxy: 节点选择
+  Instagram:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/instagram.mrs
+    path: ./ruleset/instagram.mrs
+    interval: 86400
+    proxy: 节点选择
+  TikTok:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/tiktok.mrs
+    path: ./ruleset/tiktok.mrs
+    interval: 86400
+    proxy: 节点选择
+  Netflix:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/netflix.mrs
+    path: ./ruleset/netflix.mrs
+    interval: 86400
+    proxy: 节点选择
+  Spotify:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/spotify.mrs
+    path: ./ruleset/spotify.mrs
+    interval: 86400
+    proxy: 节点选择
+  GitHub:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/github.mrs
+    path: ./ruleset/github.mrs
+    interval: 86400
+    proxy: 节点选择
+  Microsoft:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs
+    path: ./ruleset/microsoft.mrs
+    interval: 86400
+    proxy: 节点选择
+  Apple:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/apple.mrs
+    path: ./ruleset/apple.mrs
+    interval: 86400
+    proxy: 节点选择
+  海外:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/geolocation-!cn.mrs
+    path: ./ruleset/geolocation-not-cn.mrs
+    interval: 86400
+    proxy: 节点选择
+  国内:
+    type: http
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs
+    path: ./ruleset/cn.mrs
+    interval: 86400
+    proxy: 节点选择
+  国内IP:
+    type: http
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs
+    path: ./ruleset/cn-ip.mrs
+    interval: 86400
+    proxy: 节点选择
+
+# ---------------------------------------------------------------------
+# 分流规则(从上往下,先命中先生效)
+# ---------------------------------------------------------------------
+rules:
+  # 内网 / Tailscale / 本地
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,localhost,DIRECT
+  - DOMAIN-SUFFIX,ts.net,DIRECT
+  - IP-CIDR,0.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # 连通性保护:放在广告拦截前面,避免误拦后转圈
+  #   微信 / 微博 / 知乎 / Apple 推送;三大运营商本机号码一键登录
+  - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
+  - DOMAIN-SUFFIX,weixin.com,DIRECT
+  - DOMAIN-SUFFIX,wechat.com,DIRECT
+  - DOMAIN-SUFFIX,qpic.cn,DIRECT
+  - DOMAIN-SUFFIX,qlogo.cn,DIRECT
+  - DOMAIN-SUFFIX,api.weibo.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,zhihu.com,DIRECT
+  - DOMAIN-SUFFIX,zhimg.com,DIRECT
+  - DOMAIN-SUFFIX,push.apple.com,DIRECT
+  - DOMAIN-SUFFIX,cmpassport.com,DIRECT
+  - DOMAIN-SUFFIX,id6.me,DIRECT
+  - DOMAIN,opencloud.wostore.cn,DIRECT
+  # ChatGPT 的监控上报域名,被广告规则拦掉会导致 ChatGPT 报错
+  - DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI
+
+  # 去广告(域名级)
+  - RULE-SET,广告,广告拦截
+
+  # YouTube 的 UDP 443(QUIC)拒绝,让 App 立即改用 TCP:
+  #   QUIC 经代理常被限速或丢包,强制 TCP 后起播更快、拖动不卡。
+  #   只拦 App 自身的 QUIC,不影响 Hysteria2/TUIC 节点本身的传输。
+  - AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN-SUFFIX,youtube.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+
+  # AI(放在 Google 前面,Gemini 才不会被 Google 规则截走)
+  - RULE-SET,OpenAI,AI
+  - RULE-SET,Gemini,AI
+  - RULE-SET,Claude,AI
+  - RULE-SET,AI海外,AI
+  - DOMAIN,accounts.google.com,AI
+
+  # YouTube(放在 Google 前面)
+  - RULE-SET,YouTube,YouTube
+  - DOMAIN-SUFFIX,googlevideo.com,YouTube
+  - DOMAIN-SUFFIX,ytimg.com,YouTube
+  - DOMAIN,youtubei.googleapis.com,YouTube
+
+  - RULE-SET,Google,谷歌服务
+  - RULE-SET,Telegram,Telegram
+  - RULE-SET,Twitter,社交媒体
+  - RULE-SET,Facebook,社交媒体
+  - RULE-SET,Instagram,社交媒体
+  - RULE-SET,TikTok,社交媒体
+  - RULE-SET,Netflix,流媒体
+  - RULE-SET,Spotify,流媒体
+  # GitHub 放在微软前面(微软规则包含 GitHub)
+  - RULE-SET,GitHub,节点选择
+
+  # Apple 播客:目录接口国内直连没问题,但节目音频放在海外托管平台,需要代理
+  - DOMAIN-SUFFIX,wasabisys.com,节点选择
+  - DOMAIN-SUFFIX,megaphone.fm,节点选择
+  - DOMAIN-SUFFIX,simplecast.com,节点选择
+  - DOMAIN-SUFFIX,libsyn.com,节点选择
+  - DOMAIN-SUFFIX,buzzsprout.com,节点选择
+  - DOMAIN-SUFFIX,art19.com,节点选择
+  - DOMAIN-SUFFIX,acast.com,节点选择
+  - DOMAIN-SUFFIX,omny.fm,节点选择
+  - DOMAIN-SUFFIX,omnycontent.com,节点选择
+  - DOMAIN-SUFFIX,captivate.fm,节点选择
+  - DOMAIN-SUFFIX,transistor.fm,节点选择
+  - DOMAIN-SUFFIX,podbean.com,节点选择
+  - DOMAIN-SUFFIX,spreaker.com,节点选择
+  - DOMAIN-SUFFIX,audioboom.com,节点选择
+  - DOMAIN-SUFFIX,anchor.fm,节点选择
+  - DOMAIN-SUFFIX,blubrry.com,节点选择
+  - DOMAIN-SUFFIX,redcircle.com,节点选择
+  - DOMAIN-SUFFIX,podtrac.com,节点选择
+  - DOMAIN-SUFFIX,chtbl.com,节点选择
+  - DOMAIN-SUFFIX,pdst.fm,节点选择
+
+  - RULE-SET,Microsoft,微软服务
+  - RULE-SET,Apple,苹果服务
+
+  # 海外 / 国内 兜底
+  - RULE-SET,海外,节点选择
+  - RULE-SET,国内,DIRECT
+  - RULE-SET,GoogleIP,谷歌服务,no-resolve
+  - RULE-SET,TelegramIP,Telegram,no-resolve
+  - RULE-SET,国内IP,DIRECT
+  - MATCH,漏网之鱼
