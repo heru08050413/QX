@@ -20,7 +20,7 @@
 - **Egern**:配置 → 从 URL 导入 → 粘贴链接。
 - **Loon**:配置 → 远程配置(或粘贴导入)→ 粘贴链接。
 - **Stash**:配置 → 新建 → 从 URL 下载 → 粘贴链接,然后把 `proxy-providers` 里的订阅占位符换成你的机场订阅。
-- **Clash by Hako**:导入后在 App 里编辑配置,把 `proxy-providers` 的订阅占位符换成机场订阅,自建节点写进 `proxies:`;详见 [`Clash_iso/README.md`](Clash_iso/README.md)。YouTube 去广告/画中画需在 App 的 Modules 页开 HTTPS 解密并添加模块(见该 README 第五节)。
+- **Clash by Hako**:这个链接作为**规则方案**添加,再用配置中心 ⊕「创建配置」勾选机场订阅 + Custom Nodes、规则选本方案,节点会自动分组;步骤见 [`Clash_iso/README.md`](Clash_iso/README.md)。YouTube 去广告/画中画需在 Modules 页开 HTTPS 解密并添加模块(该 README 第五节)。
 - 导入后均需:**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
 - ⚠️ **导入/切换配置前先停掉隧道,导入后再启动**(真机踩坑实录:隧道开着直接热导入,新旧路由/fake-ip 状态叠加,会出现"订阅正常、节点齐全、隧道显示已连,但流量 0 B/s"的假死;停一次重启即恢复)。
 
