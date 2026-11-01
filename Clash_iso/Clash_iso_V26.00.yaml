@@ -9,10 +9,9 @@
 #      没有地区词的进「其他节点」;「自动选择」「全部节点」收全部节点。
 #
 # 设计取舍:
-#   - 内核是 mihomo,配置里没有 MITM 和脚本。去广告靠域名拦截;
-#     YouTube 视频里插播的广告和视频走同一域名,拦不掉。
-#   - YouTube 画中画:YouTube 对美国地区的免费用户开放画中画(非音乐视频),
-#     所以 YouTube 组默认走美国节点。后台播放仍需 Premium。
+#   - 去广告:本文件做域名级拦截;YouTube 视频内广告、画中画、后台播放
+#     需在 App 的 Modules 里开 HTTPS Decryption 并添加 Maasea 模块(见 README)。
+#     下面拒绝 YouTube 的 UDP 443 是该模块生效的前提(QUIC 无法解密)。
 #   - 省电:测速组全部 lazy(组没人用就不测速),间隔 900 秒;
 #     订阅不做健康检查;规则用 MRS 二进制格式;日志级别 warning。
 #   - 稳定:地区池用 Google 自家 204 探针,能到 Cloudflare 但到不了 Google

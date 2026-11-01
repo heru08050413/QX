@@ -20,8 +20,8 @@
 - **Egern**:配置 → 从 URL 导入 → 粘贴链接。
 - **Loon**:配置 → 远程配置(或粘贴导入)→ 粘贴链接。
 - **Stash**:配置 → 新建 → 从 URL 下载 → 粘贴链接,然后把 `proxy-providers` 里的订阅占位符换成你的机场订阅。
-- **Clash by Hako**:导入后在 App 里编辑配置,把 `proxy-providers` 的订阅占位符换成机场订阅,自建节点写进 `proxies:`;详见 [`Clash_iso/README.md`](Clash_iso/README.md)。无 MITM,不需要证书。
-- 导入后均需(Hako 除外):**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
+- **Clash by Hako**:导入后在 App 里编辑配置,把 `proxy-providers` 的订阅占位符换成机场订阅,自建节点写进 `proxies:`;详见 [`Clash_iso/README.md`](Clash_iso/README.md)。YouTube 去广告/画中画需在 App 的 Modules 页开 HTTPS 解密并添加模块(见该 README 第五节)。
+- 导入后均需:**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
 - ⚠️ **导入/切换配置前先停掉隧道,导入后再启动**(真机踩坑实录:隧道开着直接热导入,新旧路由/fake-ip 状态叠加,会出现"订阅正常、节点齐全、隧道显示已连,但流量 0 B/s"的假死;停一次重启即恢复)。
 
 ## 二、Stash 去广告覆写(Override,可与主配置叠加)
@@ -88,7 +88,7 @@ https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds
 | **Egern** | ✅(最完整) | ✅ | Enhance 模块 + googlevideo 广告流拦截 + ad_break/统计信标 reject(v6.3.0)。视频流解密,发热略增 |
 | **Loon** | ✅ | ✅ | Maasea `YouTube.Enhance.sgmodule` 插件(V26.00 补齐,此前缺失)+ `block-quic=true` 协同 |
 | **Quantumult X** | ❌ | ❌ | 架构限制:Maasea 方案依赖 `binary-body-mode`(protobuf 改写),QX 无此参数、上游无 QX 适配版。不放不可靠的移植 |
-| **Clash by Hako** | ❌(仅域名级去广告) | ⚠️ 走美国节点 | mihomo 内核无 MITM/脚本,视频内插播广告拦不掉;画中画靠 YouTube 对美国免费用户的官方开放(非音乐视频),YouTube 组默认美国节点 |
+| **Clash by Hako** | ✅(需加模块) | ✅(需加模块) | 新版 App 的 Modules 页支持 HTTPS 解密 + Surge 模块:添加 Maasea `YouTube.Enhance.sgmodule`;配置已拒绝 YouTube QUIC 配合解密。**同时必加** `Clash_iso/MITM_Safe.sgmodule`,详见 [`Clash_iso/README.md`](Clash_iso/README.md) 第五节。未真机验证 |
 | **Stash** | ⚠️ 实验性 | ⚠️ 实验性 | `Stash_SR` / `Stash_Pro_YouTube` 用 Stash 原生 `binary-mode` 接入 Maasea 脚本,未在真机验证;含第三方 Worker 依赖 |
 
 **客户端配套(装了 SR/Egern/Loon 之后)**:YouTube App 内 设置 → 播放 → 开启「画中画」;设置 → 后台播放和下载 → 开启「后台播放」。首次生效建议杀掉 YouTube App 重开。

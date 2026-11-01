@@ -1,0 +1,7 @@
+#!name=MITM 安全排除(银行/支付/政务)
+#!desc=不解密银行、支付、政务、iCloud 的 HTTPS 流量。配合「广告拦截&净化合集」等大合集模块使用:它们会把几十个银行/政务域名加进解密列表。代价是这些 App 的开屏广告不再被去掉。
+#!author=heru08050413/QX
+#!date=2026-11-01
+
+[MITM]
+hostname = %APPEND% -*.alipay.com, -*.unionpay.com, -*.cmbchina.com, -*.icbc.com.cn, -*.abchina.com, -*.abchina.com.cn, -*.ccb.com, -*.boc.cn, -*.psbc.com, -*.bankcomm.com, -*.bankcomm.cn, -*.cmbc.com.cn, -*.spdb.com.cn, -*.spdbccc.com.cn, -*.cebbank.com, -*.ecitic.com, -*.citicbank.com, -*.pingan.com, -*.pingan.com.cn, -*.hxb.com.cn, -*.cibfintech.com, -*.bankofbeijing.com.cn, -*.jsbchina.cn, -*.jlbank.com.cn, -*.grcbank.com, -*.aibank.com, -*.z-bank.com, -cgbank.oss-cn-shenzhen.aliyuncs.com, -*.95516.com, -*.tenpay.com, -*.gov.cn, -*.icloud.com
