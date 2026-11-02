@@ -110,6 +110,8 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
     }
     Assert ($groups['油管视频'][1] -eq 'YT-Auto') 'Wrong YouTube default'
     Assert ($groups['谷歌服务'][1] -eq '自动选择') 'Google default coupled to YouTube'
+    Assert (-not ($groups['谷歌服务'] -contains 'YT-Auto')) 'Google group must not offer the YouTube pool'
+    Assert (-not ($groups['油管视频'] -contains '谷歌服务')) 'YouTube group must not offer the Google group'
     Assert ($groups['Gemini'][1] -eq '美国节点') 'Wrong Gemini default'
     # 2026-10-29 simplification: dedicated YT-* pools removed; generic region pools probe Google
     # over HTTPS and YT-Auto fails over across them (no lazy in Loon, so no duplicate probing).

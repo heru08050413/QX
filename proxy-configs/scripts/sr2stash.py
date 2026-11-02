@@ -64,7 +64,7 @@ ICONS = {
     'Final': 'Final',
 }
 REGION_ICONS = {'香港': 'Hong_Kong', '台湾': 'Taiwan', '日本': 'Japan', '新加坡': 'Singapore', '美国': 'United_States'}
-EXTRA_ICONS = {'Gemini': 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png'}
+EXTRA_ICONS = {'谷歌AI': 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png'}
 
 
 def icon_for(name):

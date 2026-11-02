@@ -206,7 +206,7 @@ static=苹果服务, direct, 自动选择, 香港节点, img-url=https://raw.git
 
 static=Netflix, 狮城节点, 香港节点, 日本节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
 static=Disney+, 香港节点, 日本节点, 美国节点, 自动选择, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Disney+.png
-static=YouTube, YT-自动选择, 谷歌服务, 狮城节点, 香港节点, 日本节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+static=YouTube, YT-自动选择, 狮城节点, 香港节点, 日本节点, img-url=https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
 
 # 原生纯节点选优, 不套用 Loon fallback 嵌套语法。活跃时 120s 检测,
 # 闲置不额外轮询; 仍用全局/节点探针, 无法识别“CF 通但 Google 不通”。

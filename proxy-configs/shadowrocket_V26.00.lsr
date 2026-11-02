@@ -42,6 +42,13 @@
 #   - 其余私网旁路/直连、IPv6、子网路由及其他分流不变；未知内网网段待实测。
 #   - 需在 Shadowrocket 中启用内置 Tailscale 模组；静态检查不代替真机测速。
 #
+# 2026-11-02 修订
+#   - 谷歌服务组改名谷歌AI, 原 Gemini 组并入: 只装 Gemini/AI Studio 等 Google AI 域名.
+#   - 通用 Google(google.com/googleapis.com/gstatic/googleusercontent/Google.list、
+#     共享登录令牌、翻译、FCM 推送)改走 Proxy, YouTube 共用的登录/头像/静态资源
+#     不再经过谷歌AI. 补 yt3.googleusercontent.com(频道头像)→ YouTube.
+#   - 以上取代 v2.6.19 "Gemini 仅跟随谷歌服务" 的设计.
+#
 # v2.6.20 修订日志
 #   - 截图确认 hatch.metaaivm.com 命中 FINAL,DIRECT；补独立 metaaivm.com 后缀到 Meta 组。
 #   - 补常用 Meta 登录、消息与 CDN 独立域；Threads.com 仍归 Instagram 稳定组。
@@ -1098,7 +1105,6 @@ Proxy = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节�
 # ---------- AI 服务 ----------
 AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect
 # Gemini 使用单一跟随入口，避免两个独立选择器在手动改点后再次分离。
-Gemini = select, 谷歌服务
 # Muse/Meta 的 API、账号和已有 Facebook CDN 共用此选择器。
 Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect
 
@@ -1126,7 +1132,10 @@ Twitter = select, 美国节点, 日本节点, 新加坡节点, AutoSelect
 # v2.6.19: 覆盖旧 fix2 默认 AutoSelect 的偏好；Google 与 Gemini 统一由此选点。
 #   默认美国节点，不默认进入 YouTube 的 30s 两级池；其他地区保留手动选择。
 #   共享 Google 登录可能也被其他 App 使用；换点后旧连接需自行重建。
-谷歌服务 = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点
+# 2026-11-02 谷歌服务 → 谷歌AI: 只装 Gemini / AI Studio 等 Google AI 流量(原 Gemini 组并入).
+#   不含香港(Gemini 不服务香港). 通用 Google(搜索/登录/Play/gstatic/翻译/推送)改走 Proxy,
+#   YouTube App 共用的登录、头像、静态资源因此不再经过本组.
+谷歌AI = select, 美国节点, 日本节点, 新加坡节点, 台湾节点, AutoSelect
 微软服务 = select, 美国节点, DIRECT, 香港节点
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
@@ -1314,9 +1323,9 @@ AND,((DOMAIN-KEYWORD,spclient),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN,translate-pa.googleapis.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,translate.googleapis.com),(PROTOCOL,UDP)),REJECT
 AND,((DOMAIN-SUFFIX,translate.google.com),(PROTOCOL,UDP)),REJECT
-DOMAIN,translate-pa.googleapis.com,谷歌服务
-DOMAIN-SUFFIX,translate.googleapis.com,谷歌服务
-DOMAIN-SUFFIX,translate.google.com,谷歌服务
+DOMAIN,translate-pa.googleapis.com,Proxy
+DOMAIN-SUFFIX,translate.googleapis.com,Proxy
+DOMAIN-SUFFIX,translate.google.com,Proxy
 
 # ---------------------------------------------------------------------
 # 0.6 被墙境外站点显式代理 (v2.6.8 修复 FINAL=DIRECT 漏网)
@@ -1431,7 +1440,7 @@ DOMAIN,b-gtc.gepush.com,DIRECT
 DOMAIN,c-oneid.gepush.com,DIRECT
 DOMAIN,oneid.gepush.com,DIRECT
 DOMAIN,c-hzgt2.getui.com,DIRECT
-DOMAIN,mtalk.google.com,谷歌服务
+DOMAIN,mtalk.google.com,Proxy
 
 # ---------------------------------------------------------------------
 # 2. 广告 / 隐私 → REJECT
@@ -1699,34 +1708,36 @@ DOMAIN,files.oaiusercontent.com,AI
 DOMAIN,android.chat.openai.com,AI
 DOMAIN,ios.chat.openai.com,AI
 
-# Gemini 专用规则保留可见分类；策略组跟随谷歌服务，避免登录和业务独立选点。
-DOMAIN-SUFFIX,gemini.google.com,Gemini
-DOMAIN-SUFFIX,bard.google.com,Gemini
-DOMAIN-SUFFIX,aistudio.google.com,Gemini
-DOMAIN-SUFFIX,generativelanguage.googleapis.com,Gemini
-DOMAIN-SUFFIX,makersuite.google.com,Gemini
+# Gemini 专用规则 → 谷歌AI(2026-11-02 原 Gemini 组并入谷歌AI).
+DOMAIN-SUFFIX,gemini.google.com,谷歌AI
+DOMAIN-SUFFIX,bard.google.com,谷歌AI
+DOMAIN-SUFFIX,aistudio.google.com,谷歌AI
+DOMAIN-SUFFIX,generativelanguage.googleapis.com,谷歌AI
+DOMAIN-SUFFIX,makersuite.google.com,谷歌AI
 
 # v2.6.1 新增: Gemini App / Web 边缘依赖
-DOMAIN-SUFFIX,deepmind.com,Gemini
-DOMAIN-SUFFIX,deepmind.google,Gemini
-DOMAIN,alkalimakersuite-pa.clients6.google.com,Gemini
-DOMAIN,alkalimakersuite.google.com,Gemini
-DOMAIN,generativeai-pa.googleapis.com,Gemini
-DOMAIN,labs.google,Gemini
-DOMAIN,proactivebackend-pa.googleapis.com,Gemini
+DOMAIN-SUFFIX,deepmind.com,谷歌AI
+DOMAIN-SUFFIX,deepmind.google,谷歌AI
+DOMAIN,alkalimakersuite-pa.clients6.google.com,谷歌AI
+DOMAIN,alkalimakersuite.google.com,谷歌AI
+DOMAIN,generativeai-pa.googleapis.com,谷歌AI
+DOMAIN,labs.google,谷歌AI
+DOMAIN,proactivebackend-pa.googleapis.com,谷歌AI
 # v2.6.15:补齐已核验的 Gemini / AI Studio 专用域名,不改共享 Google 登录分流.
-DOMAIN,geller-pa.googleapis.com,Gemini
-DOMAIN,robinfrontend-pa.googleapis.com,Gemini
-DOMAIN,gemini.gstatic.com,Gemini
-DOMAIN,alkalicore-pa.clients6.google.com,Gemini
-DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini
+DOMAIN,geller-pa.googleapis.com,谷歌AI
+DOMAIN,robinfrontend-pa.googleapis.com,谷歌AI
+DOMAIN,gemini.gstatic.com,谷歌AI
+DOMAIN,alkalicore-pa.clients6.google.com,谷歌AI
+DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,谷歌AI
 
 # v2.6.19: Google 共享登录/令牌先于后续远程表，仍位于广告拦截之后。
+# 2026-11-02: 改走 Proxy 而非谷歌AI —— YouTube、Gmail 等所有 Google App 共用这些登录域名,
+#   放进谷歌AI 会让 YouTube 登录经过 AI 组. Proxy 与谷歌AI 默认都是美国节点, 出口一致.
 # YouTube 远程表含 USER-AGENT/IP 规则，不能只在表后补 google.com 后缀兜底。
-DOMAIN,accounts.google.com,谷歌服务
-DOMAIN,oauth2.googleapis.com,谷歌服务
-DOMAIN,securetoken.googleapis.com,谷歌服务
-DOMAIN,identitytoolkit.googleapis.com,谷歌服务
+DOMAIN,accounts.google.com,Proxy
+DOMAIN,oauth2.googleapis.com,Proxy
+DOMAIN,securetoken.googleapis.com,Proxy
+DOMAIN,identitytoolkit.googleapis.com,Proxy
 
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/OpenAI/OpenAI.list,AI
 
@@ -1751,6 +1762,8 @@ DOMAIN-SUFFIX,ytimg.com,YouTube
 DOMAIN-SUFFIX,ggpht.com,YouTube
 DOMAIN-SUFFIX,gvt1.com,YouTube
 DOMAIN-SUFFIX,gvt2.com,YouTube
+# 2026-11-02: YouTube 频道头像域, 否则落入 googleusercontent.com 通用规则
+DOMAIN,yt3.googleusercontent.com,YouTube
 
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/YouTube/YouTube.list,YouTube
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Netflix/Netflix.list,Netflix
@@ -1889,11 +1902,11 @@ DOMAIN-SUFFIX,arxiv.org,Proxy
 # ---------------------------------------------------------------------
 # v2.6.19: 核心域本地兜底，远程 Google.list 不可用时也不落入 FINAL 直连。
 # Gemini/YouTube 专用规则在前；广告规则也在前，不能以统一路由绕过拒绝。
-DOMAIN-SUFFIX,google.com,谷歌服务
-DOMAIN-SUFFIX,googleapis.com,谷歌服务
-DOMAIN-SUFFIX,gstatic.com,谷歌服务
-DOMAIN-SUFFIX,googleusercontent.com,谷歌服务
-RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,谷歌服务
+DOMAIN-SUFFIX,google.com,Proxy
+DOMAIN-SUFFIX,googleapis.com,Proxy
+DOMAIN-SUFFIX,gstatic.com,Proxy
+DOMAIN-SUFFIX,googleusercontent.com,Proxy
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,Proxy
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
 
 # Apple News / Apple TV+

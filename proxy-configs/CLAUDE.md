@@ -43,6 +43,7 @@
    - ★★ **2026-10-29 再简化(用户要求)**:小火箭及其派生的 Stash_SR **已删除 `YT-Auto` 与 美国/日本/新加坡稳定 三个池**(用户认为没必要)。保留的保障是:地区池用 Google HTTPS 探针,池内单节点连不上 Google 会自动换;代价是整个地区连不上 Google 时需手动切。Instagram/Twitter 改用普通地区池(fallback 防漂移改为 url-test,tolerance 200 抑制抖动)。Loon/Egern/Stash_V26 仍保留各自 YT-Auto,未改。以下两条为历史记录。
    - ★ **2026-10-29 定型(用户要求简化)**:不要为 YouTube 另建"专用地区池"——它与普通地区池是同一批节点、同一过滤,只是探针不同,等于每节点被测两遍(无 lazy 的小火箭/Loon 上整夜耗电)。做法:**普通地区池探针改用 Google HTTPS 204**(池内只挑能连 Google 的节点,对所有服务都更严格),`YT-Auto` = fallback 直接建在普通地区池上,只负责跨地区自愈(小火箭/Loon 300s,Stash 60s + lazy)。
    - ⚠️ **`YT-Auto` 只给 `YouTube`(大流量视频)当默认;`谷歌服务` 默认必须留 `AutoSelect`**:谷歌服务承载 `accounts.google.com`/`googleapis` 等轻流量登录接口(AI 应用的会话续期也走这里),让它默认走 YT-Auto 会把 AI 一起拖进自愈组、拖慢——这是 fix2 里"AI 也变差"的传导路径。YT-Auto 只作谷歌服务的备选。
+   - ★ **2026-11-02 YouTube 与谷歌/AI 组隔离(用户要求)**:YouTube 组里不放谷歌服务/AI 组作选项,谷歌服务组里也不放 YT-Auto(QX、Loon 已去掉)。小火箭及 Stash_SR:`谷歌服务` 改名 **`谷歌AI`**,原 `Gemini` 组并入,只装 Gemini/AI Studio 等 Google AI 域名(不含香港);通用 Google(google.com/googleapis/gstatic/googleusercontent/Google.list、共享登录令牌、翻译、FCM)改走 `Proxy`,因为 YouTube 与所有 Google App 共用这些登录/头像/静态域名,域名层面无法按 App 区分。Clash_iso 的 `accounts.google.com` 同理改走谷歌服务而非 AI。
    - **QX**:`server_check_url` 是否支持按组覆盖无权威文档,真机验证前不动;**Egern**:探针 URL 是全局单值(`proxy_latency_test_url`),架构上做不了按组分探针,记录为已知限制。
 8. **UDP fail-fast(稳定性审查新增)**:"节点不支持 UDP 时的回落"必须 REJECT 而非 DIRECT(SR `udp-policy-not-supported-behaviour` / Loon `udp-fallback-mode`)。DIRECT 把境外 UDP 直连发出=被墙黑洞=应用挂死 60-90s;REJECT 立即失败=应用秒切 TCP。"保微信 VOIP"论据不成立:国内 UDP 在命中代理策略前已被 GEOIP CN 判 DIRECT,到不了该开关。
 

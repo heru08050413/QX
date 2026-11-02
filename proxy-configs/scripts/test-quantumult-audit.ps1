@@ -84,6 +84,7 @@ function Check([string]$Text, [bool]$Delta=$true) {
     Assert ($groups['Gemini'].Members[0] -eq '美国节点') 'Wrong Gemini default'
     Assert ($groups['人工智能'].Members[0] -eq '狮城节点') 'Changed general AI default'
     Assert ($groups['谷歌服务'].Members[0] -eq '狮城节点') 'Changed Google default'
+    Assert (-not ($groups['YouTube'].Members -contains '谷歌服务')) 'YouTube group must not offer 谷歌服务'
     foreach ($name in @('美国稳定','日本稳定','狮城稳定')) {
         Assert ($groups[$name].Type -eq 'available') "Unstable type: $name"
         Assert ($groups[$name].Members.Count -eq 1 -and $groups[$name].Members[0].StartsWith('server-tag-regex=')) "Unsupported available parameters: $name"

@@ -40,11 +40,11 @@ foreach ($group in $usGroups) {
 $domains = @('geller-pa.googleapis.com', 'robinfrontend-pa.googleapis.com',
     'gemini.gstatic.com', 'alkalicore-pa.clients6.google.com',
     'webchannel-alkalimakersuite-pa.clients6.google.com')
-$googleRules = @($active | Where-Object { $_ -match '^RULE-SET,.*/Google/Google\.list,谷歌服务$' })
+$googleRules = @($active | Where-Object { $_ -match '^RULE-SET,.*/Google/Google\.list,Proxy$' })
 Assert-True ($googleRules.Count -eq 1) 'Expected one general Google ruleset'
 $googleIndex = [array]::IndexOf($active, $googleRules[0])
 foreach ($domain in $domains) {
-    $rule = "DOMAIN,$domain,Gemini"
+    $rule = "DOMAIN,$domain,谷歌AI"
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate rule: $rule"
     Assert-True ([array]::IndexOf($active, $rule) -lt $googleIndex) "Rule shadowed by general Google: $rule"
 }
@@ -384,24 +384,24 @@ function Resolve-DefaultPool([string]$Name, [hashtable]$Selections = @{}) {
     Resolve-DefaultPool $choice $Selections
 }
 $expectedDefaults = @{
-    Proxy='美国节点'; AI='美国节点'; Gemini='美国节点'; Meta='美国节点';
+    Proxy='美国节点'; AI='美国节点'; 谷歌AI='美国节点'; Meta='美国节点';
     YouTube='美国节点'; Netflix='美国节点'; Spotify='新加坡节点'; TikTok='美国节点';
     Telegram='美国节点'; Instagram='美国节点'; Twitter='美国节点';
-    苹果服务='DIRECT'; 谷歌服务='美国节点'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
+    苹果服务='DIRECT'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
 }
 foreach ($entry in $expectedDefaults.GetEnumerator()) {
     Assert-True ((Resolve-DefaultPool $entry.Key) -ceq $entry.Value) "Wrong initial region/pool: $($entry.Key)"
 }
-Assert-True (($groups.Gemini.Members -join ',') -ceq '谷歌服务') 'Gemini must follow the single Google selector'
-foreach ($choice in $groups['谷歌服务'].Members) {
-    $selection = @{ '谷歌服务' = $choice }
-    Assert-True ((Resolve-DefaultPool 'Gemini' $selection) -ceq (Resolve-DefaultPool '谷歌服务' $selection)) "Google/Gemini drift when selecting $choice"
-}
+# 2026-11-02: Gemini group merged into 谷歌AI; generic Google goes to Proxy so YouTube's shared
+# Google endpoints never pass through the AI group.
+Assert-True (-not $groups.ContainsKey('Gemini') -and -not $groups.ContainsKey('谷歌服务')) 'Old Gemini/谷歌服务 groups must be gone'
+Assert-True (-not ($groups['谷歌AI'].Members -ccontains '香港节点')) 'Gemini is not served in Hong Kong'
 $routingFixtures = @{
-    'gemini.google.com'='Gemini'; 'geller-pa.googleapis.com'='Gemini'; 'gemini.gstatic.com'='Gemini';
-    'accounts.google.com'='谷歌服务'; 'oauth2.googleapis.com'='谷歌服务';
-    'securetoken.googleapis.com'='谷歌服务'; 'identitytoolkit.googleapis.com'='谷歌服务';
-    'lh3.googleusercontent.com'='谷歌服务'; 'www.gstatic.com'='谷歌服务';
+    'gemini.google.com'='谷歌AI'; 'geller-pa.googleapis.com'='谷歌AI'; 'gemini.gstatic.com'='谷歌AI';
+    'accounts.google.com'='Proxy'; 'oauth2.googleapis.com'='Proxy';
+    'securetoken.googleapis.com'='Proxy'; 'identitytoolkit.googleapis.com'='Proxy';
+    'lh3.googleusercontent.com'='Proxy'; 'www.gstatic.com'='Proxy';
+    'yt3.googleusercontent.com'='YouTube'; 'youtubei.googleapis.com'='YouTube';
     'muse.ai'='Meta'; 'auth.muse.ai'='Meta'; 'hatch-api.meta.ai'='Meta'; 'api.meta.ai'='Meta';
     'ar.graph.meta.com'='Meta'; 'auth.meta.com'='Meta'; 'graph.facebook.com'='Meta';
     'hatch.metaaivm.com'='Meta'; 'vm-123.metaaivm.com'='Meta';

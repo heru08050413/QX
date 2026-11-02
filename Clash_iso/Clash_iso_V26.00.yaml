@@ -514,7 +514,7 @@ rules:
   - RULE-SET,Gemini,AI
   - RULE-SET,Claude,AI
   - RULE-SET,AI海外,AI
-  - DOMAIN,accounts.google.com,AI
+  - DOMAIN,accounts.google.com,谷歌服务
 
   # YouTube(放在 Google 前面)
   - RULE-SET,YouTube,YouTube
