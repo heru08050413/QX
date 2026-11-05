@@ -122,6 +122,13 @@ def expected_delta(original):
     rules[i:i] = [domain(h, 'Gemini') for h in GEMINI]
     hosts = expected['mitm']['hostnames']
     hosts['excludes'][0:0] = ['12306.cn', '*.12306.cn']
+    # 2026-11-05: bank/pay/gov hosts injected by the enabled fmz200 blockAds module.
+    i = hosts['excludes'].index('*.pingan.com') + 1
+    hosts['excludes'][i:i] = ['*.abchina.com', '*.abchina.com.cn', '*.boc.cn', '*.psbc.com', '*.bankcomm.cn',
+        '*.cmbc.com.cn', '*.spdb.com.cn', '*.spdbccc.com.cn', '*.cebbank.com', '*.ecitic.com', '*.citicbank.com',
+        '*.pingan.com.cn', '*.hxb.com.cn', '*.cibfintech.com', '*.bankofbeijing.com.cn', '*.jsbchina.cn',
+        '*.jlbank.com.cn', '*.grcbank.com', '*.aibank.com', '*.z-bank.com', 'cgbank.oss-cn-shenzhen.aliyuncs.com',
+        '*.tenpay.com', '*.gov.cn']
     i = hosts['includes'].index(OLD_WEIBO_HOSTS[0])
     assert hosts['includes'][i:i + len(OLD_WEIBO_HOSTS)] == OLD_WEIBO_HOSTS
     hosts['includes'][i:i + len(OLD_WEIBO_HOSTS)] = NEW_WEIBO_HOSTS

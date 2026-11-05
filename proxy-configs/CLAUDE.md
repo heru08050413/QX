@@ -27,6 +27,7 @@
 ## 一、安全基线(四套必须逐字一致,改任何一个都要对齐另外三个)
 
 1. **MITM 排除清单**:银行/支付/登录/账户子域必须全部排除(`*.alipay.com`、`*.unionpay.com`、`*.cmbchina.com`、`*.icbc.com.cn`、`passport.*`、`account.*`、`pay.*`、`*.icloud.com` 等)。少一个 = 一个高敏感解密缺口。
+   - ⚠️ **2026-11 查实:fmz200 blockAds 模块/插件会把约 60 个银行/支付/政务主机(工行/农行/建行/中行/邮储/交行/民生/浦发/光大/中信/平安/华夏/兴业/财付通/`*.gov.cn` 等)注入解密列表**。启用它的 SR、Egern、Loon 已逐一补排除(Hako 用 `Clash_iso/MITM_Safe.sgmodule`)。模块更新后重新核对:把模块的 hostname 列表与排除项比对,敏感主机须为 0 遗漏。
 2. **保护区顺序**:微博/新浪、微信(`*.qq.com.cn`、`teg.tencent-cloud.net`)、字节系的 `DIRECT` 规则必须排在广告 `REJECT` 段**之前**。
 3. **熔断**:高频重试源用 `REJECT-DROP`(静默丢包),不是 `REJECT`。
 4. **配置文件绝不内嵌订阅 token**(见禁止项)。
