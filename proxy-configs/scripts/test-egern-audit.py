@@ -140,6 +140,14 @@ def expected_delta(original):
             module['enabled'] = False
         if url == YT_URL:
             module['compat_arguments'] = YT_ARGS.copy()
+    # 2026-11-05 (user request): drop YT-Auto and every stable pool, as in Shadowrocket.
+    removed = {'YT-Auto', 'StableSelect', '美国稳定', '日本稳定', '新加坡稳定', 'StableFallback'}
+    expected['policy_groups'] = [g for g in expected['policy_groups'] if body(g)['name'] not in removed]
+    body(group(expected, 'Proxy'))['policies'].remove('StableSelect')
+    body(group(expected, 'YouTube'))['policies'] = ['美国', '香港', '台湾', '日本', '新加坡', 'AutoSelect']
+    for name in ('Instagram', 'Twitter'):
+        body(group(expected, name))['policies'] = ['美国', '日本', '新加坡', 'AutoSelect']
+    body(group(expected, 'PayPal'))['policies'][0] = '美国'
     return expected
 
 
@@ -213,11 +221,9 @@ class Audit(unittest.TestCase):
                 self.assertIn(p, valid)
         for r in self.config['rules']:
             self.assertIn(body(r)['policy'], valid)
-        yt = group(self.config, 'YT-Auto')
-        self.assertEqual(list(yt), ['smart'])
-        self.assertTrue(body(yt)['flatten'])
-        self.assertTrue(body(yt)['latency_test_url'].startswith('https://'))
-        self.assertEqual(body(group(self.config, 'YouTube'))['policies'][0], 'YT-Auto')
+        for gone in ('YT-Auto', 'StableSelect', '美国稳定', '日本稳定', '新加坡稳定', 'StableFallback'):
+            self.assertNotIn(gone, names)
+        self.assertEqual(body(group(self.config, 'YouTube'))['policies'][0], '美国')
         self.assertEqual(body(group(self.config, 'Gemini'))['policies'][0], '美国')
 
     def test_us_filters(self):
@@ -225,7 +231,7 @@ class Audit(unittest.TestCase):
                'United States 01', 'America 01', '洛杉矶01', 'SiliconValley']
         no = ['Russia', 'RUS-01', 'Australia', 'AUS-01', 'RUS01', 'AUS01', 'Austria',
               '🇦🇺 Sydney', 'JP 日本', 'HK 香港', 'Business 01', 'Plus 01']
-        for name in ('美国', '美国稳定'):
+        for name in ('美国',):
             regex = re.compile(body(group(self.config, name))['filter'])
             for sample in yes + no:
                 with self.subTest(pool=name, sample=sample):
@@ -290,7 +296,7 @@ class Audit(unittest.TestCase):
         c = copy.deepcopy(self.config); c['dns']['public_ip_lookup_url'] = 'https://ifconfig.me/ip'; cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, '美国'))['filter'] = '(?i)US'; cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, 'YouTube'))['policies'].pop(0); cases.append(c)
-        c = copy.deepcopy(self.config); body(group(c, 'YT-Auto'))['latency_test_url'] = 'http://www.gstatic.com/generate_204'; cases.append(c)
+        c = copy.deepcopy(self.config); body(group(c, 'Instagram'))['policies'][0] = '香港'; cases.append(c)
         c = copy.deepcopy(self.config); c['rules'].remove(domain('dns.weixin.qq.com', 'DIRECT')); cases.append(c)
         c = copy.deepcopy(self.config); c['rules'].insert(0, c['rules'].pop(c['rules'].index(domain('youtubei.googleapis.com', 'YouTube')))); cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, 'Gemini'))['policies'].insert(0, '订阅'); cases.append(c)

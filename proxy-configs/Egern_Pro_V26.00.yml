@@ -694,8 +694,9 @@ dns:
 # ---------------------------------------------------------------------
 # 层 1: 总入口 Proxy
 # 层 2: 业务专用组(AI/Gemini/YouTube/Netflix/Spotify/TikTok/TG/IG/X/...)
-# 层 3: 测速基础设施(AutoSelect/StableSelect/地区池/稳定地区池)
-# 防抖: 长连接业务(IG/X)走稳定池不主动漂移; 短交互走 auto_test.
+# 层 3: 测速基础设施(AutoSelect/地区池)。2026-11-05 按用户要求删除 YT-Auto、StableSelect、
+#        美国/日本/新加坡稳定、StableFallback(同小火箭); YouTube 默认美国, 地区内由 auto_test 自动换节点.
+# 防抖: 地区池 tolerance=200 抑制小幅延迟波动引起的切换(稳定池已于 2026-11-05 删除).
 # =====================================================================
 policy_groups:
   # 订阅源(节点凭据由用户在 App 内手动添加, 配置不内嵌 token)
@@ -711,7 +712,6 @@ policy_groups:
       name: Proxy
       policies:
         - AutoSelect
-        - StableSelect
         - 香港
         - 台湾
         - 日本
@@ -731,17 +731,6 @@ policy_groups:
       tolerance: 200
       timeout: 3
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
-      hidden: false
-
-  - fallback:
-      name: StableSelect
-      policies:
-        - 订阅
-      flatten: true
-      filter: ^(?!.*(?:剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
-      interval: 900
-      timeout: 3
-      icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
       hidden: false
 
   # ── 地区节点池(同地区内可切换, 不跨地区漂移) ──
@@ -805,50 +794,6 @@ policy_groups:
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/US.png
       hidden: false
 
-  # ── 稳定地区池(interval=900/tolerance=300, IG/X 长连接专用, 防漂移) ──
-  - auto_test:
-      name: 美国稳定
-      policies:
-        - 订阅
-      flatten: true
-      filter: (?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
-      interval: 900
-      tolerance: 300
-      timeout: 3
-      hidden: true
-
-  - auto_test:
-      name: 日本稳定
-      policies:
-        - 订阅
-      flatten: true
-      filter: (?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-      interval: 900
-      tolerance: 300
-      timeout: 3
-      hidden: true
-
-  - auto_test:
-      name: 新加坡稳定
-      policies:
-        - 订阅
-      flatten: true
-      filter: (?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
-      interval: 900
-      tolerance: 300
-      timeout: 3
-      hidden: true
-
-  - fallback:
-      name: StableFallback
-      policies:
-        - 美国稳定
-        - 日本稳定
-        - 新加坡稳定
-      interval: 900
-      timeout: 3
-      hidden: true
-
   # ── 业务专用组 ──
 
   # AI (用户偏好: 新加坡)
@@ -876,31 +821,15 @@ policy_groups:
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png
       hidden: false
 
-  # Egern 2.20.0+：专用智能池，独立 Google TLS 探针，结合抖动/失败反馈选点。
-  # flatten 展开这些地区池的节点，不复用通用 Cloudflare 测速结论。
-  # smart 使用客户端自适应周期；不套用 auto_test 的 interval/tolerance 参数。
-  - smart:
-      name: YT-Auto
-      policies:
-        - 香港
-        - 台湾
-        - 日本
-        - 新加坡
-        - 美国
-      flatten: true
-      latency_test_url: https://www.gstatic.com/generate_204
-      hidden: false
-
   - select:
       name: YouTube
       policies:
-        - YT-Auto
-        - AutoSelect
+        - 美国
         - 香港
         - 台湾
         - 日本
         - 新加坡
-        - 美国
+        - AutoSelect
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/YouTube.png
       hidden: false
 
@@ -946,24 +875,24 @@ policy_groups:
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_X.png
       hidden: false
 
-  # Instagram (长连接, 绑稳定池防漂移)
+  # Instagram / Twitter: 2026-11-05 稳定池已删, 改用普通地区池(同小火箭)
   - select:
       name: Instagram
       policies:
-        - 美国稳定
-        - 日本稳定
-        - 新加坡稳定
-        - StableFallback
+        - 美国
+        - 日本
+        - 新加坡
+        - AutoSelect
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Instagram.png
       hidden: false
 
   - select:
       name: Twitter
       policies:
-        - 美国稳定
-        - 日本稳定
-        - 新加坡稳定
-        - StableFallback
+        - 美国
+        - 日本
+        - 新加坡
+        - AutoSelect
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Twitter.png
       hidden: false
 
@@ -1025,7 +954,7 @@ policy_groups:
   - select:
       name: PayPal
       policies:
-        - 美国稳定
+        - 美国
         - 香港
         - DIRECT
       hidden: true
