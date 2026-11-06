@@ -148,6 +148,10 @@ def expected_delta(original):
     for name in ('Instagram', 'Twitter'):
         body(group(expected, name))['policies'] = ['美国', '日本', '新加坡', 'AutoSelect']
     body(group(expected, 'PayPal'))['policies'][0] = '美国'
+    # 2026-11-06: blockAds via the repo's trimmed mirror (drops YouTube rules that break Maasea).
+    for module in expected['modules']:
+        if module['url'] == 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module':
+            module['url'] = 'https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module'
     return expected
 
 

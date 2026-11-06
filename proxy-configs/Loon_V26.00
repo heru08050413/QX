@@ -782,7 +782,7 @@ https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule, e
 https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule, policy=油管视频, enabled=true
 
 # 国内 App 广告拦截 (730+ App)
-https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/blockAds.plugin, enabled=true
+https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.plugin, enabled=true
 
 # 微信小程序去广告
 https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/WeChatMiniAds.plugin, enabled=true

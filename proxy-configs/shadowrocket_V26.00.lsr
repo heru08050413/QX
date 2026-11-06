@@ -948,7 +948,12 @@
 # 4. 安装本配置 → 节点信息手动填入 → 验证策略组
 #
 # 4.5 [V26.00 新增, 国内 App 去广告主力] 配置 → 模块 → 添加:
-#     https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+#     2026-11-06: 改用本仓库镜像 blockAds_safe.module(由 scripts/trim_blockads.py 从 fmz200
+#     上游生成)。上游原版自带 YouTube 规则: 把所有 initplayback 改写成 {}、把 log_event
+#     改写成 GIF, 并重复挂一份未锁版本的 youtube.response.js, 与本配置锁定的 Maasea 三钩子
+#     冲突, 用户日志实证 YouTube 起播失败/反复重开. 镜像只删这 3 条和 53 个银行/政务解密域名.
+#     若已添加原版, 请先删除原版再加镜像, 两者不要同时开.
+#     https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module
 #     (730+ 国内 App/小程序去广告; 原配置内 10 条 ddgksf2013 脚本因上游
 #      重构已全部失效并移除, 由此模块接管且覆盖更广)
 #     可选: B 站增强 → 同处添加 BiliUniverse ADBlock 模块 (见 [Script] B站段注释)
@@ -2571,7 +2576,7 @@ Spotify去广告 = type=http-response,pattern=^https://(?:\w+-spclient|spclient\
 #   ★ 换源方案 (净升级, 覆盖从 10 App → 730+ App):
 #   SR 支持 Surge 模块. 请在 App 内 [配置 → 模块] 添加 fmz200 blockAds
 #   (活跃维护, 已核验 200, Loon/Egern 侧同源且用户实测有效):
-#     https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+#     https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module
 #   模块会自动注入所需 MITM hostname (%APPEND%), 无需改本配置.
 #
 #   为什么不在配置里逐条重写: ① 上游新路径不存在/自托管域无法核验,

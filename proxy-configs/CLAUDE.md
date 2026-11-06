@@ -28,6 +28,7 @@
 
 1. **MITM 排除清单**:银行/支付/登录/账户子域必须全部排除(`*.alipay.com`、`*.unionpay.com`、`*.cmbchina.com`、`*.icbc.com.cn`、`passport.*`、`account.*`、`pay.*`、`*.icloud.com` 等)。少一个 = 一个高敏感解密缺口。
    - ⚠️ **2026-11 查实:fmz200 blockAds 模块/插件会把约 60 个银行/支付/政务主机(工行/农行/建行/中行/邮储/交行/民生/浦发/光大/中信/平安/华夏/兴业/财付通/`*.gov.cn` 等)注入解密列表**。启用它的 SR、Egern、Loon 已逐一补排除(Hako 用 `Clash_iso/MITM_Safe.sgmodule`)。模块更新后重新核对:把模块的 hostname 列表与排除项比对,敏感主机须为 0 遗漏。
+   - ★ **2026-11-06 改用镜像 `modules/blockAds_safe.module` / `.plugin`**(`scripts/trim_blockads.py` 从上游生成):上游自带 YouTube 规则(所有 `initplayback`→`{}`、`log_event`→GIF、重复且未锁版本的 `youtube.response.js`)与锁定的 Maasea 三钩子冲突,用户 SR 日志实证 YouTube 起播失败。镜像只删这 3 条 + 53 个银行/政务 MITM 域名。SR/Egern/Loon/Hako 均已指向镜像;上游变动后重跑脚本刷新(脚本找不到冲突行会报错退出,提示人工复核)。
 2. **保护区顺序**:微博/新浪、微信(`*.qq.com.cn`、`teg.tencent-cloud.net`)、字节系的 `DIRECT` 规则必须排在广告 `REJECT` 段**之前**。
 3. **熔断**:高频重试源用 `REJECT-DROP`(静默丢包),不是 `REJECT`。
 4. **配置文件绝不内嵌订阅 token**(见禁止项)。

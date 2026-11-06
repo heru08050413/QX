@@ -60,10 +60,12 @@ https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_SR_V2
 的开屏去广告脚本——原依赖的 `ddgksf2013/Scripts` 的 `Filter/` 目录已被上游整库重构删除,
 10 条脚本全部 404,故连同对应 MITM hostname 一并移除(留着=无效解密纯耗电)。
 
-这块能力改由下面这个外部模块承担,**你需要在 Shadowrocket 里手动添加**:
+这块能力改由 fmz200 的 blockAds 合集承担,**你需要在 Shadowrocket 里手动添加**。请用本仓库的**安全镜像**(不要用上游原版):
+
+> ⚠️ 2026-11-06 用户日志实证:上游原版自带 YouTube 规则——把所有 `initplayback` 改写成 `{}`、把 `log_event` 改写成 GIF,并重复挂一份未锁版本的 YouTube 脚本,与本仓库锁定的 Maasea YouTube 脚本冲突,导致 YouTube 打不开、视频起播失败。镜像由 `proxy-configs/scripts/trim_blockads.py` 从上游生成,只删这 3 条和 53 个银行/政务解密域名,其余原样。**已加原版的先删掉原版,两个不要同时开。**
 
 ```
-https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module
 ```
 
 **添加步骤**:Shadowrocket → 首页 **配置** → 选中当前配置右侧 **编辑** →
