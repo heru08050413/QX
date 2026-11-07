@@ -508,6 +508,9 @@ rules:
   - AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   - AND,((DOMAIN-SUFFIX,youtube.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   - AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+  # 2026-11-07: 缩略图/头像也拒 QUIC. 截图实证 i.ytimg.com 的 QUIC 经节点 0 KB 失败后才回落 HTTPS, 拖慢首页.
+  - AND,((DOMAIN-SUFFIX,ytimg.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN-SUFFIX,ggpht.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
 
   # AI(放在 Google 前面,Gemini 才不会被 Google 规则截走)
   - RULE-SET,OpenAI,AI
