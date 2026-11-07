@@ -300,125 +300,47 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 
 # =====================================================================
 # [Proxy Group]
-# v2.0 架构:
-#   层 1: 业务专用策略组 (用户可选)
-#   层 2: 测速基础设施 (AutoSelect / StableSelect / StableFallback)
-#   层 3: 地区节点池 (url-test 600s tolerance 200)
-#   层 4: 稳定地区池 (fallback 300s, 不按最小延迟竞争)
+# 2026-11-07 简化(用户要求: 简单明了、省电、稳定), 对齐小火箭结构:
+#   - 38 组 → 21 组; 测速组 15 → 8 (自动选择 + 7 个地区池), 间隔 600s → 900s.
+#   - 删除 YT-Auto、稳定选择、StableFallback 与四个稳定池; 哔哩哔哩/Github 不再测速.
+#   - 自动选择改为在 7 个地区池之间比较(只测各池当前节点), 不再把全部节点再测一遍.
+#     Loon 没有 lazy, 每个测速组都会整夜按间隔测速, 所以测速组越少越省电.
+#   - 地区池用 Google HTTPS 204 探针: 池内节点连不上 Google 会自动换(同地区).
+#     代价: 整个地区连不上 Google 时需在业务组手动换地区.
+#   - 合并同类: 微信/微博/小红书/抖音 → 国内服务; IG/X/脸书/Line → 社交媒体;
+#     Netflix/迪士尼/Spotify → 流媒体; Github → 代理节点.
+#   - 全节点入组(安全基线 9): 本地与订阅节点经 Filter 进地区池, 无地区词的进其他节点,
+#     其他节点同时被 自动选择 与 代理节点 引用.
 # =====================================================================
 [Proxy Group]
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 业务策略组
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# ── 入口 ──
+代理节点 = select,自动选择,美国节点,香港节点,台湾节点,日本节点,狮城节点,韩国节点,其他节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
+# FINAL 指向. 默认跟随 代理节点; 需要时可切 DIRECT
+兜底策略 = select,代理节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
 
-# 兜底策略 (Final 指向)
-兜底策略 = select,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,其他节点,DIRECT,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
-
-# 代理节点 (插件用)
-代理节点 = select,兜底策略,自动选择,稳定选择,香港节点,台湾节点,狮城节点,美国节点,日本节点,韩国节点,其他节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Loon_02.png
-
-# 大陆网址 (首选 DIRECT, 极端情况备用代理)
-大陆网址 = select,DIRECT,自动选择,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN_02.png
-
-# 通讯类 (微信/微博/小红书首选直连, 国内产品避免账号风控)
-微信消息 = select,DIRECT,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/wechat.png
-微博服务 = select,DIRECT,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Weibo.png
-小红书 = select,DIRECT,香港节点,狮城节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple_News.png
-
-# 抖音
-大陆抖音 = select,DIRECT,香港节点,台湾节点,狮城节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok_2.png
-海外抖音 = select,日本节点,台湾节点,狮城节点,韩国节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok_1.png
-
-# AI 服务 (v2.0 改: 用户偏好新加坡, 与 QX/Egern 配置一致)
-人工智能 = select,狮城节点,日本节点,美国节点,自动选择,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT3.png
-
-# Gemini 专用 (v2.0 新增: Google AI 部分地区限制, 优先美国/台湾)
+# ── 业务 ──
+人工智能 = select,狮城节点,日本节点,美国节点,台湾节点,自动选择,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/ChatGPT3.png
 Gemini = select,美国节点,台湾节点,日本节点,狮城节点,自动选择,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Gemini_01.png
+油管视频 = select,美国节点,香港节点,日本节点,狮城节点,台湾节点,韩国节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+谷歌服务 = select,自动选择,美国节点,香港节点,日本节点,狮城节点,img-url = https://raw.githubusercontent.com/Orz-3/mini/master/Color/Google.png
+电报消息 = select,狮城节点,香港节点,日本节点,美国节点,自动选择,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_01.png
+社交媒体 = select,美国节点,日本节点,狮城节点,香港节点,台湾节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Twitter.png
+海外抖音 = select,日本节点,台湾节点,狮城节点,韩国节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok_1.png
+流媒体 = select,狮城节点,香港节点,日本节点,美国节点,台湾节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
+苹果服务 = select,DIRECT,美国节点,香港节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_02.png
+哔哩哔哩 = select,DIRECT,香港节点,台湾节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili_3.png
+# 微信/微博/小红书/抖音等国内 App: 默认直连, 人在境外时可切代理
+国内服务 = select,DIRECT,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN_02.png
 
-# Telegram (v2.0 改: 走稳定组防节点漂移)
-电报消息 = select,狮城稳定,香港稳定,日本稳定,美国稳定,稳定选择,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Telegram_01.png
-
-# 苹果服务 (国内 CDN 直连优先)
-苹果服务 = select,DIRECT,香港节点,狮城节点,美国节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_02.png
-
-# 谷歌服务
-谷歌服务 = select,自动选择,香港节点,狮城节点,美国节点,日本节点,img-url = https://raw.githubusercontent.com/Orz-3/mini/master/Color/Google.png
-
-# 油管视频
-油管视频 = select,YT-Auto,自动选择,香港节点,美国节点,日本节点,韩国节点,狮城节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
-
-# Spotify (v2.0 新增专属组, 替代原配置直接绑死狮城节点)
-Spotify = select,狮城节点,日本节点,香港节点,美国节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
-
-# Instagram (v2.0 新增稳定组, 长连接防漂移)
-Instagram = select,美国稳定,日本稳定,狮城稳定,香港稳定,StableFallback,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Instagram.png
-
-# Twitter / X (v2.0 新增稳定组, 长连接防漂移)
-Twitter = select,美国稳定,日本稳定,狮城稳定,香港稳定,StableFallback,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Twitter_01.png
-
-# 脸书 / Threads
-脸书服务 = select,香港节点,狮城节点,美国节点,日本节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Facebook.png
-
-# 迪士尼
-迪士尼 = select,香港节点,日本节点,狮城节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Disney+.png
-
-# Netflix (v2.0 新增, 与 Disney+ 并列)
-Netflix = select,狮城节点,香港节点,日本节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
-
-# Line
-Line通讯 = select,日本节点,台湾节点,香港节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/LINE.png
-
-# B站 / GitHub (url-test 自动选优)
-哔哩哔哩 = url-test,DIRECT,香港节点,台湾节点,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili_3.png
-Github = url-test,自动选择,香港节点,狮城节点,日本节点,美国节点,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/GitHub.png
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 测速基础设施 (v2.0 重大改进, 借鉴 SR v2.6.2)
-# 设计:
-#   AutoSelect (url-test): 全订阅自动测速, 用于短交互业务
-#   稳定选择 (select): 用户手动聚合, 包含稳定地区组
-#   StableFallback (fallback): IG/Twitter 失败时降级链
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-# 主测速组 (用于 Web / AI / 短交互, interval=600 tolerance=200)
-自动选择 = url-test,HK_Filter,TW_Filter,JP_Filter,SG_Filter,US_Filter,KR_Filter,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
-
-# 稳定选择 (select 聚合, 长连接业务用户可手动切换稳定地区)
-稳定选择 = select,自动选择,狮城稳定,日本稳定,美国稳定,香港稳定,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Fast.png
-
-# StableFallback (fallback 类型, Loon 原生支持, 顺序选第一个可用)
-StableFallback = fallback,狮城稳定,日本稳定,美国稳定,香港稳定,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
-
-# ★ 2026-10-29 简化: 删除四个 YT-* 专用地区池(与普通地区池同一批节点同样过滤, 每节点被
-#   测两遍, 且 Loon 无 lazy, 120s HTTPS 整夜不停). 普通地区池探针改为 Google HTTPS 204,
-#   池内照样只挑能连 Google 的节点; YT-Auto 直接建在普通地区池上, 每轮只测 4 个当前节点,
-#   300s. 四个稳定池与 StableFallback 300s→900s(对齐小火箭的耗电修正). 下方为历史记录.
-# ---------- v2.3.0 YouTube 专用探测, 不改变普通 Google/AI 默认组 ----------
-# 地区内 url-test 120s / 300ms 防抖; 地区间 fallback 60s / 5000ms 阈值。
-# gstatic HTTPS 仅测 Google 探针的 TLS 可达性, 不代表视频带宽/账号可用。
-# fallback 选列表首个可用项, 高优先级恢复可能回切; 不迁移已建立连接。
-# 代价: 较 600s 增加探测开销; 不保证 60s 内恢复或无感零中断。
-YT-Auto = fallback,香港节点,狮城节点,日本节点,美国节点,url = https://www.gstatic.com/generate_204,interval = 300,max-timeout = 5000
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 地区节点池 (普通: 600s/200ms 用于短交互)
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-香港节点 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
-台湾节点 = url-test,TW_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
-美国节点 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
-日本节点 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
-韩国节点 = url-test,KR_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
-狮城节点 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
-其他节点 = url-test,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 600,tolerance = 200,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 稳定地区池 (fallback 300s, IG/Twitter/Telegram)
-# 不再因更低延迟主动选优; 首个可用节点恢复时仍可能回切, 不是粘性会话。
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-香港稳定 = fallback,HK_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
-日本稳定 = fallback,JP_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
-美国稳定 = fallback,US_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
-狮城稳定 = fallback,SG_Filter,url = https://cp.cloudflare.com/generate_204,interval = 900,max-timeout = 5000
+# ── 测速(仅以下 8 组) ──
+自动选择 = url-test,香港节点,台湾节点,日本节点,狮城节点,美国节点,韩国节点,其他节点,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
+香港节点 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+台湾节点 = url-test,TW_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+日本节点 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+狮城节点 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+美国节点 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+韩国节点 = url-test,KR_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
+其他节点 = url-test,OT_Filter,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 200,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
 
 
 # =====================================================================
@@ -690,31 +612,31 @@ https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Copilot/Cop
 https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/AI.list, policy=人工智能, tag=AI兜底@奶思, enabled=true
 
 # 国内社交/媒体 (靠前匹配)
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/WeChat/WeChat.list, policy=微信消息, tag=WeChat@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Weibo/Weibo.list, policy=微博服务, tag=Weibo@bm7, enabled=true
-https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/RedBook.list, policy=小红书, tag=小红书@奶思, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/WeChat/WeChat.list, policy=国内服务, tag=WeChat@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Weibo/Weibo.list, policy=国内服务, tag=Weibo@bm7, enabled=true
+https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/RedBook.list, policy=国内服务, tag=小红书@奶思, enabled=true
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/BiliBili/BiliBili.list, policy=哔哩哔哩, tag=BiliBili@bm7, enabled=true
-https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/Douyin.list, policy=大陆抖音, tag=DouYin@奶思, enabled=false
+https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/Douyin.list, policy=国内服务, tag=DouYin@奶思, enabled=false
 
 # 境外社交/媒体 (v2.0 改: IG/Twitter 走专属稳定组)
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Telegram/Telegram.list, policy=电报消息, tag=Telegram@bm7, enabled=true
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/TikTok/TikTok.list, policy=海外抖音, tag=TikTok@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Twitter/Twitter.list, policy=Twitter, tag=Twitter@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Facebook/Facebook.list, policy=脸书服务, tag=Facebook@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Instagram/Instagram.list, policy=Instagram, tag=Instagram@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Line/Line.list, policy=Line通讯, tag=Line@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Twitter/Twitter.list, policy=社交媒体, tag=Twitter@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Facebook/Facebook.list, policy=社交媒体, tag=Facebook@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Instagram/Instagram.list, policy=社交媒体, tag=Instagram@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Line/Line.list, policy=社交媒体, tag=Line@bm7, enabled=true
 
 # 流媒体 (v2.0 改: Spotify 走专属组而非硬绑狮城节点)
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/YouTube/YouTube.list, policy=油管视频, tag=YouTube@bm7, enabled=true
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/YouTubeMusic/YouTubeMusic.list, policy=油管视频, tag=YouTubeMusic@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Spotify/Spotify.list, policy=Spotify, tag=Spotify@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Disney/Disney.list, policy=迪士尼, tag=Disney@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Netflix/Netflix.list, policy=Netflix, tag=Netflix@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Spotify/Spotify.list, policy=流媒体, tag=Spotify@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Disney/Disney.list, policy=流媒体, tag=Disney@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Netflix/Netflix.list, policy=流媒体, tag=Netflix@bm7, enabled=true
 
 # 搜索/工具
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Google/Google.list, policy=谷歌服务, tag=Google@bm7, enabled=true
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/GoogleVoice/GoogleVoice.list, policy=美国节点, tag=GoogleVoice@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/GitHub/GitHub.list, policy=Github, tag=GitHub@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/GitHub/GitHub.list, policy=代理节点, tag=GitHub@bm7, enabled=true
 
 # 加密货币
 https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/OKX.list, policy=狮城节点, tag=OKX@奶思, enabled=true

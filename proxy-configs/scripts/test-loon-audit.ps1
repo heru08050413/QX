@@ -108,24 +108,20 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
             Assert ($member -eq 'DIRECT' -or $groups.ContainsKey($member) -or $member -in $filters) "Unresolved $name member: $member"
         }
     }
-    Assert ($groups['油管视频'][1] -eq 'YT-Auto') 'Wrong YouTube default'
+    # 2026-11-07 simplification: 21 groups, only 8 probe groups (no lazy in Loon).
+    $removed = @('YT-Auto','稳定选择','StableFallback','香港稳定','日本稳定','美国稳定','狮城稳定','大陆网址','微信消息','微博服务','小红书','大陆抖音','Instagram','Twitter','脸书服务','Line通讯','迪士尼','Netflix','Spotify','Github')
+    foreach ($name in $removed) { Assert (!$groups.ContainsKey($name)) "Removed group reintroduced: $name" }
+    $probing = @($groups.Keys | Where-Object { $groups[$_][0] -in @('url-test','fallback') })
+    Assert ($probing.Count -eq 8) "Expected 8 probe groups, got $($probing.Count)"
+    foreach ($name in $probing) { Assert ('interval = 900' -in $groups[$name]) "Probe group must use 900s: $name" }
+    Assert ($groups['油管视频'][1] -eq '美国节点') 'Wrong YouTube default'
     Assert ($groups['谷歌服务'][1] -eq '自动选择') 'Google default coupled to YouTube'
-    Assert (-not ($groups['谷歌服务'] -contains 'YT-Auto')) 'Google group must not offer the YouTube pool'
     Assert (-not ($groups['油管视频'] -contains '谷歌服务')) 'YouTube group must not offer the Google group'
     Assert ($groups['Gemini'][1] -eq '美国节点') 'Wrong Gemini default'
-    # 2026-10-29 simplification: dedicated YT-* pools removed; generic region pools probe Google
-    # over HTTPS and YT-Auto fails over across them (no lazy in Loon, so no duplicate probing).
-    Assert (($groups['YT-Auto'][0..4] -join ',') -eq 'fallback,香港节点,狮城节点,日本节点,美国节点') 'YT-Auto must fail over across generic region pools'
-    foreach ($item in @('url = https://www.gstatic.com/generate_204','interval = 300','max-timeout = 5000')) {
-        Assert ($item -in $groups['YT-Auto']) "Missing YT-Auto field: $item"
-    }
-    foreach ($name in $ytGroups.Keys) { Assert (!$groups.Contains($name)) "Dedicated YouTube pool reintroduced: $name" }
-    foreach ($pool in @('香港节点','狮城节点','日本节点','美国节点')) {
+    Assert ($groups['哔哩哔哩'][0] -eq 'select') 'Bilibili must not probe'
+    Assert ('其他节点' -in $groups['自动选择'] -and '其他节点' -in $groups['代理节点']) 'Local/unlabelled nodes must stay reachable'
+    foreach ($pool in @('香港节点','台湾节点','日本节点','狮城节点','美国节点','韩国节点')) {
         Assert ('url = https://www.gstatic.com/generate_204' -in $groups[$pool]) "Region pool must probe Google: $pool"
-    }
-    foreach ($name in $stableGroups.Keys) { Assert ('interval = 900' -in $groups[$name]) "Stable pool must probe every 900s: $name" }
-    foreach ($name in $stableGroups.Keys) {
-        Assert (($groups[$name] -join ',') -eq "fallback,$($stableGroups[$name]),url = https://cp.cloudflare.com/generate_204,interval = 300,max-timeout = 5000") "Invalid stable group: $name"
     }
     $filterLine = @($s['Remote Filter'] | Where-Object { $_ -like 'US_Filter = *' })
     Assert ($filterLine.Count -eq 1) 'Missing/duplicate US filter'
@@ -166,14 +162,14 @@ Check-Config $text
 $mutations = [ordered]@{
     httpdns = @("$httpdns, enabled=false", "$httpdns, enabled=true")
     probe = @('香港节点 = url-test,HK_Filter,url = https://www.gstatic.com', '香港节点 = url-test,HK_Filter,url = http://cp.cloudflare.com')
-    interval = @('generate_204,interval = 300,max-timeout = 5000', 'generate_204,interval = 30,max-timeout = 5000')
-    dedicatedPool = @('fallback,香港节点,狮城节点,日本节点,美国节点,url = https://www.gstatic.com', 'fallback,YT-香港,狮城节点,日本节点,美国节点,url = https://www.gstatic.com')
+    interval = @('HK_Filter,url = https://www.gstatic.com/generate_204,interval = 900', 'HK_Filter,url = https://www.gstatic.com/generate_204,interval = 300')
+    ytDefault = @('油管视频 = select,美国节点,', '油管视频 = select,谷歌服务,美国节点,')
     usFilter = @($usPattern, '(?i)(US|美)')
     worker = @('DOMAIN,init-stream.maasea.workers.dev,油管视频', 'DOMAIN,init-stream.maasea.workers.dev,DIRECT')
     gemini = @('DOMAIN,geller-pa.googleapis.com,Gemini', 'DOMAIN,geller-pa.googleapis.com,谷歌服务')
     weibo = @('DOMAIN,adimg.uve.weibo.com,REJECT', 'DOMAIN,adimg.uve.weibo.com,DIRECT')
     mitm = @('-*.12306.cn', '*.12306.cn')
-    stable = @('香港稳定 = fallback,', '香港稳定 = url-test,')
+    bili = @('哔哩哔哩 = select,DIRECT', '哔哩哔哩 = url-test,DIRECT')
     tls = @('skip-server-cert-verify = false','skip-server-cert-verify = true')
     wechat = @('DOMAIN,dns.weixin.qq.com,DIRECT','DOMAIN,dns.weixin.qq.com,REJECT')
 }
