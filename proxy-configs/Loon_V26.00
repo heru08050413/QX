@@ -308,7 +308,7 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 #   - 地区池用 Google HTTPS 204 探针: 池内节点连不上 Google 会自动换(同地区).
 #     代价: 整个地区连不上 Google 时需在业务组手动换地区.
 #   - 2026-11-07 二次简化: 国内服务/哔哩哔哩组取消, 微信/微博/小红书/抖音/B站规则直接 DIRECT
-#     (去广告由 rejectAd.list 排最前 + blockAds_safe/微博/微信小程序插件负责). 现 19 组.
+#     (去广告由 rejectAd.list 排最前 + blockAds/微博/微信小程序插件负责). 现 19 组.
 #   - 合并同类: IG/X/脸书/Line → 社交媒体;
 #     Netflix/迪士尼/Spotify → 流媒体; Github → 代理节点.
 #   - 全节点入组(安全基线 9): 本地与订阅节点经 Filter 进地区池, 无地区词的进其他节点,
@@ -703,7 +703,7 @@ https://raw.githubusercontent.com/zmqcherish/proxy-script/main/weibo.sgmodule, e
 https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule, policy=油管视频, enabled=true
 
 # 国内 App 广告拦截 (730+ App)
-https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.plugin, enabled=true
+https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/blockAds.plugin, enabled=true
 
 # 微信小程序去广告
 https://github.com/fmz200/wool_scripts/raw/main/Loon/plugin/WeChatMiniAds.plugin, enabled=true

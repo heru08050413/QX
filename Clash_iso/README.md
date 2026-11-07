@@ -89,10 +89,8 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 |---|---|---|
 | **MITM 安全排除**（必加） | 不解密银行/支付/政务/iCloud | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
 | Youtube (Music) Enhance | YouTube 去视频广告 + 画中画 + 后台播放 | `https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule` |
-| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告 | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module` |
+| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告 | `https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module` |
 | Spotify（可选） | 去广告、部分解锁（灰色功能） | `https://raw.githubusercontent.com/app2smile/rules/master/module/spotify.module` |
-
-> 「广告拦截&净化合集」请用上表的**本仓库镜像**,不要用 fmz200 原版:原版自带的 YouTube 规则会拦掉视频起播请求(initplayback)和 log_event,还重复挂一份 YouTube 脚本,与 Youtube (Music) Enhance 冲突,导致 YouTube 打不开。已加原版的请先删除原版。
 
 **为什么必须加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把约 60 个银行、支付、政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、财付通、医保局等）。排除模块用 `-域名` 写法把它们挡在解密之外，代价是这些银行 App 的开屏广告不再被去掉。
 ⚠️ `-域名` 排除是 Surge 的模块语法，Hako 是否同样支持**未经验证**（官网文档在本环境打不开）。验证方法：开着模块打开一个银行 App，在 Hako 的请求记录里看该银行域名是否标为已解密；如果被解密了，说明排除不生效，请关掉「广告拦截&净化合集」。

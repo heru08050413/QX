@@ -2588,7 +2588,7 @@ modules:
   #   静默死模块). 国内 App 开屏去广告由 blockAds (fmz200, 仍 200) 承担.
 
   # fmz200 blockAds(730+ 国内 App/小程序广告; 覆盖最广)
-  - url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/modules/blockAds_safe.module
+  - url: https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
     enabled: true
 
   # QingRex 小红书去广告(edith 接口改写; 比 Daily 更精确)
