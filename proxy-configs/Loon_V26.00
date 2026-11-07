@@ -301,13 +301,15 @@ iosapps.itunes.apple.com = iosapps.itunes.apple.com.download.ks-cdn.com
 # =====================================================================
 # [Proxy Group]
 # 2026-11-07 简化(用户要求: 简单明了、省电、稳定), 对齐小火箭结构:
-#   - 38 组 → 21 组; 测速组 15 → 8 (自动选择 + 7 个地区池), 间隔 600s → 900s.
+#   - 38 组 → 19 组; 测速组 15 → 8 (自动选择 + 7 个地区池), 间隔 600s → 900s.
 #   - 删除 YT-Auto、稳定选择、StableFallback 与四个稳定池; 哔哩哔哩/Github 不再测速.
 #   - 自动选择改为在 7 个地区池之间比较(只测各池当前节点), 不再把全部节点再测一遍.
 #     Loon 没有 lazy, 每个测速组都会整夜按间隔测速, 所以测速组越少越省电.
 #   - 地区池用 Google HTTPS 204 探针: 池内节点连不上 Google 会自动换(同地区).
 #     代价: 整个地区连不上 Google 时需在业务组手动换地区.
-#   - 合并同类: 微信/微博/小红书/抖音 → 国内服务; IG/X/脸书/Line → 社交媒体;
+#   - 2026-11-07 二次简化: 国内服务/哔哩哔哩组取消, 微信/微博/小红书/抖音/B站规则直接 DIRECT
+#     (去广告由 rejectAd.list 排最前 + blockAds_safe/微博/微信小程序插件负责). 现 19 组.
+#   - 合并同类: IG/X/脸书/Line → 社交媒体;
 #     Netflix/迪士尼/Spotify → 流媒体; Github → 代理节点.
 #   - 全节点入组(安全基线 9): 本地与订阅节点经 Filter 进地区池, 无地区词的进其他节点,
 #     其他节点同时被 自动选择 与 代理节点 引用.
@@ -328,9 +330,6 @@ Gemini = select,美国节点,台湾节点,日本节点,狮城节点,自动选择
 海外抖音 = select,日本节点,台湾节点,狮城节点,韩国节点,美国节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/TikTok_1.png
 流媒体 = select,狮城节点,香港节点,日本节点,美国节点,台湾节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
 苹果服务 = select,DIRECT,美国节点,香港节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_02.png
-哔哩哔哩 = select,DIRECT,香港节点,台湾节点,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili_3.png
-# 微信/微博/小红书/抖音等国内 App: 默认直连, 人在境外时可切代理
-国内服务 = select,DIRECT,香港节点,台湾节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN_02.png
 
 # ── 测速(仅以下 8 组) ──
 自动选择 = url-test,香港节点,台湾节点,日本节点,狮城节点,美国节点,韩国节点,其他节点,url = http://cp.cloudflare.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
@@ -612,11 +611,11 @@ https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Copilot/Cop
 https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/AI.list, policy=人工智能, tag=AI兜底@奶思, enabled=true
 
 # 国内社交/媒体 (靠前匹配)
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/WeChat/WeChat.list, policy=国内服务, tag=WeChat@bm7, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Weibo/Weibo.list, policy=国内服务, tag=Weibo@bm7, enabled=true
-https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/RedBook.list, policy=国内服务, tag=小红书@奶思, enabled=true
-https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/BiliBili/BiliBili.list, policy=哔哩哔哩, tag=BiliBili@bm7, enabled=true
-https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/Douyin.list, policy=国内服务, tag=DouYin@奶思, enabled=false
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/WeChat/WeChat.list, policy=DIRECT, tag=WeChat@bm7, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Weibo/Weibo.list, policy=DIRECT, tag=Weibo@bm7, enabled=true
+https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/RedBook.list, policy=DIRECT, tag=小红书@奶思, enabled=true
+https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/BiliBili/BiliBili.list, policy=DIRECT, tag=BiliBili@bm7, enabled=true
+https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/Douyin.list, policy=DIRECT, tag=DouYin@奶思, enabled=false
 
 # 境外社交/媒体 (v2.0 改: IG/Twitter 走专属稳定组)
 https://github.com/blackmatrix7/ios_rule_script/raw/master/rule/Loon/Telegram/Telegram.list, policy=电报消息, tag=Telegram@bm7, enabled=true

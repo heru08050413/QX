@@ -109,7 +109,7 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
         }
     }
     # 2026-11-07 simplification: 21 groups, only 8 probe groups (no lazy in Loon).
-    $removed = @('YT-Auto','稳定选择','StableFallback','香港稳定','日本稳定','美国稳定','狮城稳定','大陆网址','微信消息','微博服务','小红书','大陆抖音','Instagram','Twitter','脸书服务','Line通讯','迪士尼','Netflix','Spotify','Github')
+    $removed = @('YT-Auto','稳定选择','StableFallback','香港稳定','日本稳定','美国稳定','狮城稳定','大陆网址','微信消息','微博服务','小红书','大陆抖音','Instagram','Twitter','脸书服务','Line通讯','迪士尼','Netflix','Spotify','Github','国内服务','哔哩哔哩')
     foreach ($name in $removed) { Assert (!$groups.ContainsKey($name)) "Removed group reintroduced: $name" }
     $probing = @($groups.Keys | Where-Object { $groups[$_][0] -in @('url-test','fallback') })
     Assert ($probing.Count -eq 8) "Expected 8 probe groups, got $($probing.Count)"
@@ -118,7 +118,7 @@ function Check-Config([string]$Source, [bool]$CheckDelta = $true) {
     Assert ($groups['谷歌服务'][1] -eq '自动选择') 'Google default coupled to YouTube'
     Assert (-not ($groups['油管视频'] -contains '谷歌服务')) 'YouTube group must not offer the Google group'
     Assert ($groups['Gemini'][1] -eq '美国节点') 'Wrong Gemini default'
-    Assert ($groups['哔哩哔哩'][0] -eq 'select') 'Bilibili must not probe'
+    Assert (($s['Remote Rule'] | Where-Object { $_ -match 'BiliBili.list' }) -match 'policy=DIRECT') 'Domestic apps must go DIRECT'
     Assert ('其他节点' -in $groups['自动选择'] -and '其他节点' -in $groups['代理节点']) 'Local/unlabelled nodes must stay reachable'
     foreach ($pool in @('香港节点','台湾节点','日本节点','狮城节点','美国节点','韩国节点')) {
         Assert ('url = https://www.gstatic.com/generate_204' -in $groups[$pool]) "Region pool must probe Google: $pool"
@@ -169,7 +169,7 @@ $mutations = [ordered]@{
     gemini = @('DOMAIN,geller-pa.googleapis.com,Gemini', 'DOMAIN,geller-pa.googleapis.com,谷歌服务')
     weibo = @('DOMAIN,adimg.uve.weibo.com,REJECT', 'DOMAIN,adimg.uve.weibo.com,DIRECT')
     mitm = @('-*.12306.cn', '*.12306.cn')
-    bili = @('哔哩哔哩 = select,DIRECT', '哔哩哔哩 = url-test,DIRECT')
+    bili = @('BiliBili.list, policy=DIRECT', 'BiliBili.list, policy=代理节点')
     tls = @('skip-server-cert-verify = false','skip-server-cert-verify = true')
     wechat = @('DOMAIN,dns.weixin.qq.com,DIRECT','DOMAIN,dns.weixin.qq.com,REJECT')
 }
