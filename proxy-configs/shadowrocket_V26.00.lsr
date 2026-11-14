@@ -1626,11 +1626,15 @@ DOMAIN-SUFFIX,x.ai,AI
 DOMAIN-SUFFIX,grok.com,AI
 DOMAIN-SUFFIX,cohere.com,AI
 DOMAIN-SUFFIX,copilot.microsoft.com,AI
-# v2.6.24: AI Agent App 一方服务域走 AI 组（默认美国节点）。
+# v2.6.24 / v2.6.26: AI Agent App 一方服务域走 AI 组（默认美国节点）。
 DOMAIN-SUFFIX,cueai.app,AI
+DOMAIN-SUFFIX,manus.im,AI
+DOMAIN-SUFFIX,manus.ai,AI
 DOMAIN-SUFFIX,wabi.ai,AI
 DOMAIN-SUFFIX,hark.com,AI
+DOMAIN-SUFFIX,gethark.ai,AI
 DOMAIN-SUFFIX,today.ai,AI
+DOMAIN-SUFFIX,oneintent.today,AI
 # v2.6.16:日志中 Copilot/Cursor API 落入 FINAL=DIRECT，补齐官方服务域.
 DOMAIN-SUFFIX,githubcopilot.com,AI
 DOMAIN-SUFFIX,cursor.sh,AI
@@ -1771,6 +1775,15 @@ DOMAIN-SUFFIX,redd.it,Proxy
 DOMAIN-SUFFIX,redditmedia.com,Proxy
 DOMAIN-SUFFIX,redditstatic.com,Proxy
 
+# Discord (v2.6.26: 含语音网关、附件 CDN 与短链，防止落入 FINAL=DIRECT)
+DOMAIN-SUFFIX,discord.com,Proxy
+DOMAIN-SUFFIX,discord.gg,Proxy
+DOMAIN-SUFFIX,discordapp.com,Proxy
+DOMAIN-SUFFIX,discordapp.net,Proxy
+DOMAIN-SUFFIX,discord.media,Proxy
+DOMAIN-SUFFIX,discordcdn.com,Proxy
+DOMAIN-SUFFIX,dis.gd,Proxy
+
 # ---------------------------------------------------------------------
 # 8. LinkedIn (v2.6.25 修正: 改走 Proxy 策略组, 允许 UI 手动切换)
 #
@@ -1795,6 +1808,9 @@ DOMAIN-SUFFIX,gitlab.com,Proxy
 DOMAIN-SUFFIX,bitbucket.org,Proxy
 DOMAIN-SUFFIX,notion.so,Proxy
 DOMAIN-SUFFIX,notion.site,Proxy
+DOMAIN-SUFFIX,notion.com,Proxy
+DOMAIN-SUFFIX,notion-static.com,Proxy
+DOMAIN-SUFFIX,makenotion.com,Proxy
 DOMAIN-SUFFIX,figma.com,Proxy
 DOMAIN-SUFFIX,stackoverflow.com,Proxy
 DOMAIN-SUFFIX,stackexchange.com,Proxy
@@ -2304,6 +2320,10 @@ reddit.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.redd.it = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.redditmedia.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.redditstatic.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+discord.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.discord.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.discordapp.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
+*.discord.gg = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 linkedin.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.linkedin.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query
 *.licdn.com = server:https://1.1.1.1/dns-query,https://1.0.0.1/dns-query

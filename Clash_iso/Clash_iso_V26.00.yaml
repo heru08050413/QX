@@ -1,6 +1,6 @@
 # =====================================================================
 # Clash_iso V26.00 · Clash by Hako(clash.md)iPhone 完整配置
-# 2026-11-01
+# 更新: 2026-11-14 (Tailscale 家庭组网 / DNS 防泄漏 / 安全与去广告加固)
 #
 # 用法(详见同目录 README.md):
 #   推荐:作为「规则方案」使用。Hako 配置中心 → 创建配置(Create Profile):
@@ -43,10 +43,37 @@ dns:
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter-mode: blacklist
   fake-ip-filter:
-    - "*.lan"
+    # 内网 / Tailscale MagicDNS 与控制面 / 家庭域名
+    - "+.lan"
     - "+.local"
     - "+.localhost"
+    - "+.home.arpa"
     - "+.ts.net"
+    - "+.tailscale.com"
+    - "+.tailscale.io"
+    # 常见家用路由器与 NAS 管理域(避免被 Fake-IP 劫持)
+    - "+.miwifi.com"
+    - "+.tplogin.cn"
+    - "+.tplinkwifi.net"
+    - "+.tplinklogin.net"
+    - "+.routerlogin.net"
+    - "+.orbilogin.com"
+    - "+.melogin.cn"
+    - "+.falogin.cn"
+    - "router.asus.com"
+    - "router.synology.com"
+    - "+.synology.me"
+    - "+.quickconnect.to"
+    - "+.quickconnect.cn"
+    # 运营商本机号码一键登录(SDK 校验解析 IP,拿到 Fake-IP 会失败)
+    - "+.cmpassport.com"
+    - "id6.me"
+    - "open.e.189.cn"
+    - "mdn.open.wo.cn"
+    - "opencloud.wostore.cn"
+    - "auth.wosms.cn"
+    - "+.10099.com.cn"
+    # Apple 推送 / NTP / 连通性检测 / STUN
     - "+.push.apple.com"
     - "time.*.com"
     - "time.*.apple.com"
@@ -65,6 +92,22 @@ dns:
   proxy-server-nameserver:
     - https://doh.pub/dns-query
     - https://dns.alidns.com/dns-query
+  nameserver-policy:
+    # Tailscale MagicDNS(100.100.100.100)与家里内网/路由器域名走系统或 Tailscale DNS,不送公共 DoH
+    "+.ts.net": "100.100.100.100"
+    "+.lan": system
+    "+.local": system
+    "+.home.arpa": system
+    "+.miwifi.com": system
+    "+.tplogin.cn": system
+    "+.tplinkwifi.net": system
+    "+.tplinklogin.net": system
+    "+.routerlogin.net": system
+    "+.orbilogin.com": system
+    "+.melogin.cn": system
+    "+.falogin.cn": system
+    "router.asus.com": system
+    "router.synology.com": system
 
 # ---------------------------------------------------------------------
 # 自建节点:去掉 # 号并填写。名字里带地区词(如 美国 / US / 🇺🇸)会进对应地区池,
@@ -168,7 +211,7 @@ proxy-groups:
 
   - name: 微软服务
     type: select
-    proxies: [DIRECT, 节点选择]
+    proxies: [DIRECT, 节点选择, 美国节点, 香港节点, 自动选择]
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png
 
   # REJECT = 拦截;PASS = 暂停拦截(继续匹配后面的规则,不是改成直连)
@@ -187,11 +230,11 @@ proxy-groups:
     type: url-test
     include-all: true
     exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
-    url: https://cp.cloudflare.com/generate_204
+    url: https://www.gstatic.com/generate_204
     expected-status: 204
     interval: 900
-    tolerance: 150
-    timeout: 3000
+    tolerance: 200
+    timeout: 5000
     lazy: true
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Auto.png
 
@@ -204,7 +247,7 @@ proxy-groups:
   - name: 美国节点
     type: url-test
     include-all: true
-    filter: "(?i)🇺🇸|美国|美國|洛杉矶|洛杉磯|西雅图|芝加哥|纽约|凤凰城|硅谷|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?:$|[^a-z])"
+    filter: "(?i)🇺🇸|美国|美國|沪美|美西|美东|美東|美中|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?:$|[^a-z])"
     exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
     url: https://www.gstatic.com/generate_204
     expected-status: 204
@@ -243,7 +286,7 @@ proxy-groups:
   - name: 日本节点
     type: url-test
     include-all: true
-    filter: "(?i)🇯🇵|日本|东京|東京|大阪|(?:^|[^a-z])(?:jp|japan|tokyo|osaka)(?:$|[^a-z])"
+    filter: "(?i)🇯🇵|日本|京日|苏日|沪日|上日|川日|深日|广日|东京|東京|大阪|(?:^|[^a-z])(?:jp|japan|tokyo|osaka)(?:$|[^a-z])"
     exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
     url: https://www.gstatic.com/generate_204
     expected-status: 204
@@ -256,7 +299,7 @@ proxy-groups:
   - name: 新加坡节点
     type: url-test
     include-all: true
-    filter: "(?i)🇸🇬|新加坡|狮城|獅城|(?:^|[^a-z])(?:sg|sgp|singapore)(?:$|[^a-z])"
+    filter: "(?i)🇸🇬|新加坡|沪新|京新|深新|杭新|广新|狮城|獅城|(?:^|[^a-z])(?:sg|sgp|singapore)(?:$|[^a-z])"
     exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset"
     url: https://www.gstatic.com/generate_204
     expected-status: 204
@@ -270,12 +313,12 @@ proxy-groups:
   - name: 其他节点
     type: url-test
     include-all: true
-    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset|🇺🇸|🇭🇰|🇹🇼|🇯🇵|🇸🇬|美国|美國|洛杉矶|洛杉磯|西雅图|芝加哥|纽约|凤凰城|硅谷|香港|深港|沪港|京港|台湾|台灣|台北|台中|新北|彰化|日本|东京|東京|大阪|新加坡|狮城|獅城|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley|hk|hkg|hong[ _-]?kong|tw|twn|taiwan|taipei|jp|japan|tokyo|osaka|sg|sgp|singapore)(?:$|[^a-z])"
-    url: https://cp.cloudflare.com/generate_204
+    exclude-filter: "(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset|🇺🇸|🇭🇰|🇹🇼|🇯🇵|🇸🇬|美国|美國|沪美|美西|美东|美東|美中|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|香港|深港|沪港|京港|台湾|台灣|台北|台中|新北|彰化|日本|京日|苏日|沪日|上日|川日|深日|广日|东京|東京|大阪|新加坡|沪新|京新|深新|杭新|广新|狮城|獅城|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley|hk|hkg|hong[ _-]?kong|tw|twn|taiwan|taipei|jp|japan|tokyo|osaka|sg|sgp|singapore)(?:$|[^a-z])"
+    url: https://www.gstatic.com/generate_204
     expected-status: 204
     interval: 900
-    tolerance: 150
-    timeout: 3000
+    tolerance: 200
+    timeout: 5000
     lazy: true
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
 
@@ -464,11 +507,14 @@ rule-providers:
 # 分流规则(从上往下,先命中先生效)
 # ---------------------------------------------------------------------
 rules:
-  # 内网 / Tailscale / 本地
+  # 内网 / Tailscale 家庭设备 / 本地
   - DOMAIN-SUFFIX,lan,DIRECT
   - DOMAIN-SUFFIX,local,DIRECT
   - DOMAIN-SUFFIX,localhost,DIRECT
+  - DOMAIN-SUFFIX,home.arpa,DIRECT
   - DOMAIN-SUFFIX,ts.net,DIRECT
+  - DOMAIN-SUFFIX,tailscale.com,DIRECT
+  - DOMAIN-SUFFIX,tailscale.io,DIRECT
   - IP-CIDR,0.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
@@ -477,27 +523,55 @@ rules:
   - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
   - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
   - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  # 若家里开启了 Tailscale Subnet Router 且子网不在 192.168/10/172.16 内,可在此处追加:
+  # - IP-CIDR,192.168.50.0/24,DIRECT,no-resolve
   - IP-CIDR6,::1/128,DIRECT,no-resolve
   - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve
   - IP-CIDR6,fe80::/10,DIRECT,no-resolve
 
   # 连通性保护:放在广告拦截前面,避免误拦后转圈
-  #   微信 / 微博 / 知乎 / Apple 推送;三大运营商本机号码一键登录
+  #   微信 / 腾讯 TEG / 微博(含开屏兼容) / 知乎 / Apple 推送 / 支付宝 / 个推 / 三大运营商本机号一键登录
   - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
   - DOMAIN-SUFFIX,weixin.com,DIRECT
   - DOMAIN-SUFFIX,wechat.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com.cn,DIRECT
+  - DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+  - DOMAIN,dns.weixin.qq.com,DIRECT
+  - DOMAIN-SUFFIX,wx.qq.com,DIRECT
+  - DOMAIN-SUFFIX,weixinbridge.com,DIRECT
   - DOMAIN-SUFFIX,qpic.cn,DIRECT
   - DOMAIN-SUFFIX,qlogo.cn,DIRECT
-  - DOMAIN-SUFFIX,api.weibo.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.com.cn,DIRECT
   - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,sinaimg.cn,DIRECT
+  - DOMAIN-SUFFIX,weibocdn.com,DIRECT
+  # 放行微博 SDK 启动接口域名级直连,避免广告规则集合整域阻断导致微博启动转圈
+  - DOMAIN,sdkapp.uve.weibo.com,DIRECT
+  - DOMAIN,wbapp.uve.weibo.com,DIRECT
+  - DOMAIN,sdkapp.mob.uve.weibo.com,DIRECT
+  - DOMAIN,wbapp.mob.uve.weibo.com,DIRECT
   - DOMAIN-SUFFIX,zhihu.com,DIRECT
   - DOMAIN-SUFFIX,zhimg.com,DIRECT
   - DOMAIN-SUFFIX,push.apple.com,DIRECT
+  - DOMAIN,amdc.alipay.com,DIRECT
+  - DOMAIN,c-hzgt2.getui.com,DIRECT
   - DOMAIN-SUFFIX,cmpassport.com,DIRECT
   - DOMAIN-SUFFIX,id6.me,DIRECT
+  - DOMAIN,open.e.189.cn,DIRECT
+  - DOMAIN,mdn.open.wo.cn,DIRECT
   - DOMAIN,opencloud.wostore.cn,DIRECT
+  - DOMAIN,auth.wosms.cn,DIRECT
+  - DOMAIN-SUFFIX,10099.com.cn,DIRECT
   # ChatGPT 的监控上报域名,被广告规则拦掉会导致 ChatGPT 报错
   - DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI
+
+  # 高频遥测熔断(REJECT-DROP 静默丢弃,防止 SDK 收到 RST 后毫秒级死循环重连耗电)
+  - DOMAIN,umc.danuoyi.alicdn.com,REJECT-DROP
+  - DOMAIN,Aisou.ialicdn.com,REJECT-DROP
+  - DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP
+  - DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP
 
   # 去广告(域名级)
   - RULE-SET,广告,广告拦截
@@ -508,6 +582,7 @@ rules:
   - AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   - AND,((DOMAIN-SUFFIX,youtube.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   - AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,youtubei-att.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   # 2026-11-07: 缩略图/头像也拒 QUIC. 截图实证 i.ytimg.com 的 QUIC 经节点 0 KB 失败后才回落 HTTPS, 拖慢首页.
   - AND,((DOMAIN-SUFFIX,ytimg.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
   - AND,((DOMAIN-SUFFIX,ggpht.com),(NETWORK,UDP),(DST-PORT,443)),REJECT
@@ -517,13 +592,40 @@ rules:
   - RULE-SET,Gemini,AI
   - RULE-SET,Claude,AI
   - RULE-SET,AI海外,AI
+  # Grok / Muse(Meta AI) / Hark / Wabi / Cue / Today 等 AI Agent 显式归入 AI 组
+  # (实测 today.ai 被上游 cn.mrs 误收录会导致直连断联; hark/wabi/cueai 未被 AI海外 收录)
+  - DOMAIN-SUFFIX,x.ai,AI
+  - DOMAIN-SUFFIX,grok.com,AI
+  - DOMAIN-SUFFIX,muse.ai,AI
+  - DOMAIN-SUFFIX,meta.ai,AI
+  - DOMAIN-SUFFIX,meta.com,AI
+  - DOMAIN-SUFFIX,metaaivm.com,AI
+  - DOMAIN-SUFFIX,hark.com,AI
+  - DOMAIN-SUFFIX,gethark.ai,AI
+  - DOMAIN-SUFFIX,wabi.ai,AI
+  - DOMAIN-SUFFIX,cueai.app,AI
+  - DOMAIN-SUFFIX,manus.im,AI
+  - DOMAIN-SUFFIX,manus.ai,AI
+  - DOMAIN-SUFFIX,today.ai,AI
+  - DOMAIN-SUFFIX,oneintent.today,AI
+
+  # Google 共享登录认证 / FCM 推送隔离(置于 YouTube 前面,避免被 YouTube 规则捕获)
   - DOMAIN,accounts.google.com,谷歌服务
+  - DOMAIN,oauth2.googleapis.com,谷歌服务
+  - DOMAIN,securetoken.googleapis.com,谷歌服务
+  - DOMAIN,identitytoolkit.googleapis.com,谷歌服务
+  - DOMAIN,mtalk.google.com,谷歌服务
 
   # YouTube(放在 Google 前面)
   - RULE-SET,YouTube,YouTube
   - DOMAIN-SUFFIX,googlevideo.com,YouTube
   - DOMAIN-SUFFIX,ytimg.com,YouTube
+  - DOMAIN-SUFFIX,ggpht.com,YouTube
+  - DOMAIN,yt3.googleusercontent.com,YouTube
   - DOMAIN,youtubei.googleapis.com,YouTube
+  - DOMAIN,youtubei-att.googleapis.com,YouTube
+  # Maasea YouTube 去广告模块首次打开视频流所需的配置下发域名(2026-11-04)
+  - DOMAIN,init-stream.maasea.workers.dev,YouTube
 
   - RULE-SET,Google,谷歌服务
   - RULE-SET,Telegram,Telegram
@@ -531,10 +633,24 @@ rules:
   - RULE-SET,Facebook,社交媒体
   - RULE-SET,Instagram,社交媒体
   - RULE-SET,TikTok,社交媒体
+  # Discord(含语音网关、附件 CDN 与短链,走默认美国节点的社交媒体组)
+  - DOMAIN-SUFFIX,discord.com,社交媒体
+  - DOMAIN-SUFFIX,discord.gg,社交媒体
+  - DOMAIN-SUFFIX,discordapp.com,社交媒体
+  - DOMAIN-SUFFIX,discordapp.net,社交媒体
+  - DOMAIN-SUFFIX,discord.media,社交媒体
+  - DOMAIN-SUFFIX,discordcdn.com,社交媒体
+  - DOMAIN-SUFFIX,dis.gd,社交媒体
   - RULE-SET,Netflix,流媒体
   - RULE-SET,Spotify,流媒体
   # GitHub 放在微软前面(微软规则包含 GitHub)
   - RULE-SET,GitHub,节点选择
+  # Notion(含 notion.com 新主域与静态资源域)
+  - DOMAIN-SUFFIX,notion.so,节点选择
+  - DOMAIN-SUFFIX,notion.site,节点选择
+  - DOMAIN-SUFFIX,notion.com,节点选择
+  - DOMAIN-SUFFIX,notion-static.com,节点选择
+  - DOMAIN-SUFFIX,makenotion.com,节点选择
 
   # Apple 播客:目录接口国内直连没问题,但节目音频放在海外托管平台,需要代理
   - DOMAIN-SUFFIX,wasabisys.com,节点选择
@@ -566,5 +682,5 @@ rules:
   - RULE-SET,国内,DIRECT
   - RULE-SET,GoogleIP,谷歌服务,no-resolve
   - RULE-SET,TelegramIP,Telegram,no-resolve
-  - RULE-SET,国内IP,DIRECT
+  - RULE-SET,国内IP,DIRECT,no-resolve
   - MATCH,漏网之鱼

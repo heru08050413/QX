@@ -1,6 +1,6 @@
 # Clash by Hako · iPhone 配置生成器
 
-V26.00 / revision 1 · 2026-09-20。目标客户端：用户提供的 iOS **1.0.9**。
+V26.00 / revision 2 · 2026-11-14。目标客户端：用户提供的 iOS **1.0.9**。
 
 这是一个在手机内运行的 `main(config)` 配置生成脚本，采用 V3 式“保留机场 DNS/TUN、重建分流”的方案；不是机场订阅，也不是可直接导入为 Profile 的 YAML。机场节点、密码和订阅链接不进入本仓库。其他客户端文件不变。
 
@@ -32,30 +32,30 @@ V26.00 / revision 1 · 2026-09-20。目标客户端：用户提供的 iOS **1.0.
 
 | 入口 | 默认行为 |
 | --- | --- |
-| `QXH-代理` | 全节点自动测速，300 秒、150 ms 切换容差；可手动固定 |
+| `QXH-代理` | 全可用节点（自动过滤信息条）自动测速，300 秒、150 ms 切换容差；可手动固定 |
 | `QXH-YouTube` | JP → SG → TW → HK → US → OTHER 的地区故障转移；每个存在的地区先按 Google 探针选点 |
 | `QXH-AI` | 美国 → 日本 → 新加坡 → 台湾节点的顺序故障转移，避免按最快延迟频繁轮换出口 |
-| `QXH-Google` | 默认通用代理，不被视频策略组牵动；Google 账户登录单独跟随 AI 出口 |
+| `QXH-Google` | 默认通用代理，与 YouTube / AI 组完全隔离（纯港节点机场不阻断 Google 登录）；Google 账户认证与 FCM 归此组 |
 | `QXH-Telegram` | 通用代理；域名和 Telegram IP 均有分流 |
 | `QXH-广告` | 默认 REJECT；临时选 PASS 后继续匹配后面的规则，不会把全部广告域名改为直连 |
-| 国内 / 内网 | 私有网段、必要国内服务直连；CN 域名 + CN IP 兜底 |
+| 国内 / 内网 / Tailscale | 私有网段、Tailscale（`ts.net` / `tailscale.com` / `tailscale.io` / `fd7a:115c:a1e0::/48`）、必要国内服务与运营商一键登录直连；CN 域名 + CN IP 兜底 |
 | 未分类流量 | 代理，不在全部节点坏掉时偷偷直连 |
 
 YouTube 地区池 120 秒、外层故障转移 60 秒，Google HTTPS 204 探针；不是“60 秒内一定修好”，实际检查受懒检查、系统调度和节点状态影响。150 ms 容差用于减少小幅延迟波动引起的切换。探针仅代表基础可达，不验证吞吐、视频 CDN、AI 地区资格或账户授权。
 
-仅对 YouTube/Googlevideo/YouTube API 的 **应用侧 UDP 443** 拒绝，促使应用使用 TCP。不封所有 UDP，不禁微信语音，不改 Hysteria2/TUIC 节点的底层 QUIC 传输。
+仅对 `googlevideo.com`、`youtube.com`、`ytimg.com`、`ggpht.com`、`youtubei.googleapis.com`、`youtubei-att.googleapis.com` 的 **应用侧 UDP 443** 拒绝，促使应用使用 TCP。不封所有 UDP，不禁微信语音，不改 Hysteria2/TUIC 节点的底层 QUIC 传输。
 
-地区来自节点名称，不能证明真实出口国家。无 US/JP/SG/TW 候选时，AI 默认 REJECT，需在 `QXH-手动` 选已验证可用的节点，再把 `QXH-AI` 切到该手动组；Google 账户登录也受此选择影响。`QXH-手动` 是共享手动入口，多个服务选择它时会跟随同一个节点。
+地区来自节点名称，不能证明真实出口国家；“剩余流量/到期/官网”等信息条自动从测速池排除（仅保留在 `QXH-手动`）。无 US/JP/SG/TW 候选时，AI 默认 REJECT，需在 `QXH-手动` 选已验证可用的节点，再把 `QXH-AI` 切到该手动组（不会影响 Google 账户登录）。`QXH-手动` 是共享手动入口，多个服务选择它时会跟随同一个节点。
 
 **自动切换不会迁移已经建立的连接。**坏节点、Wi-Fi/蜂窝切换、服务端限制仍可能造成一次重连或缓冲。全机场不可用时，脚本无法恢复网络。聊天长连接和视频的真实表现必须在手机上验收。
 
 ## 去广告：覆盖与边界
 
-使用 [217heidai 的合并去重 MRS 广告规则](https://github.com/217heidai/adblockfilters)，其余服务与国内分流来自 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)。只使用 Raw 地址，不依赖第三方 CDN/转换站；采用 MRS，避免叠加几份巨型文本名单。
+使用 [217heidai 的合并去重 MRS 广告规则](https://github.com/217heidai/adblockfilters)，其余服务与国内分流来自 [MetaCubeX/meta-rules-dat](https://github.com/MetaCubeX/meta-rules-dat)。只使用 Raw 地址，不依赖第三方 CDN/转换站；采用 MRS，避免叠加几份巨型文本名单；高频遥测域名（如 `umc.danuoyi.alicdn.com`、`Aisou.ialicdn.com`、`xz/xy.fbcdn.net`）采用 `REJECT-DROP` 静默丢包防死循环重连。
 
 这是**独立广告域名拦截**，不是 HTTP 响应体改写。不会自动安装证书、开启 MITM、添加第三方视频 Worker，也不把 `googlevideo.com` 整站拒绝。**不能保证 YouTube 内嵌广告、信息流原生广告全部消失，不提供 PiP 或上传按钮隐藏。**也不声称 Hako 所有其他功能均不支持这些能力；本交付只覆盖已核对的配置生成与路由接口。
 
-为避免重现微信/微博/知乎转圈，微信关键域名、微博主站/API、知乎及图片域、Apple 推送先直连。这意味着这些保护范围内的广告域名也会被放行，是明确的连通性优先取舍，不是“去广告 100%”的承诺。
+为避免重现微信/微博/知乎/运营商一键登录转圈，微信（含 TEG、`wx.qq.com`、`qq.com.cn`）、微博主域与图床/SDK 启动域、知乎及图片域、支付宝/个推探测、Apple 推送、三大运营商一键登录域先直连；ChatGPT 监控域 `browser-intake-datadoghq.com` 走 `QXH-AI`。这意味着这些保护范围内的广告域名也会被放行，是明确的连通性优先取舍，不是“去广告 100%”的承诺。
 
 误拦截排查：临时将 `QXH-广告` 改为 PASS，再彻底退出并重开故障 App；若恢复，请提供**被拦域名 + 命中规则 + 时间**，不要提供订阅 token。不要直接把整个配置切成全局 DIRECT。确认后恢复 REJECT。
 
@@ -68,9 +68,9 @@ YouTube 地区池 120 秒、外层故障转移 60 秒，Google HTTPS 204 探针�
 
 ## 已验证 / 待手机验收
 
-已完成 JavaScript 语法、28 项离线回归、10 份远程 MRS 的标识校验和原生完整解码、10 个实际规则数据路由夹具、2 个 HTTPS 204 探针，以及 mihomo 1.19.31 的 4 类模拟配置 `-t` 语法检查。详见 [审查记录](reviews/clash-hako-2026-09-20.md)。
+已完成 JavaScript 语法检查、32 项离线回归、10 份远程 MRS 的标识校验和原生 Zstd 完整解码及 2 个 HTTPS 204 探针（详见 [test-clash-hako.cjs](scripts/test-clash-hako.cjs)；历史 revision 1 曾进行 10 个路由夹具与 mihomo 1.19.31 `-t` 检查，见 [审查记录](reviews/clash-hako-2026-09-20.md)，revision 2 尚未重跑 `mihomo -t`）。
 
-**不是 Hako 1.0.9 真机认证。**官方客户端源码没有可明确对应你 iOS 1.0.9 二进制的公开标签；本机不能运行 Apple JavaScriptCore/Network Extension。不能把 Windows mihomo 检查说成手机导入实测。
+**不是 Hako 1.0.9 真机认证。**官方客户端源码没有可明确对应你 iOS 1.0.9 二进制的公开标签；本机不能运行 Apple JavaScriptCore/Network Extension，也未在本环境运行新版 `mihomo -t`。不能把离线检查说成手机导入实测。
 
 请依次验收：
 

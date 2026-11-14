@@ -1,5 +1,5 @@
 /*
- * QX / Clash by Hako — V26.00 revision 1, 2026-09-20.
+ * QX / Clash by Hako — V26.00 revision 2, 2026-11-14.
  * Import as an Override Script, NOT as an airport subscription or YAML profile.
  * main(config) consumes an airport's full Clash/mihomo profile with proxies.
  * Keeps DNS/TUN and credentials local. No fetch, telemetry, MITM or body rewrite.
@@ -43,6 +43,9 @@ function main(config) {
   Object.keys(names).forEach(checkChain);
 
   var all = out.proxies.map(function (p) { return p.name; });
+  var junk = /剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|expire|traffic|reset/i;
+  var poolNodes = all.filter(function (n) { return !junk.test(n); });
+  if (!poolNodes.length) poolNodes = all;
   var G = "QXH-代理", MAN = "QXH-手动", AUTO = "QXH-自动";
   var YT = "QXH-YouTube", YTF = "QXH-YT故障转移", AI = "QXH-AI";
   var GOOGLE = "QXH-Google", TG = "QXH-Telegram", ADS = "QXH-广告";
@@ -58,16 +61,16 @@ function main(config) {
   }
   // Boundaries accept US01 / [US] / US-HY2, but not RUS / AUS / BUSINESS.
   var regions = [
-    ["JP", /日本|东京|東京|大阪|🇯🇵|(?:^|[^a-z])(?:jp|japan)(?=$|[^a-z])/i],
-    ["SG", /新加坡|狮城|獅城|🇸🇬|(?:^|[^a-z])(?:sg|singapore)(?=$|[^a-z])/i],
-    ["TW", /台湾|台灣|台北|🇹🇼|(?:^|[^a-z])(?:tw|taiwan)(?=$|[^a-z])/i],
-    ["HK", /香港|🇭🇰|(?:^|[^a-z])(?:hk|hong[ _-]?kong)(?=$|[^a-z])/i],
-    ["US", /美国|美國|洛杉矶|洛杉磯|🇺🇸|(?:^|[^a-z])(?:us|usa|united[ _-]?states)(?=$|[^a-z])/i]
+    ["JP", /日本|京日|苏日|沪日|上日|川日|深日|广日|东京|東京|大阪|🇯🇵|(?:^|[^a-z])(?:jp|japan|tokyo|osaka)(?=$|[^a-z])/i],
+    ["SG", /新加坡|沪新|京新|深新|杭新|广新|狮城|獅城|🇸🇬|(?:^|[^a-z])(?:sg|sgp|singapore)(?=$|[^a-z])/i],
+    ["TW", /台湾|台灣|台北|台中|新北|彰化|🇹🇼|(?:^|[^a-z])(?:tw|twn|taiwan|taipei)(?=$|[^a-z])/i],
+    ["HK", /香港|深港|沪港|京港|🇭🇰|(?:^|[^a-z])(?:hk|hkg|hong[ _-]?kong)(?=$|[^a-z])/i],
+    ["US", /美国|美國|沪美|美西|美东|美東|美中|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|🇺🇸|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?=$|[^a-z])/i]
   ];
   var buckets = Object.create(null), used = Object.create(null), regionGroups = [], ytGroups = [];
   regions.forEach(function (r) {
     // Ambiguous multi-country labels stay in OTHER; names are hints, not IP geolocation.
-    var members = all.filter(function (name) {
+    var members = poolNodes.filter(function (name) {
       return r[1].test(name) && regions.filter(function (x) { return x[1].test(name); }).length === 1;
     });
     buckets[r[0]] = members;
@@ -78,12 +81,12 @@ function main(config) {
     check(generalName, "url-test", members, cf, 300);
     check(ytName, "url-test", members, google, 120);
   });
-  var others = all.filter(function (n) { return !used[n]; });
+  var others = poolNodes.filter(function (n) { return !used[n]; });
   if (others.length) {
     check("QXH-YT-OTHER", "url-test", others, google, 120);
     ytGroups.push("QXH-YT-OTHER");
   }
-  check(AUTO, "url-test", all, cf, 300);
+  check(AUTO, "url-test", poolNodes, cf, 300);
   check(YTF, "fallback", ytGroups, google, 60);
   // AI: stable priority rather than fastest-node rotation; no silent DIRECT fallback.
   var aiNodes = [].concat(buckets.US, buckets.JP, buckets.SG, buckets.TW);
@@ -93,7 +96,7 @@ function main(config) {
   select(G, [AUTO, MAN].concat(regionGroups));
   select(YT, [YTF, MAN].concat(ytGroups));
   select(AI, [aiNodes.length ? "QXH-AI稳定" : "REJECT", MAN].concat(aiRegions));
-  select(GOOGLE, [G, AI, MAN]);
+  select(GOOGLE, [G, MAN].concat(regionGroups));
   select(TG, [G, MAN]);
   // PASS is intentional: disabling ad rejection resumes subsequent routing, not DIRECT.
   select(ADS, ["REJECT", "PASS"]);
@@ -137,27 +140,46 @@ function main(config) {
 
   var rules = [];
   function domain(d, target) { rules.push("DOMAIN-SUFFIX," + d + "," + target); }
-  ["lan", "local", "localhost"].forEach(function (d) { domain(d, "DIRECT"); });
+  ["lan", "local", "localhost", "home.arpa", "ts.net", "tailscale.com", "tailscale.io"].forEach(function (d) { domain(d, "DIRECT"); });
   ["0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8", "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "224.0.0.0/4"].forEach(function (cidr) { rules.push("IP-CIDR," + cidr + ",DIRECT,no-resolve"); });
-  ["::1/128", "fc00::/7", "fe80::/10", "ff00::/8"].forEach(function (cidr) { rules.push("IP-CIDR6," + cidr + ",DIRECT,no-resolve"); });
+  ["::1/128", "fc00::/7", "fd7a:115c:a1e0::/48", "fe80::/10", "ff00::/8"].forEach(function (cidr) { rules.push("IP-CIDR6," + cidr + ",DIRECT,no-resolve"); });
   // Connectivity protection is deliberately narrower than all of qq.com/tencent.com.
-  ["weixin.qq.com", "weixin.com", "wechat.com", "qq.com.cn", "teg.tencent-cloud.net", "qpic.cn", "qlogo.cn",
-    "api.weibo.cn", "weibo.com", "zhihu.com", "zhimg.com", "push.apple.com"].forEach(function (d) { domain(d, "DIRECT"); });
+  ["weixin.qq.com", "weixin.com", "wechat.com", "qq.com.cn", "teg.tencent-cloud.net", "wx.qq.com", "weixinbridge.com",
+    "qpic.cn", "qlogo.cn", "weibo.cn", "weibo.com.cn", "weibo.com", "sinaimg.cn", "weibocdn.com",
+    "zhihu.com", "zhimg.com", "push.apple.com", "cmpassport.com", "id6.me", "10099.com.cn"].forEach(function (d) { domain(d, "DIRECT"); });
+  ["dns.weixin.qq.com", "amdc.alipay.com", "c-hzgt2.getui.com", "open.e.189.cn", "mdn.open.wo.cn",
+    "opencloud.wostore.cn", "auth.wosms.cn", "sdkapp.uve.weibo.com", "wbapp.uve.weibo.com",
+    "sdkapp.mob.uve.weibo.com", "wbapp.mob.uve.weibo.com"].forEach(function (d) { rules.push("DOMAIN," + d + ",DIRECT"); });
+  domain("browser-intake-datadoghq.com", AI);
   domain("raw.githubusercontent.com", G);
+  // High-frequency telemetry circuit-breaker (REJECT-DROP silences tight SDK reconnect loops).
+  ["umc.danuoyi.alicdn.com", "Aisou.ialicdn.com"].forEach(function (d) { rules.push("DOMAIN," + d + ",REJECT-DROP"); });
+  ["xz.fbcdn.net", "xy.fbcdn.net"].forEach(function (d) { domain(d, "REJECT-DROP"); });
   rules.push("RULE-SET,QXH-Ads," + ADS);
   // Inner application QUIC only. Does NOT block Hysteria2/TUIC's outer UDP tunnel.
-  ["googlevideo.com", "youtube.com", "youtubei.googleapis.com"].forEach(function (d) {
+  ["googlevideo.com", "youtube.com", "youtubei.googleapis.com", "ytimg.com", "ggpht.com"].forEach(function (d) {
     rules.push("AND,((DOMAIN-SUFFIX," + d + "),(NETWORK,UDP),(DST-PORT,443)),REJECT");
   });
-  rules.push("RULE-SET,QXH-YouTube," + YT);
-  rules.push("DOMAIN,youtubei.googleapis.com," + YT);
-  ["googlevideo.com", "ytimg.com", "youtube.com", "youtu.be"].forEach(function (d) { domain(d, YT); });
+  rules.push("AND,((DOMAIN,youtubei-att.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT");
   ["OpenAI", "Gemini", "Claude"].forEach(function (n) { rules.push("RULE-SET,QXH-" + n + "," + AI); });
-  // Keep Gemini login on its chosen AI exit, not the video failover pool.
-  rules.push("DOMAIN,accounts.google.com," + AI);
+  // Route Grok/Muse(Meta AI)/Hark/Wabi/Cue/Today and AI agents to QXH-AI before CN ruleset.
+  ["x.ai", "grok.com", "muse.ai", "meta.ai", "meta.com", "metaaivm.com",
+    "hark.com", "gethark.ai", "wabi.ai", "cueai.app", "manus.im", "manus.ai",
+    "today.ai", "oneintent.today", "perplexity.ai", "poe.com", "claude.ai"].forEach(function (d) { domain(d, AI); });
+  // Keep shared Google auth / FCM isolated from both AI and YouTube pools.
+  ["accounts.google.com", "oauth2.googleapis.com", "securetoken.googleapis.com", "identitytoolkit.googleapis.com", "mtalk.google.com"]
+    .forEach(function (d) { rules.push("DOMAIN," + d + "," + GOOGLE); });
+  rules.push("RULE-SET,QXH-YouTube," + YT);
+  ["youtubei.googleapis.com", "youtubei-att.googleapis.com", "yt3.googleusercontent.com", "init-stream.maasea.workers.dev"]
+    .forEach(function (d) { rules.push("DOMAIN," + d + "," + YT); });
+  ["googlevideo.com", "ytimg.com", "youtube.com", "youtu.be", "ggpht.com"].forEach(function (d) { domain(d, YT); });
   rules.push("RULE-SET,QXH-Google," + GOOGLE);
   rules.push("RULE-SET,QXH-Telegram," + TG);
   rules.push("RULE-SET,QXH-TelegramIP," + TG + ",no-resolve");
+  // Ensure Discord, Notion, and X/Twitter (Grok bot) hit proxy before QXH-CN/MATCH.
+  ["discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media", "discordcdn.com", "dis.gd",
+    "notion.so", "notion.site", "notion.com", "notion-static.com", "makenotion.com",
+    "x.com", "twitter.com", "twimg.com", "t.co", "pscp.tv"].forEach(function (d) { domain(d, G); });
   rules.push("RULE-SET,QXH-CN,DIRECT");
   rules.push("RULE-SET,QXH-CNIP,DIRECT,no-resolve");
   rules.push("MATCH," + G);

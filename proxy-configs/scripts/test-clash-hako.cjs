@@ -76,9 +76,9 @@ function route(cfg, domain, network='TCP', port=443, remote=[], adSelection='REJ
     if(p[0]==='RULE-SET') hit=remote.includes(p[1]);
     if(p[0]==='MATCH') hit=true;
     if(p[0]==='AND') {
-      const match=rule.match(/^AND,\(\(DOMAIN-SUFFIX,([^()]+)\),\(NETWORK,UDP\),\(DST-PORT,443\)\),REJECT$/);
+      const match=rule.match(/^AND,\(\((DOMAIN(?:-SUFFIX)?),([^()]+)\),\(NETWORK,UDP\),\(DST-PORT,443\)\),REJECT$/);
       assert(match,'unexpected AND syntax');
-      hit=suffix(match[1]) && network==='UDP' && port===443;
+      hit=(match[1]==='DOMAIN'?domain===match[2]:suffix(match[2])) && network==='UDP' && port===443;
     }
     if(hit) {
       let target=p.at(-1)==='no-resolve'?p.at(-2):p.at(-1);
@@ -101,13 +101,30 @@ test('airport replacement removes all former nodes',()=>{
   assert(!JSON.stringify(b).includes('JP-01'));
 });
 test('US boundaries and ambiguous transit names',()=>{
-  const r=run(fixture(['US01','[US] 02','USA-03','BUSINESS','RUS-01','AUS-1','HK-US transit','🇺🇸 04']));
-  assert.deepEqual(group(r,'QXH-US').proxies,['US01','[US] 02','USA-03','🇺🇸 04']);
+  const r=run(fixture(['US01','[US] 02','USA-03','BUSINESS','RUS-01','AUS-1','HK-US transit','🇺🇸 04','沪美-05']));
+  assert.deepEqual(group(r,'QXH-US').proxies,['US01','[US] 02','USA-03','🇺🇸 04','沪美-05']);
+});
+test('junk info nodes excluded from automated pools but kept in manual',()=>{
+  const r=run(fixture(['剩余流量 88GB','套餐到期 2027-01-01','US-01','Other-01']));
+  validate(r);
+  assert.deepEqual(group(r,'QXH-自动').proxies,['US-01','Other-01']);
+  assert.deepEqual(group(r,'QXH-YT-OTHER').proxies,['Other-01']);
+  assert(group(r,'QXH-手动').proxies.includes('剩余流量 88GB'));
 });
 test('unknown/HK-only AI requires explicit selection',()=>{
   const r=run(fixture(['HK-1','unknown'])); validate(r);
   assert.equal(group(r,'QXH-AI').proxies[0],'REJECT');
   assert(group(r,'QXH-AI').proxies.includes('QXH-手动'));
+});
+test('Google login isolated from AI and YouTube pools',()=>{
+  assert(!group(output,'QXH-Google').proxies.includes('QXH-AI'));
+  assert.equal(route(output,'accounts.google.com','TCP',443,['QXH-Google','QXH-YouTube']),'QXH-Google');
+  assert(output.rules.indexOf('DOMAIN,accounts.google.com,QXH-Google')<output.rules.indexOf('RULE-SET,QXH-YouTube,QXH-YouTube'));
+});
+test('Tailscale home device domains and IPv6 ULA route DIRECT',()=>{
+  for(const d of ['nas.tail123.ts.net','controlplane.tailscale.com','derp.tailscale.io','home.arpa'])
+    assert.equal(route(output,d,'TCP',443,['QXH-Ads']),'DIRECT');
+  assert(output.rules.includes('IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve'));
 });
 test('YouTube two-level Google probes, stable tolerance',()=>{
   assert.equal(group(output,'QXH-YT故障转移').interval,60);
@@ -156,19 +173,29 @@ test('node-to-node dialer chain preserved; dangling/cycle rejected',()=>{
   f.proxies[1]['dialer-proxy']='OLD'; assert.throws(()=>run(f),/旧策略组/);
 });
 test('domestic connectivity protection precedes ad rejection',()=>{
-  for(const d of ['short.weixin.qq.com','api.weibo.cn','www.zhihu.com','courier.push.apple.com'])
+  for(const d of ['short.weixin.qq.com','api.weibo.cn','mapi.weibo.cn','www.zhihu.com','courier.push.apple.com','open.e.189.cn','sdkapp.uve.weibo.com'])
     assert.equal(route(output,d,'TCP',443,['QXH-Ads']),'DIRECT');
+  assert.equal(route(output,'umc.danuoyi.alicdn.com','TCP',443,['QXH-Ads']),'REJECT-DROP');
+  assert.equal(route(output,'a.xz.fbcdn.net','TCP',443,['QXH-Ads']),'REJECT-DROP');
 });
 test('YouTube TCP routes; UDP 443 rejected; other UDP untouched',()=>{
   assert.equal(route(output,'r1.googlevideo.com'),'QXH-YouTube');
   assert.equal(route(output,'youtubei.googleapis.com'),'QXH-YouTube');
-  assert.equal(route(output,'r1.googlevideo.com','UDP'),'REJECT');
+  assert.equal(route(output,'init-stream.maasea.workers.dev'),'QXH-YouTube');
+  for(const d of ['r1.googlevideo.com','i.ytimg.com','yt3.ggpht.com','youtubei-att.googleapis.com'])
+    assert.equal(route(output,d,'UDP'),'REJECT');
   assert.equal(route(output,'r1.googlevideo.com','UDP',123),'QXH-YouTube');
   assert.equal(route(output,'node.example.invalid','UDP'),'QXH-代理');
 });
 test('Gemini, GPT, Claude precede Google/CN sets',()=>{
   for(const n of ['Gemini','OpenAI','Claude'])
     assert.equal(route(output,'service.example.invalid','TCP',443,['QXH-'+n,'QXH-Google','QXH-CN']),'QXH-AI');
+});
+test('Hark, Wabi, Cue, Muse, Today, Grok, Discord and Notion beat QXH-CN',()=>{
+  for(const d of ['api.x.ai','grok.com','muse.ai','meta.ai','hatch.metaaivm.com','hark.com','gethark.ai','wabi.ai','cueai.app','manus.im','today.ai','oneintent.today'])
+    assert.equal(route(output,d,'TCP',443,['QXH-CN']),'QXH-AI',d);
+  for(const d of ['discord.com','discord.gg','cdn.discordapp.com','media.discordapp.net','www.notion.so','www.notion.com','x.com'])
+    assert.equal(route(output,d,'TCP',443,['QXH-CN']),'QXH-代理',d);
 });
 test('ad bypass resumes routing, not blanket direct',()=>{
   assert.equal(route(output,'ads.example.invalid','TCP',443,['QXH-Ads']),'REJECT');

@@ -1,6 +1,6 @@
 # Clash_iso · Clash by Hako(clash.md)iPhone 配置
 
-V26.00 · 2026-11-01。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + 域名级去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
+V26.00 · 2026-11-14。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + Tailscale 家庭组网支持 + 域名级去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
 
 链接（用作**规则方案**）：
 
@@ -66,19 +66,22 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 
 **某个地区池为空时**（例如机场没有台湾节点），这个池会显示为空，选它的流量会失败。YouTube 和 AI 默认用美国节点：**如果你没有美国节点，请把这两个组手动切到有节点的地区**。手动选择会被记住。
 
-## 四、稳定、省电、快
+## 四、Tailscale 家庭组网、稳定、省电、快
 
-- **只在用到时测速**：所有测速组都开了 `lazy`，没有流量经过的组不测速；间隔 900 秒。订阅本身不做健康检查。夜里不看 YouTube 就不会为 YouTube 测速。
-- **探针同源**：地区池用 Google 的 `gstatic/generate_204` 测速，能到 Cloudflare 但到不了 Google 的节点会被换掉，减少"代理开着但 YouTube 打不开"。
-- **YouTube 强制 TCP**：只拒绝 YouTube 的 UDP 443（QUIC），App 立即改走 TCP，起播和拖动更稳。不影响 Hysteria2/TUIC 节点本身。
-- **规则用 MRS 二进制格式**：体积小、加载快，iOS 网络扩展的内存占用低；每天更新一次。
-- **其他**：fake-ip DNS（国内 DoH）、关闭 IPv6（多数机场不支持，避免超时）、日志级别 warning、`tcp-concurrent` 并发握手。
+- **Tailscale 访问家里设备**：
+  - `fake-ip-filter` 覆盖 `+.ts.net`、`+.tailscale.com`、`+.tailscale.io`、`+.lan`、`+.home.arpa` 及常见家用路由器 / NAS 域名，避免控制面与家庭设备域名被分配 `198.18.x.x` Fake-IP。
+  - `nameserver-policy` 将 `+.ts.net` 指定至 Tailscale MagicDNS（`100.100.100.100`），家用内网及路由器域名走 `system` DNS，不泄露给公共 DoH。
+  - 规则层放行 `100.64.0.0/10`、`fd7a:115c:a1e0::/48` 及 `tailscale.com` / `tailscale.io`（`DIRECT`），保证 DERP 与 P2P 打洞直连。若家里开启了 **Tailscale Subnet Router** 且子网段不在常规 `10/8`、`172.16/12`、`192.168/16` 内，可在 `Clash_iso_V26.00.yaml` 的 `rules` 顶部按注释示例追加对应 `IP-CIDR,...,DIRECT,no-resolve`。
+- **只在用到时测速**：所有 `url-test` 测速组全部启用 `lazy: true`（无流量不测速）、间隔 900 秒、且统一使用 Google `gstatic/generate_204` 探针（避免「能通 Cloudflare 但不通 Google」的节点胜出并消除重复探针耗电）。订阅本身不做健康检查。
+- **YouTube 强制 TCP & Google 登录隔离**：拒绝 YouTube 及缩略图（`ytimg.com`、`ggpht.com`、`youtubei-att.googleapis.com`）的 UDP 443（QUIC），强制 TCP 以利于起播、拖动及模块解密（不影响 Hysteria2/TUIC 节点自身）；并将 Google 登录与 FCM（`accounts.google.com`、`oauth2.googleapis.com`、`mtalk.google.com` 等）固定走「谷歌服务」，与 AI / YouTube 组隔离。
+- **防 DNS 泄漏与省电熔断**：`国内IP` 规则补全 `,no-resolve`，避免海外长尾域名落入兜底前触发国内 DoH 查询泄漏；高频遥测域（`umc.danuoyi.alicdn.com`、`Aisou.ialicdn.com`、`xz/xy.fbcdn.net`）采用 `REJECT-DROP` 静默丢包防止 SDK 死循环重连耗电。
+- **规则用 MRS 二进制格式**：体积小、加载快，iOS 网络扩展内存占用低，每天更新一次；关闭 IPv6（多数机场不支持，避免超时）、日志级别 `warning`、`tcp-concurrent` 并发握手、`微软服务` 扩充至含地区池可选。
 
 ## 五、去广告与 YouTube 画中画（新版 App 已支持 HTTPS 解密）
 
 新版 Hako 在 **Modules（模块）** 页加入了 HTTPS Decryption 和模块，支持 Surge 格式的模块链接（`.sgmodule` / `.module`）。分两层：
 
-**第一层：本配置自带**，域名级去广告（[217heidai/adblockfilters](https://github.com/217heidai/adblockfilters)），不需要证书。
+**第一层：本配置自带**，域名级去广告（[217heidai/adblockfilters](https://github.com/217heidai/adblockfilters)），不需要证书；前置放行微信（含 TEG/`qq.com.cn`/`wx.qq.com`）、微博主域/图床与 SDK 启动域、知乎、支付宝/个推探测、Apple 推送与三大运营商本机号一键登录，避免误拦转圈。
 
 **第二层：Modules 页手动添加**。配置文件管不到模块，需要你在 App 里加：
 
@@ -87,16 +90,16 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 
 | 模块 | 作用 | 链接 |
 |---|---|---|
-| **MITM 安全排除**（必加） | 不解密银行/支付/政务/iCloud | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
+| **MITM 安全排除**（必加） | 不解密 Tailscale（`*.ts.net`）/Apple/12306/银行/支付/券商/保险/加密资产/航司/运营商/网盘/政务/登录隐私（159 项） | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
 | Youtube (Music) Enhance | YouTube 去视频广告 + 画中画 + 后台播放 | `https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule` |
 | 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告 | `https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module` |
 | Spotify（可选） | 去广告、部分解锁（灰色功能） | `https://raw.githubusercontent.com/app2smile/rules/master/module/spotify.module` |
 
-**为什么必须加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把约 60 个银行、支付、政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、财付通、医保局等）。排除模块用 `-域名` 写法把它们挡在解密之外，代价是这些银行 App 的开屏广告不再被去掉。
-⚠️ `-域名` 排除是 Surge 的模块语法，Hako 是否同样支持**未经验证**（官网文档在本环境打不开）。验证方法：开着模块打开一个银行 App，在 Hako 的请求记录里看该银行域名是否标为已解密；如果被解密了，说明排除不生效，请关掉「广告拦截&净化合集」。
+**为什么必须加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把大量银行、支付、政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、财付通、医保局等），且开启 HTTPS 解密时也可能误伤 Tailscale 内网设备（`*.ts.net`）。排除模块用 `-域名` 写法把 Tailscale（`*.ts.net`）、Apple/iCloud、12306、银行/支付/券商/保险/加密资产、航司、运营商、网盘、政务及微博/B站/知乎/高德账户支付隐私（共 159 项）挡在解密之外，代价是这些银行等 App 的开屏广告不再被去掉。
+⚠️ `-域名` 排除是 Surge 的模块语法，Hako 是否同样支持**未经真机实测验证**。验证方法：开着模块打开一个银行 App 或家庭 `*.ts.net` HTTPS 服务，在 Hako 的请求记录里看该域名是否标为已解密；如果被解密了，说明排除不生效，请关掉「广告拦截&净化合集」。
 
 **配置和模块的配合**：
-- 本配置拒绝 YouTube 的 UDP 443（QUIC），App 只能走 TCP，模块才能解密并改写，这是 YouTube 模块生效的前提。
+- 本配置拒绝 YouTube 及缩略图的 UDP 443（QUIC），App 只能走 TCP，模块才能解密并改写，这是 YouTube 模块生效的前提；并已补充 Maasea 模块所需 `init-stream.maasea.workers.dev` 走 `YouTube` 组。
 - 装了 YouTube 模块后画中画不再依赖美国节点；YouTube 组默认仍是美国节点，切别的地区也可以。
 - 首次生效：杀掉 YouTube 重开；YouTube 设置里打开「画中画」。
 - 解密会增加耗电：YouTube 模块要解密视频流（`*.googlevideo.com`），播放时发热会比不解密时高一些；大合集模块解密的主机越多，后台耗电越大。
@@ -110,6 +113,6 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 
 ## 七、已验证 / 待真机验收
 
-已做：YAML 解析；19 个分组、79 条规则、22 个规则集之间的引用全部能对上，无循环引用；所有测速组都是 lazy；用 27 个节点名样例测试分组正则（每个节点恰好进一个地区池或「其他节点」，信息条被排除，Russia/Australia/BUSINESS 不误判为美国）；22 个规则集链接和图标链接都返回 200；核对了「广告拦截&净化合集」源文件中的全部 939 个解密主机，其中银行/支付/政务主机全部被 `MITM_Safe.sgmodule` 的排除项覆盖。
+已做（本机离线与 HTTP 状态验证）：通过 [test-clash-configs.py](../proxy-configs/scripts/test-clash-configs.py) 8 项自动化测试与 [test-clash-hako.cjs](../proxy-configs/scripts/test-clash-hako.cjs) 32 项离线测试：严格 YAML 解析（禁止重复键）；19 个分组、142 条规则、22 个规则集之间引用完整且无循环（全部 `IP-CIDR`/`IP-CIDR6` 与 IP 规则集均有 `no-resolve`）；6 地区池分区与机场信息条排除正则边界测试通过；`url-test` 探针统一为 `gstatic/generate_204` 且全部 `lazy`；Tailscale MagicDNS 与 `tailscale.com` / `tailscale.io` 直连分流、Hark/Discord/Notion/Wabi/Cue/Muse/Today/Grok 显式代理分流及 `MITM_Safe.sgmodule`（159 项排除）覆盖校验通过；22 个规则集链接和图标链接返回 HTTP 200（探针返回 204）；32 项 `Clash_Hako` 离线用例与 10 份远程 MRS 完整解码通过。
 
-**未做**：没有在 iPhone 上导入实测；本环境不能运行 mihomo 内核做 `-t` 语法检查。请导入后确认：无报错、规则集全部加载、分组里有节点；再测 YouTube 去广告与画中画、ChatGPT、微信，以及银行 App 是否未被解密（见第五节）。
+**未做**：没有在 iPhone 上导入实测；本环境未运行 mihomo 内核做 `-t` 语法检查，也未对家庭 Tailscale 设备做真机端到端抓包。请导入后确认：无报错、规则集全部加载、分组里有节点；再实测家庭 `*.ts.net` 设备访问、YouTube 去广告与画中画、ChatGPT/Gemini、微信/微博，以及银行 App 与 `*.ts.net` 是否未被解密（见第五节）。
