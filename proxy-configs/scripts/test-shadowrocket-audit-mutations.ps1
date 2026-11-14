@@ -1,4 +1,4 @@
-# In-memory negative tests; no configuration or temporary file is written.
+﻿# In-memory negative tests; no configuration or temporary file is written.
 $ErrorActionPreference = 'Stop'
 $testPath = Join-Path $PSScriptRoot 'test-shadowrocket-known-fixes.ps1'
 $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../shadowrocket_V26.00.lsr') -Raw -Encoding utf8
@@ -10,14 +10,14 @@ $cases = @(
     @{ Name='Stable pool reintroduced'; From='Instagram = select, 美国节点,'; To='Instagram = select, 美国稳定,' },
     @{ Name='AI default changed'; From='AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect'; To='AI = select, DIRECT' },
     @{ Name='DNS changed'; From='dns-direct-fallback-proxy = false'; To='dns-direct-fallback-proxy = true' },
-    @{ Name='MITM expanded'; From='hostname = -*.alipay.com'; To='hostname = *, -*.alipay.com' },
+    @{ Name='MITM expanded'; From='hostname = -*.ts.net'; To='hostname = *, -*.ts.net' },
     @{ Name='YouTube pin lost'; From='/65075cdb388fc5e3094afd7e7314c67b243f3525/'; To='/master/' },
     @{ Name='Weibo SDK blocked'; From='DOMAIN-SUFFIX,weibomingzi.com,REJECT'; To="DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT`nDOMAIN-SUFFIX,weibomingzi.com,REJECT" },
     @{ Name='Region pools back on Cloudflare probe'; From='美国节点 = url-test, url=https://www.gstatic.com/generate_204'; To='美国节点 = url-test, url=http://cp.cloudflare.com/generate_204' },
     @{ Name='Region probes too often (battery)'; From='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900,'; To='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30,' },
     @{ Name='Region probe timeout too aggressive'; From='interval=900, tolerance=200, timeout=5'; To='interval=900, tolerance=200, timeout=1' },
     @{ Name='YT-Auto reintroduced'; From='YouTube = select, 美国节点,'; To='YouTube = select, YT-Auto, 美国节点,' },
-    @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=900'; To='AutoSelect = url-test, url=http://cp.cloudflare.com/generate_204, interval=30' },
+    @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=900'; To='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=30' },
     @{ Name='Region group type changed'; From='香港节点 = url-test,'; To='香港节点 = fallback,' },
     @{ Name='Gemini rule leaked to generic Google'; From='DOMAIN-SUFFIX,gemini.google.com,谷歌AI'; To='DOMAIN-SUFFIX,gemini.google.com,Proxy' },
     @{ Name='Google AI selector offers Hong Kong'; From='谷歌AI = select, 美国节点, 日本节点'; To='谷歌AI = select, 香港节点, 美国节点, 日本节点' },
@@ -34,7 +34,12 @@ $cases = @(
     @{ Name='YouTube avatar host falls to generic Google'; From='DOMAIN,yt3.googleusercontent.com,YouTube'; To='# removed by mutation' },
     @{ Name='Tailscale range excluded from TUN'; From='bypass-tun = 10.0.0.0/8, 127.0.0.0/8'; To='bypass-tun = 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8' },
     @{ Name='Tailscale IPv4 policy missing'; From='IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve'; To='# removed by mutation' },
-    @{ Name='Tailscale MagicDNS policy missing'; From='DOMAIN-SUFFIX,ts.net,TAILSCALE'; To='# removed by mutation' }
+    @{ Name='Tailscale MagicDNS policy missing'; From='DOMAIN-SUFFIX,ts.net,TAILSCALE'; To='# removed by mutation' },
+    @{ Name='Tailscale range in skip-proxy'; From='skip-proxy = 127.0.0.1,'; To='skip-proxy = 127.0.0.1, 100.64.0.0/10,' },
+    @{ Name='Tailscale IPv6 policy missing'; From='IP-CIDR6,fd7a:115c:a1e0::/48,TAILSCALE,no-resolve'; To='# removed by mutation' },
+    @{ Name='Tailscale MITM exclusion missing'; From='hostname = -*.ts.net, '; To='hostname = ' },
+    @{ Name='Unbounded script max-size reintroduced'; From='max-size=2097152'; To='max-size=-1' },
+    @{ Name='Floating script branch reintroduced'; From='/1d9f51bc9a0077d81998bb503ee6158ca83faa73/'; To='/main/' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {

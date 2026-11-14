@@ -1,4 +1,4 @@
-# Requires PowerShell 7. Run from any directory; no network or subscription needed.
+﻿# Requires PowerShell 7. Run from any directory; no network or subscription needed.
 # Static regression checks, NOT a Shadowrocket/iPhone runtime test.
 param(
     [string]$ConfigPath = (Join-Path $PSScriptRoot '../shadowrocket_V26.00.lsr'),
@@ -52,9 +52,10 @@ $adUrl = 'https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release
 $adRules = @($active | Where-Object { $_.Contains($adUrl) })
 Assert-True ($adRules.Count -eq 1 -and $adRules[0] -ceq "DOMAIN-SET,$adUrl,REJECT") 'Wrong domain-list import type'
 
-# v2.6.16 targeted connectivity assertions.
+# v2.6.16 targeted connectivity assertions (historical chain) vs v2.6.25 compatibility rules.
 $adIndex = [array]::IndexOf($active, "DOMAIN-SET,$adUrl,REJECT")
-$compatRules = @(
+Assert-True ($adIndex -ge 0) 'Advertising domain-set rule missing'
+$v2616CompatRules = @(
     'DOMAIN-SUFFIX,id6.me,DIRECT',
     'DOMAIN-SUFFIX,cmpassport.com,DIRECT',
     'DOMAIN,amdc.alipay.com,DIRECT',
@@ -72,9 +73,19 @@ $compatRules = @(
     'DOMAIN,c-hzgt2.getui.com,DIRECT',
     'DOMAIN,mtalk.google.com,谷歌服务'
 )
+$compatRules = @(
+    'DOMAIN-SUFFIX,id6.me,DIRECT',
+    'DOMAIN-SUFFIX,cmpassport.com,DIRECT',
+    'DOMAIN,opencloud.wostore.cn,DIRECT',
+    'DOMAIN,amdc.alipay.com,DIRECT',
+    'DOMAIN,c-hzgt2.getui.com,DIRECT',
+    'DOMAIN,mtalk.google.com,Proxy',
+    'DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI'
+)
 foreach ($rule in $compatRules) {
+    $idx = [array]::IndexOf($active, $rule)
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate compatibility rule: $rule"
-    Assert-True ([array]::IndexOf($active, $rule) -lt $adIndex) "Compatibility rule is shadowed by advertising list: $rule"
+    Assert-True ($idx -ge 0 -and $idx -lt $adIndex) "Compatibility rule is shadowed by advertising list: $rule"
 }
 $aiRules = @(
     'DOMAIN-SUFFIX,githubcopilot.com,AI',
@@ -125,7 +136,7 @@ foreach ($line in (Get-ActiveLines $baseline)) {
     }
     $expected.Add($updated)
     if ($line -ceq 'DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT') {
-        foreach ($rule in $compatRules) { $expected.Add($rule) }
+        foreach ($rule in $v2616CompatRules) { $expected.Add($rule) }
     }
     if ($line -ceq 'DOMAIN,copilot.microsoft.com,AI') {
         foreach ($rule in $aiRules) { $expected.Add($rule) }
@@ -215,9 +226,10 @@ $replacements19 = @{
     'DOMAIN-SUFFIX,whatsapp.net,Proxy' = 'DOMAIN-SUFFIX,whatsapp.net,Meta'
 }
 $metaRules = @('DOMAIN-SUFFIX,muse.ai,Meta', 'DOMAIN-SUFFIX,meta.ai,Meta', 'DOMAIN-SUFFIX,meta.com,Meta')
-$googleCoreRules = @('DOMAIN-SUFFIX,google.com,谷歌服务', 'DOMAIN-SUFFIX,googleapis.com,谷歌服务',
+$v2619GoogleRuleset = 'RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,谷歌服务'
+$v2619GoogleCoreRules = @('DOMAIN-SUFFIX,google.com,谷歌服务', 'DOMAIN-SUFFIX,googleapis.com,谷歌服务',
     'DOMAIN-SUFFIX,gstatic.com,谷歌服务', 'DOMAIN-SUFFIX,googleusercontent.com,谷歌服务')
-$googleAuthRules = @('DOMAIN,accounts.google.com,谷歌服务', 'DOMAIN,oauth2.googleapis.com,谷歌服务',
+$v2619GoogleAuthRules = @('DOMAIN,accounts.google.com,谷歌服务', 'DOMAIN,oauth2.googleapis.com,谷歌服务',
     'DOMAIN,securetoken.googleapis.com,谷歌服务', 'DOMAIN,identitytoolkit.googleapis.com,谷歌服务')
 $v2619Expected = [Collections.Generic.List[string]]::new()
 $replaced19 = 0
@@ -225,15 +237,15 @@ foreach ($line in $v2618Expected) {
     if ($line -ceq 'DOMAIN-SUFFIX,instagram.com,Instagram') {
         foreach ($rule in $metaRules) { $v2619Expected.Add($rule) }
     }
-    if ($line -ceq $googleRules[0]) {
-        foreach ($rule in $googleCoreRules) { $v2619Expected.Add($rule) }
+    if ($line -ceq $v2619GoogleRuleset) {
+        foreach ($rule in $v2619GoogleCoreRules) { $v2619Expected.Add($rule) }
     }
     if ($replacements19.ContainsKey($line)) {
         $v2619Expected.Add($replacements19[$line])
         $replaced19++
     } else { $v2619Expected.Add($line) }
     if ($line -ceq 'DOMAIN,webchannel-alkalimakersuite-pa.clients6.google.com,Gemini') {
-        foreach ($rule in $googleAuthRules) { $v2619Expected.Add($rule) }
+        foreach ($rule in $v2619GoogleAuthRules) { $v2619Expected.Add($rule) }
     }
     if ($line.StartsWith('Gemini = ')) {
         $v2619Expected.Add('Meta = select, 美国节点, 香港节点, 台湾节点, 日本节点, 新加坡节点, AutoSelect')
@@ -281,8 +293,13 @@ foreach ($line in $v2620Expected) {
         foreach ($rule in $tailnetRules) { $v2621Expected.Add($rule) }
     }
 }
-Assert-True (($v2621Expected -join "`n") -ceq ($active -join "`n")) 'Unexpected active configuration change outside authorized fixes'
+$v2621 = @(Get-ActiveLines @(git -C $repoPath show 'ffd3351:proxy-configs/shadowrocket_V26.00.lsr'))
+Assert-True ($LASTEXITCODE -eq 0) 'Cannot read v2.6.21 baseline'
+Assert-True (($v2621Expected -join "`n") -ceq ($v2621 -join "`n")) 'Historical v2.6.21 invariant failed'
 
+Assert-True (@($active | Where-Object { $_ -ceq 'dns-direct-fallback-proxy = false' }).Count -eq 1) 'dns-direct-fallback-proxy = false must stay enabled'
+$skipProxy = @($active | Where-Object { $_.StartsWith('skip-proxy = ') })
+Assert-True ($skipProxy.Count -eq 1 -and !$skipProxy[0].Contains('100.64.0.0/10')) 'Tailscale 100.64.0.0/10 must not be in skip-proxy'
 $bypassTun = @($active | Where-Object { $_.StartsWith('bypass-tun = ') })
 Assert-True ($bypassTun.Count -eq 1 -and !$bypassTun[0].Contains('100.64.0.0/10')) 'Tailscale IPv4 range must not bypass TUN'
 # 2026-10-27: Apple's APNs-only ranges bypass the tunnel (support.apple.com/102266).
@@ -305,9 +322,19 @@ foreach ($rule in @('DOMAIN,ocsp.apple.com,DIRECT', 'DOMAIN-SUFFIX,ls.apple.com,
     $i = [array]::IndexOf($active, $rule)
     Assert-True ($i -ge 0 -and $i -lt $appleSet) "Critical Apple DIRECT rule missing or after the Apple list: $rule"
 }
-foreach ($rule in $tailnetRules) {
+$firstAd = [array]::IndexOf($active, ($active | Where-Object { $_ -match '^RULE-SET,.*/Advertising/Advertising\.list,REJECT$' } | Select-Object -First 1))
+Assert-True ($firstAd -ge 0) 'Advertising ruleset not found'
+$v2625TailnetRules = @(
+    'DOMAIN-SUFFIX,ts.net,TAILSCALE',
+    'IP-CIDR,100.64.0.0/10,TAILSCALE,no-resolve',
+    'IP-CIDR6,fd7a:115c:a1e0::/48,TAILSCALE,no-resolve',
+    'DOMAIN-SUFFIX,tailscale.com,DIRECT',
+    'DOMAIN-SUFFIX,tailscale.io,DIRECT'
+)
+foreach ($rule in $v2625TailnetRules) {
+    $idx = [array]::IndexOf($active, $rule)
     Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate Tailscale rule: $rule"
-    Assert-True ([array]::IndexOf($active, $rule) -gt [array]::IndexOf($active, '[Rule]')) "Tailscale rule outside [Rule]: $rule"
+    Assert-True ($idx -gt [array]::IndexOf($active, '[Rule]') -and $idx -lt $firstAd) "Tailscale rule misplaced: $rule"
 }
 
 # Check relevant rule ordering independently of the full delta comparison.
@@ -328,26 +355,75 @@ foreach ($rule in $imageRules) {
     $domain = ($rule -split ',')[1]
     Assert-True ((First-LocalDomainRule $domain) -ceq $rule) "Image rejection shadowed: $domain"
 }
-foreach ($domain in @('sdkapp.uve.weibo.com', 'wbapp.uve.weibo.com', 'api.weibo.cn',
-    'mapi.weibo.com', 'bootpreload.uve.weibo.com', 'wx1.sinaimg.cn', 'video.weibocdn.com')) {
+$weiboRejectGuardIdx = @('DOMAIN,kadmimage.biz.weibo.com,REJECT', 'DOMAIN-SUFFIX,uve.weibo.com,REJECT', 'DOMAIN-SUFFIX,biz.weibo.com,REJECT') |
+    ForEach-Object { $idx = [array]::IndexOf($active, $_); Assert-True ($idx -ge 0) "Missing Weibo reject rule: $_"; $idx } |
+    Measure-Object -Minimum
+foreach ($domain in @('sdkapp.uve.weibo.com', 'wbapp.uve.weibo.com', 'sdkapp.mob.uve.weibo.com', 'wbapp.mob.uve.weibo.com')) {
+    $matched = First-LocalDomainRule $domain
+    Assert-True ($matched.EndsWith(',DIRECT')) "Weibo SDK host blocked: $domain ($matched)"
+    Assert-True ([array]::IndexOf($active, $matched) -lt $weiboRejectGuardIdx.Minimum) "Weibo SDK direct rule must precede reject guards: $matched"
+}
+foreach ($domain in @('api.weibo.cn', 'mapi.weibo.com', 'wx1.sinaimg.cn', 'video.weibocdn.com')) {
     Assert-True ((First-LocalDomainRule $domain).EndsWith(',DIRECT')) "Business/media host blocked: $domain"
 }
-$firstAd = [array]::IndexOf($active, ($active | Where-Object { $_ -match '^RULE-SET,.*/Advertising/Advertising\.list,REJECT$' } | Select-Object -First 1))
-Assert-True ($firstAd -ge 0) 'Advertising ruleset not found'
-Assert-True ([array]::IndexOf($active, 'DOMAIN,dns.weixin.qq.com,DIRECT') -lt $firstAd) 'WeChat DNS protection too late'
+Assert-True (-not $active.Contains('DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT') -and -not $active.Contains('DOMAIN,sdkapp.uve.weibo.com,REJECT')) 'Weibo SDK rejection rule reintroduced'
+Assert-True ((First-LocalDomainRule 'kadmimage.biz.weibo.com') -ceq 'DOMAIN,kadmimage.biz.weibo.com,REJECT') 'Weibo kadmimage must resolve to REJECT'
+foreach ($domain in @('bootpreload.uve.weibo.com', 'adstrategy.biz.weibo.com')) {
+    Assert-True ((First-LocalDomainRule $domain).EndsWith(',REJECT-200')) "Weibo launch ad host must resolve to REJECT-200: $domain"
+    Assert-True ($active.Contains("AND,((DOMAIN,$domain),(PROTOCOL,UDP)),REJECT")) "Missing UDP REJECT for $domain"
+}
+Assert-True ($active.Contains('DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP') -and $active.Contains('DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP')) 'Meta tracking REJECT-DROP rules missing'
+$dnsWeixinIdx = [array]::IndexOf($active, 'DOMAIN,dns.weixin.qq.com,DIRECT')
+Assert-True ($dnsWeixinIdx -ge 0 -and $dnsWeixinIdx -lt $firstAd) 'WeChat DNS protection missing or too late'
 Assert-True (!$active.Contains('DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -or
     [array]::IndexOf($active, 'DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -gt $firstAd) 'WeChat ads bypass the advertising list'
 
-# 2026-10-29 simplification (user request): no YouTube-specific groups and no stable pools.
-# Generic region pools probe Google over HTTPS, so in-region failover still checks Google reachability.
+# 2026-10-29 simplification: no YouTube-specific groups and no stable pools.
+# Generic region pools (plus 其他节点 and nested AutoSelect) probe Google over HTTPS.
 Assert-True (@($active | Where-Object { $_ -match '^YT-.+ = ' }).Count -eq 0) 'YouTube-specific groups are back'
-foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点')) {
+foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点', '其他节点')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
     Assert-True ($group.Count -eq 1 -and $group[0].StartsWith("$name = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5,")) "Region pool must probe Google over HTTPS at 900s: $name"
+}
+$otherGroupLine = @($active | Where-Object { $_.StartsWith('其他节点 = ') })[0]
+$otherPattern = ($otherGroupLine -split 'policy-regex-filter=', 2)[1]
+foreach ($name in @('🇬🇧 英国 01', '🇩🇪 德国 01', '🇰🇷 韩国 01', '🇳🇱 荷兰 01')) {
+    Assert-True ([regex]::IsMatch($name, $otherPattern)) "其他节点 excludes non-region fixture: $name"
+    $regexChecks++
+}
+foreach ($name in @('🇭🇰 香港 01', '🇹🇼 台湾 01', '🇯🇵 日本 01', '🇸🇬 新加坡 01', '🇺🇸 US 01', '剩余流量 100GB', '套餐到期 2027-01-01', '官网: example.com')) {
+    Assert-True (![regex]::IsMatch($name, $otherPattern)) "其他节点 admits region/info fixture: $name"
+    $regexChecks++
+}
+Assert-True ($active.Contains('AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5')) 'AutoSelect nested url-test signature changed'
+foreach ($sig in @(
+    'Proxy = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 其他节点, DIRECT',
+    'AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect',
+    'Spotify = select, 新加坡节点, 香港节点, 日本节点, 美国节点, AutoSelect',
+    'Final = select, DIRECT, Proxy'
+)) {
+    Assert-True ($active.Contains($sig)) "Core selector signature drifted: $sig"
 }
 Assert-True (@($active | Where-Object { $_.StartsWith('YouTube = select, 美国节点,') }).Count -eq 1) 'YouTube selector must default to 美国节点'
 foreach ($name in @('StableSelect', 'Fallback', 'YT-Auto', '美国稳定', '日本稳定', '新加坡稳定')) {
     Assert-True (@($active | Where-Object { $_.StartsWith("$name = ") -or $_ -match "(, |,)$name(,|$)" }).Count -eq 0) "Removed group is back or still referenced: $name"
+}
+$scriptStart = [array]::IndexOf($active, '[Script]')
+$mitmStart = [array]::IndexOf($active, '[MITM]')
+Assert-True ($scriptStart -ge 0 -and $mitmStart -gt $scriptStart) 'Missing Script/MITM sections'
+foreach ($line in $active[($scriptStart + 1)..($mitmStart - 1)]) {
+    Assert-True (!$line.Contains('max-size=-1')) "Unbounded max-size=-1 forbidden in [Script]: $line"
+    Assert-True (!$line.Contains('ddgksf2013')) "Removed obfuscated ddgksf2013 script found: $line"
+    if (!$line.Contains('heru08050413/QX/main/proxy-configs/scripts/zhihu.js')) {
+        Assert-True ($line -notmatch '/(main|master)/') "Floating script branch forbidden: $line"
+    }
+}
+$hostnameLines = @($active[($mitmStart + 1)..($active.Count - 1)] | Where-Object { $_.StartsWith('hostname = ') })
+Assert-True ($hostnameLines.Count -eq 1) 'Expected single MITM hostname line'
+Assert-True (!$hostnameLines[0].StartsWith('hostname = *,')) 'Wildcard MITM root forbidden'
+Assert-True ($hostnameLines[0].Contains('-*.ts.net') -and $hostnameLines[0].Contains('-*.alipay.com') -and $hostnameLines[0].Contains('-12306.cn')) 'Critical MITM exclusions missing'
+foreach ($removedHost in @('restapi.amap.com', 'mps.amap.com', 'preload-impression.uve.weibo.com', 'kadmimage.biz.weibo.com')) {
+    Assert-True (!$hostnameLines[0].Contains($removedHost)) "Removed MITM host returned: $removedHost"
 }
 $ytScripts = @($active | Where-Object { $_ -match '^YouTube\.(response|request\.(init|log_event)) = ' })
 Assert-True ($ytScripts.Count -eq 3) 'YouTube hook count changed'
@@ -396,11 +472,28 @@ foreach ($entry in $expectedDefaults.GetEnumerator()) {
 # Google endpoints never pass through the AI group.
 Assert-True (-not $groups.ContainsKey('Gemini') -and -not $groups.ContainsKey('谷歌服务')) 'Old Gemini/谷歌服务 groups must be gone'
 Assert-True (-not ($groups['谷歌AI'].Members -ccontains '香港节点')) 'Gemini is not served in Hong Kong'
+$googleCoreRules = @('DOMAIN-SUFFIX,google.com,Proxy', 'DOMAIN-SUFFIX,googleapis.com,Proxy',
+    'DOMAIN-SUFFIX,gstatic.com,Proxy', 'DOMAIN-SUFFIX,googleusercontent.com,Proxy')
+$googleAuthRules = @('DOMAIN,accounts.google.com,Proxy', 'DOMAIN,oauth2.googleapis.com,Proxy',
+    'DOMAIN,securetoken.googleapis.com,Proxy', 'DOMAIN,identitytoolkit.googleapis.com,Proxy')
+foreach ($rule in @(
+    'DOMAIN,yt3.googleusercontent.com,YouTube',
+    'DOMAIN-SUFFIX,gemini.google.com,谷歌AI',
+    'DOMAIN-SUFFIX,notebooklm.google.com,谷歌AI',
+    'DOMAIN-SUFFIX,notebooklm.google,谷歌AI',
+    'DOMAIN-SUFFIX,labs.google,谷歌AI',
+    'DOMAIN-SUFFIX,copilot.microsoft.com,AI',
+    'DOMAIN-SUFFIX,linkedin.com,Proxy',
+    'DOMAIN-SUFFIX,licdn.com,Proxy'
+)) {
+    Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate core route rule: $rule"
+}
 $routingFixtures = @{
     'gemini.google.com'='谷歌AI'; 'geller-pa.googleapis.com'='谷歌AI'; 'gemini.gstatic.com'='谷歌AI';
+    'notebooklm.google'='谷歌AI'; 'fx.labs.google'='谷歌AI'; 'copilot.microsoft.com'='AI';
     'accounts.google.com'='Proxy'; 'oauth2.googleapis.com'='Proxy';
     'securetoken.googleapis.com'='Proxy'; 'identitytoolkit.googleapis.com'='Proxy';
-    'lh3.googleusercontent.com'='Proxy'; 'www.gstatic.com'='Proxy';
+    'lh3.googleusercontent.com'='Proxy'; 'www.gstatic.com'='Proxy'; 'www.linkedin.com'='Proxy';
     'yt3.googleusercontent.com'='YouTube'; 'youtubei.googleapis.com'='YouTube';
     'muse.ai'='Meta'; 'auth.muse.ai'='Meta'; 'hatch-api.meta.ai'='Meta'; 'api.meta.ai'='Meta';
     'ar.graph.meta.com'='Meta'; 'auth.meta.com'='Meta'; 'graph.facebook.com'='Meta';
@@ -411,7 +504,7 @@ $routingFixtures = @{
     'api.whatsapp.com'='Meta'; 'wa.me'='Meta';
     'i.instagram.com'='Instagram'; 'www.threads.com'='Instagram';
     'rr1.example.googlevideo.com'='YouTube'; 'device.example.ts.net'='TAILSCALE';
-    'youtubei.googleapis.com'='YouTube'; 'init-stream.maasea.workers.dev'='YouTube';
+    'controlplane.tailscale.com'='DIRECT'; 'init-stream.maasea.workers.dev'='YouTube';
     'sample.xz.fbcdn.net'='REJECT-DROP'; 'sample.xy.fbcdn.net'='REJECT-DROP';
     'qq.com'='DIRECT'; 'api.zhihu.com'='DIRECT'; 'p6.douyinpic.com'='DIRECT';
     'gateway.icloud.com.cn'='DIRECT'; 'apps.apple.com'='DIRECT'
@@ -427,11 +520,14 @@ foreach ($domain in @('meta.ai.evil.example', 'notmeta.ai', 'muse.ai.evil.exampl
 }
 foreach ($rule in @($metaRules) + @($googleCoreRules) + @($googleAuthRules) +
     @($metaAdditions20.Values | ForEach-Object { $_ })) {
-    Assert-True ([array]::IndexOf($active, $rule) -gt $firstAd) 'Core routing unexpectedly bypasses ad filtering'
+    Assert-True (@($active | Where-Object { $_ -ceq $rule }).Count -eq 1) "Missing/duplicate core routing rule: $rule"
+    Assert-True ([array]::IndexOf($active, $rule) -gt $firstAd) "Core routing unexpectedly bypasses ad filtering: $rule"
 }
 $youtubeRemote = @($active | Where-Object { $_ -match '^RULE-SET,.*/YouTube/YouTube\.list,YouTube$' })
 Assert-True ($youtubeRemote.Count -eq 1) 'Missing YouTube ruleset'
+$youtubeRemoteIdx = [array]::IndexOf($active, $youtubeRemote[0])
 foreach ($rule in $googleAuthRules) {
-    Assert-True ([array]::IndexOf($active, $rule) -lt [array]::IndexOf($active, $youtubeRemote[0])) 'Google auth can be captured by remote YouTube UA/IP rules'
+    $idx = [array]::IndexOf($active, $rule)
+    Assert-True ($idx -ge 0 -and $idx -lt $youtubeRemoteIdx) "Google auth missing or can be captured by remote YouTube rules: $rule"
 }
-Write-Output "PASS: $regexChecks US-regex cases; legacy routing and hooks; Google-probed region pools, no YT/stable groups; complete v2.6.16 through v2.6.21 scope invariants; Tailscale TUN/routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini selection; Meta suffix safety."
+Write-Output "PASS: $regexChecks region/other-regex cases; v2.6.25 compatibility, scripts and MITM invariants; Google-probed region pools and nested AutoSelect; historical v2.6.16 through v2.6.21 invariants; Tailscale TUN/IPv6/control-plane routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini/AI/LinkedIn selection; Meta suffix safety."

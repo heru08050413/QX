@@ -60,7 +60,7 @@ ICONS = {
     'Proxy': 'Proxy', 'AI': 'ChatGPT', 'Meta': 'Facebook', 'YouTube': 'YouTube',
     'Netflix': 'Netflix', 'Spotify': 'Spotify', 'TikTok': 'TikTok', 'Telegram': 'Telegram',
     'Instagram': 'Instagram', 'Twitter': 'Twitter', '苹果服务': 'Apple', '谷歌服务': 'Google_Search',
-    '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', 'AutoSelect': 'Auto',
+    '微软服务': 'Microsoft', '哔哩哔哩': 'bilibili', '其他节点': 'Global', 'AutoSelect': 'Auto',
     'Final': 'Final',
 }
 REGION_ICONS = {'香港': 'Hong_Kong', '台湾': 'Taiwan', '日本': 'Japan', '新加坡': 'Singapore', '美国': 'United_States'}
@@ -182,7 +182,7 @@ def convert_rules(lines, mitm_hosts):
             rtype, host = line.split(',')[:2]
             if rtype == 'DOMAIN' and host in mitm_hosts:
                 rules.append(f'DOMAIN,{host},DIRECT')
-                rewrites.append(f"^https?:\\/\\/{re.escape(host)}\\/ - reject-200")
+                rewrites.append(f"^https?:\\/\\/{re.escape(host)}(?::443)?\\/ - reject-200")
             else:
                 rules.append(line[:-len('REJECT-200')] + 'REJECT')
             continue
