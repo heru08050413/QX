@@ -1,11 +1,11 @@
-"""Stash Pro static/fixture audit, NOT the closed-source Stash runtime.
+"""Stash Pro static/fixture audit for unified single-file Stash_Pro_V26.00.stoverride.
 
-Requires PyYAML. --online checks public resources only, never airport URLs.
+Requires PyYAML (plus Node for embedded/YouTube JS runtime checks).
+--online checks all 18 MRS binary providers and both pinned YouTube scripts.
 No configuration or subscription is modified. TLS verification stays enabled.
 """
 import argparse
 import copy
-import fnmatch
 import hashlib
 import ipaddress
 import json
@@ -26,6 +26,19 @@ if args.dependency_dir:
 import yaml
 
 BASE = Path(__file__).resolve().parents[1]
+CFG_NAME = 'Stash_Pro_V26.00.stoverride'
+
+FORBIDDEN_MITM_KEYWORDS = (
+    'bank', 'pay', '955', 'icbc', 'ccb', 'abc', 'boc', 'cmb', 'psbc', 'spdb',
+    'ceb', 'citic', 'pingan', 'hxb', 'cib', 'lakala', 'helipay', 'ysepay',
+    'unionpay', 'tenpay', 'alipay', 'jdpay', 'jr.', 'fin', 'credit', 'loan',
+    'wallet', 'cash', 'stock', 'fund', 'sec', 'broker', 'xueqiu', 'futu',
+    'eastmoney', 'insur', 'picc', 'cpic', 'taikang', 'gov', '12306', 'tax',
+    'police', 'court', 'ybj', 'hospital', 'weixin110', 'security', 'passport',
+    'login', 'auth', 'account', 'oauth', 'sso', 'icloud', 'apple.com',
+    'ts.net', 'tailscale', '10086', '10010', '189.cn', 'wostore', 'alipan',
+    'aliyundrive', 'pan.baidu', '115.com',
+)
 
 
 class Strict(yaml.SafeLoader):
@@ -53,13 +66,11 @@ def read(name):
     return load((BASE / name).read_text(encoding='utf-8'))
 
 
-POLICY = read('Stash_Pro_Policy_V26.00.stoverride')
-APP = read('Stash_Pro_AppAds_V26.00.stoverride')
-YT = read('Stash_Pro_YouTube_V26.00.stoverride')
+STASH_PRO = read(CFG_NAME)
 
 
 def merge(a, b):
-    """Default Stash merge; policy #!replace keys are modeled in their fixture."""
+    """Default Stash merge; #!replace keys are applied separately in override fixture."""
     if isinstance(a, dict) and isinstance(b, dict):
         result = copy.deepcopy(a)
         for key, val in b.items():
@@ -70,98 +81,146 @@ def merge(a, b):
     return copy.deepcopy(b)
 
 
-def validate(c, check_dns=True):
+def validate(c, is_merged=False):
     assert c['mode'] == 'rule'
-    if check_dns and 'dns' in c:
-        assert c['dns']['follow-rule'] is False
-        assert '*' not in c['dns']['fake-ip-filter']
-        assert 'proxy-server-nameserver' not in c['dns'], 'requires 3.6+'
+    assert c['tcp-concurrent'] is True
+    if not is_merged:
+        assert 'dns' not in c and 'proxy-providers' not in c
+
     groups = {g['name']: g for g in c['proxy-groups']}
-    assert len(groups) == len(c['proxy-groups'])
+    assert len(groups) == len(c['proxy-groups']) == 20
     builtins = {'DIRECT', 'REJECT', 'REJECT-DROP'}
+
     def walk(name, stack):
         assert name not in stack, 'policy cycle'
         for dest in groups[name].get('proxies', []):
-            assert dest in groups or dest in builtins, 'unknown policy'
+            assert dest in groups or dest in builtins, f'unknown policy {dest}'
             if dest in groups:
                 walk(dest, stack | {name})
+
+    regions = {'美国节点', '日本节点', '新加坡节点', '台湾节点', '香港节点'}
+    pools = regions | {'稳定切换', '手动节点', '其他节点'}
     for name, g in groups.items():
         walk(name, set())
-        if name not in {'美国节点', '新加坡节点'}:
-            assert 'filter' not in g, 'only named regional groups may filter nodes'
-        if name != '稳定切换':
-            assert 'exclude-filter' not in g
+        if name in regions:
+            assert 'filter' in g and 'exclude-filter' in g, f'{name} must filter region and exclude junk'
+            assert '(?!' not in g['filter'] and '(?!' not in g['exclude-filter']
+        elif name in {'稳定切换', '手动节点', '其他节点'}:
+            assert 'filter' not in g and 'exclude-filter' in g, f'{name} must only carry exclude-filter'
+            assert '(?!' not in g['exclude-filter']
+        else:
+            assert 'filter' not in g and 'exclude-filter' not in g
         if g['type'] == 'url-test':
             assert g.get('url') == 'https://www.gstatic.com/generate_204', f'bad probe url on {name}'
+            assert g.get('interval') == 900
+            assert g.get('tolerance') == 200
+            assert g.get('lazy') is True
         else:
-            assert 'url' not in g and 'benchmark-url' not in g, 'only url-test groups carry probe url'
-        assert 'benchmark-url' not in g, 'node benchmark is shared'
-        assert g.get('proxies') or g.get('use') or g.get('include-all')
-        for provider in g.get('use', []):
-            assert provider in c.get('proxy-providers', {})
-    assert groups['稳定切换']['type'] == 'url-test'
-    assert groups['稳定切换']['interval'] == 900
-    assert groups['稳定切换']['tolerance'] == 200
-    assert groups['稳定切换']['lazy'] is True
-    excl_rx = re.compile(groups['稳定切换']['exclude-filter'])
-    assert excl_rx.search('剩余流量 100GB') and excl_rx.search('到期时间 2027-01-01')
-    assert not excl_rx.search('US-1') and not excl_rx.search('SG-1')
-    for name in ('默认代理', 'YouTube', 'AI', 'Google', '国际媒体'):
-        assert groups[name]['proxies'][0] == '美国节点'
-    for name in ('AI', '国际媒体'):
-        assert 'include-all' not in groups[name] and 'use' not in groups[name], 'keep individual nodes in 手动节点'
-        assert '美国节点' in groups[name]['proxies']
-    assert all(group.get('icon', '').startswith('https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/')
-               and group['icon'].endswith('.png') for group in groups.values()), 'all groups need consistent icons'
+            assert 'url' not in g and 'benchmark-url' not in g
+        assert 'benchmark-url' not in g
+        assert g.get('proxies') or g.get('include-all')
+        assert not g.get('use'), 'groups must use include-all for universal airport compatibility'
+        icon = g.get('icon', '')
+        assert icon.startswith('https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/') and icon.endswith('.png'), name
+
+    for name in pools:
+        assert groups[name].get('include-all') is True, name
+        excl_rx = re.compile(groups[name]['exclude-filter'])
+        for junk in ('剩余流量 100GB', '到期时间 2027-01-01', '官网地址 example.com', '套餐重置'):
+            assert excl_rx.search(junk), f'{name} failed to exclude {junk}'
+        assert not excl_rx.search('KR-Home'), f'{name} wrongly excluded KR-Home'
+        if name != '其他节点':
+            assert not excl_rx.search('US-1') and not excl_rx.search('SG-1')
+    assert groups['手动节点']['type'] == 'select'
+
+    for name in ('默认代理', 'YouTube', 'AI', 'Google', '社交媒体', '国际媒体'):
+        assert groups[name]['proxies'][0] == '美国节点', name
+    assert '香港节点' not in groups['AI']['proxies'] and 'DIRECT' not in groups['AI']['proxies']
+    assert 'include-all' not in groups['AI'] and 'use' not in groups['AI']
     assert groups['Spotify']['proxies'][0] == '新加坡节点'
+    assert groups['Telegram']['proxies'][0] == '新加坡节点'
     assert groups['Apple']['proxies'][0] == 'DIRECT'
     assert groups['Microsoft']['proxies'][0] == 'DIRECT'
-    for name in ('美国节点', '新加坡节点'):
-        assert groups[name]['type'] == 'url-test'
-        assert groups[name]['url'] == 'https://www.gstatic.com/generate_204'
-        assert groups[name]['interval'] == 900
-        assert groups[name]['tolerance'] == 200
-        assert groups[name]['lazy'] is True
-        re.compile(groups[name]['filter'])
-    if 'proxy-providers' in c:
-        assert c['proxy-providers']['Airport']['benchmark-url'] == 'https://www.gstatic.com/generate_204'
-        assert 'path' not in c['proxy-providers']['Airport']
-    else:
-        assert groups['稳定切换']['include-all'] is True
-        assert groups['手动节点']['include-all'] is True
-    assert c['rules'][-1] == 'MATCH,兜底流量'
+    assert groups['广告过滤']['proxies'] == ['REJECT', 'DIRECT']
+    assert groups['兜底流量']['proxies'] == ['默认代理', 'DIRECT']
+
+    rps = c['rule-providers']
+    assert len(rps) == 18
+    paths = set()
+    for name, rp in rps.items():
+        assert rp['format'] == 'mrs', name
+        assert rp['behavior'] in {'domain', 'ipcidr'}, name
+        assert rp['url'].startswith('https://raw.githubusercontent.com/'), name
+        assert rp['path'].endswith('.mrs') and rp['path'] not in paths, name
+        paths.add(rp['path'])
+        assert rp['interval'] == 86400, name
+
+    rules = c['rules']
+    assert rules[-1] == 'MATCH,兜底流量'
     refs = set()
-    for rule in c['rules']:
+    for rule in rules:
         parts = rule.split(',')
         target = parts[-2] if parts[-1] == 'no-resolve' else parts[-1]
         assert target in groups or target in builtins, f'unknown rule policy: {rule}'
         if parts[0] == 'RULE-SET':
-            assert parts[1] in c['rule-providers']
+            assert parts[1] in rps, f'unknown provider {parts[1]}'
             refs.add(parts[1])
-        if parts[0] in {'GEOIP', 'IP-CIDR', 'IP-CIDR6'} or parts[:2] == ['RULE-SET', 'ChinaIPs']:
-            assert parts[-1] == 'no-resolve'
-    assert refs == set(c['rule-providers'])
-    rules = c['rules']
-    assert rules.index('DOMAIN,api.weibo.cn,DIRECT') < rules.index('RULE-SET,Ads,广告过滤')
-    assert rules.index('DOMAIN,api.zhihu.com,DIRECT') < rules.index('RULE-SET,Ads,广告过滤')
-    assert rules.index('DOMAIN,gemini.google.com,AI') < rules.index('DOMAIN-SUFFIX,google.com,Google')
-    assert rules.index('DOMAIN,copilot.microsoft.com,AI') < rules.index('DOMAIN-SUFFIX,microsoft.com,Microsoft')
-    assert rules.index('DOMAIN,sydney.bing.com,AI') < rules.index('DOMAIN-SUFFIX,bing.com,默认代理')
-    assert rules.index('DOMAIN-SUFFIX,bing.com,默认代理') < rules.index('DOMAIN-SUFFIX,microsoft.com,Microsoft')
-    for req_rule in ('DOMAIN-SUFFIX,claude.com,AI', 'DOMAIN-SUFFIX,claudeusercontent.com,AI',
-                     'DOMAIN,edgeservices.bing.com,AI', 'DOMAIN-SUFFIX,wabi.ai,AI',
-                     'DOMAIN-SUFFIX,discord.com,默认代理', 'DOMAIN-SUFFIX,notion.com,默认代理',
-                     'DOMAIN-SUFFIX,meta.com,默认代理'):
-        assert req_rule in rules, f'Missing synced rule: {req_rule}'
+            if rps[parts[1]]['behavior'] == 'ipcidr':
+                assert parts[-1] == 'no-resolve', rule
+        if parts[0] in {'GEOIP', 'IP-CIDR', 'IP-CIDR6'}:
+            assert parts[-1] == 'no-resolve', rule
+    assert refs == set(rps)
+
+    # Critical ordering & safety invariants
+    assert sum(1 for r in rules if r.endswith(',REJECT-DROP')) == 12
+    for host in ('googlevideo.com', 'youtube.com', 'youtubei.googleapis.com',
+                 'youtubei-att.googleapis.com', 'ytimg.com', 'ggpht.com',
+                 'api.zhihu.com', 'api.weibo.cn', 'sdkapp.uve.weibo.com',
+                 'edith.xiaohongshu.com', 'api.m.jd.com', 'guide-acs.m.taobao.com'):
+        assert any(r.startswith('AND,') and host in r and '(NETWORK,udp),(DST-PORT,443)' in r for r in rules), host
+
+    for req_idx_host in ('DOMAIN,api.weibo.cn,DIRECT', 'DOMAIN,sdkapp.uve.weibo.com,DIRECT',
+                         'DOMAIN,api.zhihu.com,DIRECT', 'DOMAIN,edith.xiaohongshu.com,DIRECT',
+                         'DOMAIN,dns.weixin.qq.com,DIRECT', 'DOMAIN-SUFFIX,cmpassport.com,DIRECT',
+                         'DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI'):
+        assert rules.index(req_idx_host) < rules.index('RULE-SET,Ads,广告过滤'), req_idx_host
+    assert rules.index('AND,((DOMAIN,api.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT') < rules.index('DOMAIN,api.zhihu.com,DIRECT')
+    assert rules.index('AND,((DOMAIN,sdkapp.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT') < rules.index('DOMAIN,sdkapp.uve.weibo.com,DIRECT')
+    assert rules.index('DOMAIN,gemini.google.com,AI') < rules.index('RULE-SET,Google,Google')
+    assert rules.index('DOMAIN,copilot.microsoft.com,AI') < rules.index('RULE-SET,Microsoft,Microsoft')
+    assert rules.index('DOMAIN-SUFFIX,bing.com,默认代理') < rules.index('RULE-SET,Microsoft,Microsoft')
+    assert rules.index('DOMAIN-SUFFIX,github.com,默认代理') < rules.index('RULE-SET,Microsoft,Microsoft')
     assert rules.index('DOMAIN,init-stream.maasea.workers.dev,YouTube') < rules.index('RULE-SET,ChinaDomains,DIRECT')
-    for host in ['googlevideo.com', 'youtubei.googleapis.com']:
-        assert any(r.startswith('AND,') and host in r and '(NETWORK,udp),(DST-PORT,443)' in r for r in rules)
-    http = c.get('http', {})
-    allowed = {'youtubei.googleapis.com', '*.googlevideo.com', 'api.weibo.cn', 'sub.weibo.cn',
-               'we.weibo.cn', 'api.zhihu.com', 'edith.xiaohongshu.com'}
-    assert set(http.get('mitm', [])) <= allowed
+
+    for ts_rule in ('DOMAIN-SUFFIX,ts.net,DIRECT', 'DOMAIN-SUFFIX,tailscale.com,DIRECT',
+                    'DOMAIN-SUFFIX,tailscale.io,DIRECT', 'IP-CIDR,100.64.0.0/10,DIRECT,no-resolve',
+                    'IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve'):
+        assert ts_rule in rules, ts_rule
+
+    for synced in ('DOMAIN-SUFFIX,claude.com,AI', 'DOMAIN-SUFFIX,claudeusercontent.com,AI',
+                   'DOMAIN-SUFFIX,wabi.ai,AI', 'DOMAIN-SUFFIX,hark.com,AI', 'DOMAIN-SUFFIX,cueai.app,AI',
+                   'DOMAIN-SUFFIX,muse.ai,AI', 'DOMAIN-SUFFIX,today.ai,AI', 'DOMAIN-SUFFIX,grok.com,AI',
+                   'DOMAIN-SUFFIX,discord.com,社交媒体', 'DOMAIN-SUFFIX,meta.com,社交媒体',
+                   'DOMAIN-SUFFIX,notion.com,默认代理', 'DOMAIN-SUFFIX,wasabisys.com,默认代理'):
+        assert synced in rules, synced
+
+    # MITM safety & rewrite/script checks
+    http = c['http']
     assert 'ca' not in http and 'ca-passphrase' not in http
-    for hook in http.get('script', []):
+    mitm_hosts = http['mitm']
+    assert len(mitm_hosts) >= 35
+    for host in mitm_hosts:
+        h = str(host).lower()
+        assert '*' not in h or h == '*.googlevideo.com', f'unexpected wildcard MITM {host}'
+        for kw in FORBIDDEN_MITM_KEYWORDS:
+            assert kw not in h, f'sensitive keyword {kw!r} in MITM host {host}'
+
+    assert len(http['url-rewrite']) == 67
+    for rw in http['url-rewrite']:
+        pat, _, _ = rw.rsplit(' ', 2)
+        re.compile(pat)
+
+    for hook in http['script']:
         assert hook['name'] in c['script-providers']
         assert hook['require-body'] is True
         assert 0 < hook['max-size'] <= 5242880
@@ -169,16 +228,18 @@ def validate(c, check_dns=True):
         re.compile(hook['match'])
         if hook['name'].startswith('yt-'):
             assert hook['binary-mode'] is True
-    for p in c.get('script-providers', {}).values():
-        if 'url' in p:
-            assert '/65075cdb388fc5e3094afd7e7314c67b243f3525/' in p['url']
+
+    sps = c['script-providers']
+    assert 'payload' in sps['stash-pro-ads'] and 'url' not in sps['stash-pro-ads']
+    for yt_key in ('yt-response', 'yt-request'):
+        assert '/65075cdb388fc5e3094afd7e7314c67b243f3525/' in sps[yt_key]['url']
+
     encoded = json.dumps(c)
     assert 'skip-cert-verify' not in encoded
     assert 'external-controller' not in c
 
 
-def route(host, network='tcp', port=443, sets=None, config=POLICY):
-    """Small test model of rules used here, not a Stash parser/runtime."""
+def route(host, network='tcp', port=443, sets=None, config=STASH_PRO):
     sets = sets or {}
     def suffix(pattern):
         return host == pattern or host.endswith('.' + pattern)
@@ -188,7 +249,7 @@ def route(host, network='tcp', port=443, sets=None, config=POLICY):
         target = p[-2] if p[-1] == 'no-resolve' else p[-1]
         if kind == 'MATCH':
             return target
-        if kind == 'DOMAIN' and host == p[1] or kind == 'DOMAIN-SUFFIX' and suffix(p[1]):
+        if kind == 'DOMAIN' and host == p[1] or kind == 'DOMAIN-SUFFIX' and suffix(p[1]) or kind == 'DOMAIN-KEYWORD' and p[1] in host:
             return target
         if kind == 'AND':
             terms = re.findall(r'\((DOMAIN-SUFFIX|DOMAIN|NETWORK|DST-PORT),([^()]+)\)', line)
@@ -208,7 +269,7 @@ def route(host, network='tcp', port=443, sets=None, config=POLICY):
 
 
 def node_fixtures(remote=None):
-    payload = {'app': APP, 'yt': YT, 'remote': remote or {}}
+    payload = {'cfg': STASH_PRO, 'remote': remote or {}}
     result = subprocess.run(['node', str(BASE / 'scripts/test-stash-pro-runtime.cjs')],
                             input=json.dumps(payload), text=True, encoding='utf-8',
                             capture_output=True, timeout=30)
@@ -217,120 +278,126 @@ def node_fixtures(remote=None):
 
 
 class Audit(unittest.TestCase):
-    def test_config_and_combined_overrides(self):
-        validate(POLICY)
-        validate(merge(merge(POLICY, APP), YT))
-
-    def test_airport_profile_policy_override(self):
-        text = (BASE / 'Stash_Pro_Policy_V26.00.stoverride').read_text(encoding='utf-8')
+    def test_single_override_invariants(self):
+        text = (BASE / CFG_NAME).read_text(encoding='utf-8')
         for key in ('proxy-groups', 'rule-providers', 'rules'):
             self.assertIn(f'{key}: #!replace', text)
-        self.assertNotIn('proxy-providers', POLICY)
-        self.assertNotIn('dns', POLICY)
-        self.assertNotIn('Airport', text)
-        airport = {'proxies': [{'name': 'US-1', 'type': 'ss'}, {'name': 'US-2', 'type': 'ss'},
-                               {'name': 'SG-1', 'type': 'ss'}],
-                   'proxy-groups': [{'name': '机场自带策略', 'type': 'select', 'proxies': ['US-1']}],
-                   'rules': ['MATCH,机场自带策略'], 'dns': {'nameserver': ['9.9.9.9']},
-                   'rule-providers': {'机场旧规则': {'url': 'https://example.invalid/old'}}}
-        result = merge(airport, POLICY)
-        for key in ('proxy-groups', 'rule-providers', 'rules'):
-            result[key] = copy.deepcopy(POLICY[key])  # documented #!replace semantics
-        validate(result, check_dns=False)
-        self.assertEqual(result['proxies'], airport['proxies'])
-        self.assertEqual(result['dns'], airport['dns'])
-        self.assertNotIn('机场自带策略', {g['name'] for g in result['proxy-groups']})
-        self.assertNotIn('机场旧规则', result['rule-providers'])
-
-    def test_region_filters(self):
-        groups = {g['name']: g for g in POLICY['proxy-groups']}
-        us = re.compile(groups['美国节点']['filter'])
-        sg = re.compile(groups['新加坡节点']['filter'])
-        for name in ('US1-HY2', 'US-3', '美国-01', '🇺🇸 LA', 'United States 2'):
-            self.assertIsNotNone(us.search(name), name)
-        for name in ('AUS-1', 'RUS-2', 'SG-1', '日本-01'):
-            self.assertIsNone(us.search(name), name)
-        for name in ('SG1-HY2', 'Singapore-2', '新加坡-01', '🇸🇬 03'):
-            self.assertIsNotNone(sg.search(name), name)
-        for name in ('US-1', 'AUS-1', '日本-01'):
-            self.assertIsNone(sg.search(name), name)
-
-    def test_duplicate_keys_rejected(self):
-        with self.assertRaises(ValueError):
-            load('dns: 1\ndns: 2\n')
+        validate(STASH_PRO)
 
     def test_airport_switch_preserves_rules_and_groups(self):
         for i in range(1, 4):
             airport = {
-                'proxies': [
-                    {'name': f'US-{i}', 'type': 'ss'},
-                    {'name': f'SG-{i}', 'type': 'ss'},
-                ],
-                'proxy-groups': [{'name': f'机场{i}策略', 'type': 'select', 'proxies': [f'US-{i}']}],
-                'rules': [f'MATCH,机场{i}策略'],
+                'proxies': [{'name': f'US-{i}', 'type': 'ss'}, {'name': f'HK-{i}', 'type': 'ss'}],
+                'proxy-groups': [{'name': f'机场{i}', 'type': 'select', 'proxies': [f'US-{i}']}],
+                'rules': [f'MATCH,机场{i}'],
                 'dns': {'nameserver': ['9.9.9.9']},
-                'rule-providers': {'机场旧规则': {'url': f'https://airport-{i}.invalid/old'}},
+                'rule-providers': {'机场旧集': {'url': f'https://airport-{i}.invalid/old'}},
             }
-            result = merge(airport, POLICY)
+            result = merge(airport, STASH_PRO)
             for key in ('proxy-groups', 'rule-providers', 'rules'):
-                result[key] = copy.deepcopy(POLICY[key])
-            validate(result, check_dns=False)
-            self.assertEqual(result['rules'], POLICY['rules'])
-            self.assertEqual(result['proxy-groups'], POLICY['proxy-groups'])
+                result[key] = copy.deepcopy(STASH_PRO[key])
+            validate(result, is_merged=True)
+            self.assertEqual(result['rules'], STASH_PRO['rules'])
+            self.assertEqual(result['proxy-groups'], STASH_PRO['proxy-groups'])
             self.assertEqual(result['proxies'], airport['proxies'])
+            self.assertEqual(result['dns'], airport['dns'])
+
+    def test_six_region_filters_and_boundaries(self):
+        groups = {g['name']: g for g in STASH_PRO['proxy-groups']}
+        filters = {name: re.compile(groups[name]['filter'])
+                   for name in ('美国节点', '日本节点', '新加坡节点', '台湾节点', '香港节点')}
+        other_excl = re.compile(groups['其他节点']['exclude-filter'])
+
+        positives = {
+            '美国节点': ('US1-HY2', 'US-3', '美国-01', '🇺🇸 LA', 'United States 2', 'Silicon Valley'),
+            '日本节点': ('JP-1', 'Japan-Tokyo', '日本-大阪', '🇯🇵 01'),
+            '新加坡节点': ('SG1-HY2', 'Singapore-2', '新加坡-01', '🇸🇬 03'),
+            '台湾节点': ('TW-01', 'Taiwan-Taipei', '台湾-02', '🇹🇼 台北'),
+            '香港节点': ('HK-01', 'Hong Kong-2', '香港-IEPL', '🇭🇰 05'),
+        }
+        for target, names in positives.items():
+            for n in names:
+                matched = [g for g, rx in filters.items() if rx.search(n)]
+                self.assertEqual(matched, [target], f'{n} matched {matched}')
+                self.assertIsNotNone(other_excl.search(n), f'其他节点 failed to exclude {n}')
+
+        for other in ('KR-Home', 'DE-Frankfurt', 'UK-London', 'Network-Test', 'Twitter解锁', 'AUS-Sydney', 'RUS-Moscow'):
+            matched = [g for g, rx in filters.items() if rx.search(other)]
+            self.assertEqual(matched, [], f'{other} leaked into {matched}')
+            self.assertIsNone(other_excl.search(other), f'其他节点 wrongly excluded {other}')
+
+        for junk in ('剩余流量 100GB', '到期时间 2027-01-01', '官网 example.com', '套餐说明'):
+            self.assertIsNotNone(other_excl.search(junk), junk)
+
+    def test_duplicate_keys_rejected(self):
+        with self.assertRaises(ValueError):
+            load('mode: rule\nmode: global\n')
 
     def test_routing_fixtures(self):
         tests = {
-            'dns.weixin.qq.com.cn': 'DIRECT', 'api.weibo.cn': 'DIRECT', 'api.zhihu.com': 'DIRECT',
-            'weixin.qq.com': 'DIRECT', 'teg.tencent-cloud.net': 'DIRECT', '192.168.3.1': 'DIRECT',
-            'gemini.google.com': 'AI', 'generativelanguage.googleapis.com': 'AI', 'chatgpt.com': 'AI',
-            'cdn.oaistatic.com': 'AI', 'copilot.microsoft.com': 'AI', 'claude.com': 'AI',
-            'sydney.bing.com': 'AI', 'wabi.ai': 'AI', 'www.bing.com': '默认代理',
-            'discord.com': '默认代理', 'notion.com': '默认代理', 'meta.com': '默认代理',
-            'accounts.google.com': 'Google',
-            'www.youtube.com': 'YouTube', 'rr1.googlevideo.com': 'YouTube',
-            'youtubei.googleapis.com': 'YouTube', 'init-stream.maasea.workers.dev': 'YouTube',
-            'raw.githubusercontent.com': '默认代理', 'www.netflix.com': '国际媒体',
-            'open.spotify.com': 'Spotify', 'audio4-fa.scdn.co': 'Spotify',
-            'spotify.link': 'Spotify', 'adstudio-video-preview-image.spotifycdn.com': 'Spotify',
-            'unknown.example': '兜底流量', 'www.apple.com': 'Apple', 't.me': 'Telegram',
+            'dns.weixin.qq.com.cn': 'DIRECT', 'dns.weixin.qq.com': 'DIRECT',
+            'api.weibo.cn': 'DIRECT', 'sdkapp.uve.weibo.com': 'DIRECT',
+            'api.zhihu.com': 'DIRECT', 'edith.xiaohongshu.com': 'DIRECT',
+            'cmpassport.com': 'DIRECT', 'home.ts.net': 'DIRECT', '100.64.1.2': 'DIRECT',
+            'umc.danuoyi.alicdn.com': 'REJECT-DROP', 'Aisou.ialicdn.com': 'REJECT-DROP',
+            'xz.fbcdn.net': 'REJECT-DROP',
+            'appcloud.zhihu.com': '广告过滤', 'ads-img-qc.xhscdn.com': '广告过滤',
+            'gemini.google.com': 'AI', 'generativelanguage.googleapis.com': 'AI',
+            'chatgpt.com': 'AI', 'copilot.microsoft.com': 'AI', 'claude.com': 'AI',
+            'sydney.bing.com': 'AI', 'wabi.ai': 'AI', 'hark.com': 'AI',
+            'cueai.app': 'AI', 'muse.ai': 'AI', 'today.ai': 'AI', 'grok.com': 'AI',
+            'browser-intake-datadoghq.com': 'AI',
+            'accounts.google.com': 'Google', 'mtalk.google.com': 'Google',
+            'rr1.googlevideo.com': 'YouTube', 'youtubei.googleapis.com': 'YouTube',
+            'init-stream.maasea.workers.dev': 'YouTube',
+            'discord.com': '社交媒体', 'meta.com': '社交媒体',
+            'github.com': '默认代理', 'notion.com': '默认代理', 'www.bing.com': '默认代理',
+            'omny.fm': '默认代理', 'unknown.example': '兜底流量',
+            'open.spotify.com': 'Spotify',
         }
         for host, expected in tests.items():
             with self.subTest(host=host):
                 self.assertEqual(route(host), expected)
-        # Simulate a future bad ad-list entry: protected API must still open.
-        sets = {'Ads': {'api.zhihu.com', 'api.weibo.cn', 'dns.weixin.qq.com.cn', 'ads.example'}}
-        for host in ['api.zhihu.com', 'api.weibo.cn', 'dns.weixin.qq.com.cn']:
+
+        sets = {'Ads': {'api.zhihu.com', 'sdkapp.uve.weibo.com', 'dns.weixin.qq.com', 'ads.example'}}
+        for host in ('api.zhihu.com', 'sdkapp.uve.weibo.com', 'dns.weixin.qq.com'):
             self.assertEqual(route(host, sets=sets), 'DIRECT')
         self.assertEqual(route('ads.example', sets=sets), '广告过滤')
-        self.assertEqual(route('rr1.googlevideo.com', 'udp'), 'REJECT')
+
+        self.assertEqual(route('api.zhihu.com', 'udp', 443), 'REJECT')
+        self.assertEqual(route('api.zhihu.com', 'tcp', 443), 'DIRECT')
+        self.assertEqual(route('sdkapp.uve.weibo.com', 'udp', 443), 'REJECT')
+        self.assertEqual(route('sdkapp.uve.weibo.com', 'tcp', 443), 'DIRECT')
+        self.assertEqual(route('api.m.jd.com', 'udp', 443), 'REJECT')
+        self.assertEqual(route('rr1.googlevideo.com', 'udp', 443), 'REJECT')
         self.assertEqual(route('rr1.googlevideo.com', 'udp', 53), 'YouTube')
-        self.assertEqual(route('node.example', 'udp'), '兜底流量')
-        self.assertEqual(route('weixin.qq.com', 'udp'), 'DIRECT')
-        combined = merge(POLICY, APP)
-        self.assertEqual(route('api.zhihu.com', 'udp', config=combined), 'REJECT')
-        self.assertEqual(route('api.zhihu.com', 'tcp', config=combined), 'DIRECT')
 
     def test_negative_mutations(self):
         def alter(path, val):
-            c = copy.deepcopy(merge(POLICY, YT))
+            c = copy.deepcopy(STASH_PRO)
             o = c
             for k in path[:-1]:
                 o = o[k]
             o[path[-1]] = val
             return c
+
+        pool_idx = next(i for i, g in enumerate(STASH_PRO['proxy-groups']) if g['name'] == '稳定切换')
+        ai_idx = next(i for i, g in enumerate(STASH_PRO['proxy-groups']) if g['name'] == 'AI')
         mutations = [
+            alter(['tcp-concurrent'], False),
             alter(['proxy-groups', 0, 'proxies'], ['missing']),
             alter(['proxy-groups', 0, 'proxies'], ['默认代理']),
-            alter(['proxy-groups', 1, 'use'], ['missing']),
-            alter(['proxy-groups', 1, 'filter'], 'US'),
-            alter(['proxy-groups', 1, 'interval'], 3600),
-            alter(['proxy-groups', 1, 'lazy'], False),
-            alter(['proxy-groups', 1, 'type'], 'fallback'),
-            alter(['proxy-groups', 1, 'url'], 'http://cp.cloudflare.com/generate_204'),
+            alter(['proxy-groups', ai_idx, 'proxies'], ['美国节点', '香港节点']),
+            alter(['proxy-groups', pool_idx, 'use'], ['missing']),
+            alter(['proxy-groups', pool_idx, 'filter'], 'US'),
+            alter(['proxy-groups', pool_idx, 'interval'], 300),
+            alter(['proxy-groups', pool_idx, 'lazy'], False),
+            alter(['proxy-groups', pool_idx, 'type'], 'fallback'),
+            alter(['proxy-groups', pool_idx, 'url'], 'http://cp.cloudflare.com/generate_204'),
+            alter(['rule-providers', 'Ads', 'format'], 'yaml'),
             alter(['rules', -1], 'MATCH,DIRECT'),
-            alter(['http', 'mitm'], ['*']),
-            alter(['http', 'script', 0, 'binary-mode'], False),
+            alter(['http', 'mitm'], ['*.icbc.com.cn']),
+            alter(['http', 'script', -1, 'binary-mode'], False),
             alter(['http', 'script', 0, 'max-size'], -1),
         ]
         for i, c in enumerate(mutations):
@@ -340,62 +407,31 @@ class Audit(unittest.TestCase):
     def test_embedded_script(self):
         node_fixtures()
 
-    @unittest.skipUnless(args.online, 'use --online for public resource GETs')
+    @unittest.skipUnless(args.online, 'use --online for public MRS & script GETs')
     def test_remote_resources(self):
-        tasks = [('rule', name, p) for name, p in POLICY['rule-providers'].items()]
-        tasks += [('script', name, p) for name, p in YT['script-providers'].items()]
+        tasks = [('mrs', name, p) for name, p in STASH_PRO['rule-providers'].items()]
+        tasks += [('script', name, p) for name, p in STASH_PRO['script-providers'].items() if 'url' in p]
+
         def fetch(task):
             kind, name, p = task
-            request = Request(p['url'], headers={'User-Agent': 'Stash-Pro-Audit/1.0'})
-            with urlopen(request, timeout=40) as response:
+            request = Request(p['url'], headers={'User-Agent': 'Stash-Pro-Audit/2.0'})
+            with urlopen(request, timeout=45) as response:
                 self.assertEqual(response.status, 200)
                 data = response.read(16000000)
+            self.assertGreater(len(data), 100, name)
+            if kind == 'mrs':
+                self.assertEqual(data[:4], b'\x28\xb5\x2f\xfd', f'{name} is not Zstd MRS binary')
+                print(f'PASS mrs {name}: {len(data)} bytes; sha256={hashlib.sha256(data).hexdigest()}', flush=True)
+                return kind, name, data
             text = data.decode('utf-8-sig')
-            if kind == 'rule':
-                parsed = load(text)
-                self.assertIsInstance(parsed['payload'], list)
-                self.assertTrue(parsed['payload'])
-                for item in parsed['payload']:
-                    self.assertIsInstance(item, str)
-                    if p['behavior'] == 'ipcidr':
-                        ipaddress.ip_network(item)
-                    else:
-                        self.assertNotIn(',', item)
-                        self.assertNotIn('://', item)
-                count = len(parsed['payload'])
-            else:
-                self.assertNotIn('<!DOCTYPE html', text)
-                syntax = subprocess.run(['node', '--check'], input=text, text=True, encoding='utf-8', capture_output=True)
-                self.assertEqual(syntax.returncode, 0, syntax.stderr)
-                count = len(data)
-            print(f'PASS {kind} {name}: {count}; sha256={hashlib.sha256(data).hexdigest()}', flush=True)
+            self.assertNotIn('<!DOCTYPE html', text)
+            syntax = subprocess.run(['node', '--check'], input=text, text=True, encoding='utf-8', capture_output=True)
+            self.assertEqual(syntax.returncode, 0, syntax.stderr)
+            print(f'PASS script {name}: {len(data)} bytes; sha256={hashlib.sha256(data).hexdigest()}', flush=True)
             return kind, name, text
-        with ThreadPoolExecutor(max_workers=4) as pool:
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
             results = list(pool.map(fetch, tasks))
-        # Check actual current remote lists against protected and critical service routes.
-        critical = {
-            'dns.weixin.qq.com.cn': 'DIRECT', 'api.weibo.cn': 'DIRECT', 'api.zhihu.com': 'DIRECT',
-            'chatgpt.com': 'AI', 'auth.openai.com': 'AI', 'gemini.google.com': 'AI',
-            'generativelanguage.googleapis.com': 'AI', 'accounts.google.com': 'Google',
-            'youtubei.googleapis.com': 'YouTube', 'rr1.googlevideo.com': 'YouTube',
-            'init-stream.maasea.workers.dev': 'YouTube', 'raw.githubusercontent.com': '默认代理',
-            'www.gstatic.com': 'Google', 'googleads.g.doubleclick.net': '广告过滤',
-        }
-        memberships = {}
-        for kind, name, text in results:
-            if kind != 'rule' or POLICY['rule-providers'][name]['behavior'] != 'domain':
-                continue
-            patterns = load(text)['payload']
-            def matches(host, pattern):
-                if pattern.startswith('+.'):
-                    return host == pattern[2:] or host.endswith('.' + pattern[2:])
-                if pattern.startswith('.'):
-                    return host.endswith(pattern)
-                return fnmatch.fnmatchcase(host, pattern)
-            memberships[name] = {host for host in critical if any(matches(host, p) for p in patterns)}
-        for host, policy in critical.items():
-            self.assertEqual(route(host, sets=memberships), policy, host)
-        print(f'PASS {len(critical)} routes against current remote domain lists', flush=True)
         node_fixtures({name: text for kind, name, text in results if kind == 'script'})
 
 

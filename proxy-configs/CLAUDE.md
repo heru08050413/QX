@@ -8,15 +8,8 @@
 - `quantumult_B_V26.00` — Quantumult X
 - `Egern_Pro_V26.00.yml` — Egern(YAML)
 - `Loon_V26.00` — Loon
-- `Stash_AdBlock_V26.00.stoverride` — Stash 去广告覆写(**Override/`.stoverride` YAML 格式** —— Stash 只有 Override/Rewrite/MitM/Script 四入口,**不吃 `.sgmodule`**;纯 `rules:` 网络层 REJECT,覆写数组插到原规则最前、不替换分流,零脚本零 MITM 零腐坏)。信息流/开屏这类需脚本的去广告,指向维护良好的 `.stoverride`(deezertidal 系:微博/微信公众号/知乎/YouTube/去广告合集,原生 Override 格式)。
-  > 教训:Stash≠Surge/Loon —— `.sgmodule`(blockAds 等)在 Stash 里导入会报"格式不正确",必须用 `.stoverride`(YAML)。
-- `Stash_AppAdBlock_V26.00.stoverride` — Stash **具体 App 深度去广告**覆写(**需开 MITM 并信任证书**)。从 fmz200/blockAds 精选 13 个消费类 App(京东/淘宝/闲鱼/小红书/拼多多/百度网盘/高德/有道/汽车之家/钉钉/我要自学网/知乎/联通/电信)的开屏与信息流去广告,把 `[URL Rewrite]` reject + `[Map Local]` 按 Script-Hub 的 Stash 映射折叠进 `http.url-rewrite:`(`reject`/`reject-dict`/`reject-array`/`reject-200`/`reject-img`),**纯静态正则、零外部脚本 = 不会因脚本死链而腐坏**。
-  > 三条硬约束(实事求是):① **不含任何银行/支付/政务/证件类 App**(京东金融/12306/个人所得税/航旅纵横一律不 MITM);② Stash 的 `rules:` **不吃 `URL-REGEX`/`PROTOCOL`**(Script-Hub 自身会把 `URL-REGEX` reject 迁到 url-rewrite),已在转换时剔除以保证导入;③ B站/YouTube 的信息流去广告依赖**特制 payload / 外部脚本**(非简单 reject),不硬转,指向 BiliUniverse/ADBlock 与 Maasea/YouTube.Enhance 维护版,本文件仅收其安全网络规则。
-- `Stash_Script_V26.00.stoverride` + `scripts/*.js`(12 个)— **信息流脚本级去广告合集**。开屏/独立广告接口靠 url-rewrite 整条 reject 即可(见上一份);**信息流里混排的广告**要解析 JSON、逐条删广告保正文,必须用脚本。覆盖 13 App:知乎·小红书·微博·淘宝·京东·爱奇艺·优酷·芒果TV·什么值得买·滴滴出行·大众点评·夸克·有道词典(81 hooks / 51 MITM 域 / 12 providers)。
-  > 架构关键(避免重蹈"Scripts Not Downloaded"):脚本 JS **全部镜像进本仓库 `scripts/`**、`.stoverride` 的 `script-providers.url` 只引**自己仓库的 raw 链接**——第三方死链风险归零,只剩"App 改接口→标记字段变"的逻辑腐坏(用得多的 App 社区盯得紧,同步上游即可)。上游源 @fmz200(wool_scripts)/@yichahucha(微博 wb_ad)/@zirawell(R-Store),12 个上游 URL 已入巡检 EXTRA_URLS,上游死/大改即回本仓库 diff 同步。
-  > 移植时踩到的两个 Stash 兼容点:① **atomic group `(?>...)` Stash 正则不吃**(JS/RE2 均不支持)→ 转 `(?:...)`(此处简单择一, 语义等价);② 爱奇艺有一条 **IP 主机 hook**(`[\d.]+`)无法 MITM, 在 Stash 上失效(域名 hook 已覆盖首页/feed)。全部 JS 过 `node --check`、全部 match 过 `new RegExp` 编译。
-  > **不收录**:B站(kokoryh/Sparkle 依赖 `engine=webview`+protobuf, Stash 无 webview)、网易云音乐/百度贴吧/Spotify/YouTube(binary-body-mode protobuf)、银行/政务/证件类(12306/航旅纵横/招商证券/建行生活/买单吧…一律不 MITM)。
-- `Stash_All_V26.00.stoverride` — **三合一总覆写**(上面三份合并, 一个链接全都有)。`rules:` 81 条(网络层 REJECT + App 网络规则)、`http.mitm:` 72 域(两份去重)、`http.url-rewrite:` 67 条、`http.script:` 81 hooks、`script-providers:` 12。①网络层免 MITM 即生效;②③需开 MITM。**三份分文件保留**(便于按需单开某层);总文件供"一键全量"。由 `/tmp/merge.py` 从三份源文件抽段合并生成,148 条 url-rewrite+script 正则全过 `new RegExp` 编译。
+- `Stash_Pro_V26.00.stoverride` — **Stash 3.4+ 原生单文件全栈覆写**（推荐使用）。用 `mode: rule` + `tcp-concurrent: true`、`#!replace` 接管 `proxy-groups`/`rule-providers`/`rules`（不改机场原有节点/DNS）；全 18 个规则集均采用 `format: mrs` 二进制索引格式（0 `classical`）；20 个策略组补齐美/日/新/台/港/其他 6 地区池 + `稳定切换` + `手动节点`，全 `url-test` 启用 Google HTTPS 探针、900s、tolerance 200、`lazy: true` 共享测速结果；三段式去开屏/信息流（网络层 + `REJECT-DROP` + 67 条静态 `url-rewrite` + 内嵌 `payload` JS 零外部下载，覆盖 11+ 国内 App 开屏/弹窗/水印并附带 YouTube `binary-mode` 锁定钩子）；MITM 严格白名单（39 域，0 银行/支付/政务/网盘/运营商/Apple/Tailscale/登录域）+ 精准 UDP 443 QUIC 回落。说明见 `Stash_Pro_README.md`，自动化校验脚本见 `scripts/test-stash-pro.py`。
+- `Stash_SR_V26.00.stoverride` + `scripts/*.js`(11 个镜像)— **Stash 小火箭同源移植备选覆写**（由 `scripts/sr2stash.py` 从 `shadowrocket_V26.00.lsr` 生成；其中 `scripts/zhihu.js` 同时被小火箭引用，其余 10 个为历史镜像供本文件使用）。与 `Stash_Pro_V26.00.stoverride` 二选一，勿同开。
 
 > 版本号:各端主配置已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
 > 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连)。关于 DNS 防泄露与国内直连的权衡:在没有完备本地/Fake-IP 域名的情况下,末尾 `GEOIP,CN` 前的未命中长尾域若触发本地解析,就会让本地 DNS 看见查询(QX 无 Fake-IP 属已知架构限制;Loon/Clash_iso 需保持完整国内域名集 + `no-resolve` 才能兼顾)。
@@ -53,7 +46,7 @@
    - **Stash**:地区池/全部节点用 `include-all: true`(含配置内全部节点),不要改成 `use:[Subscribe]`(那会把本地节点挡在外面)。本地节点建议放在 App 内的本地 Override 的 `proxies:` 里,远程配置更新不会冲掉。
    - **Egern**:所有组只从 `订阅`(external)取节点,本地节点默认不在任何组。官方有"手动添加的节点自动加入指定策略组"的设置,但字段名未经核实(官网对本会话不可达)前不写进配置;可行路径:按节点名写进组,或把本地节点做成订阅文件并加进 `订阅` 的 urls。
 
-10. **Stash_SR 是小火箭的派生物**:`Stash_SR_V26.00.stoverride` 由 `scripts/sr2stash.py` 从 `shadowrocket_V26.00.lsr` 生成,不要手改。改小火箭后必须重跑转换。转换取舍写在脚本文件头:测速组一律 `lazy: true`(Stash 测速结果按节点跨组共享,只给部分组开 lazy 省不了电);过滤器不用前瞻;`REJECT-200` 拆成 DIRECT + url-rewrite reject-200;Tailscale、`[Host]`、bypass-tun、MITM 排除项不移植。
+10. **Stash 两条路线互斥维护**：主推原生 `Stash_Pro_V26.00.stoverride`（MRS 二进制 + 内嵌 `payload` JS，由 `scripts/test-stash-pro.py` 验证）；`Stash_SR_V26.00.stoverride` 为从 `shadowrocket_V26.00.lsr` 转换的备选路线（`scripts/sr2stash.py`）。独立历史覆写已合并清理，`sr2stash.py` 在缺少旧扩展覆写时仅转换小火箭核心层，若无回退需求可不重跑以免覆盖既有 `Stash_SR_V26.00.stoverride`。
 
 > 改动前后都跑一遍这 10 条。这一层不参与差异化。
 

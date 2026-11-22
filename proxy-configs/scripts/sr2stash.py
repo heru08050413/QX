@@ -263,6 +263,9 @@ def hook_host_regex(pattern):
 
 
 def merge_extra_layer(rules, mitm, rewrites, hooks, sproviders):
+    if not EXTRA_APP_ADBLOCK.exists() or not EXTRA_SCRIPTS.exists():
+        # Standalone AppAdBlock/Script overrides were retired in favor of Stash_Pro_V26.00.stoverride.
+        return 0, 0
     import yaml
     app = yaml.safe_load(EXTRA_APP_ADBLOCK.read_text(encoding='utf-8'))
     scr = yaml.safe_load(EXTRA_SCRIPTS.read_text(encoding='utf-8'))

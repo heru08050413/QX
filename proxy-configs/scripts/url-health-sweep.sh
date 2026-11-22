@@ -19,7 +19,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 2
 
-FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_AdBlock_V26.00.stoverride Stash_AppAdBlock_V26.00.stoverride Stash_Script_V26.00.stoverride Stash_All_V26.00.stoverride Stash_SR_V26.00.stoverride ../Clash_iso/Clash_iso_V26.00.yaml)
+FILES=(shadowrocket_V26.00.lsr quantumult_B_V26.00 Egern_Pro_V26.00.yml Loon_V26.00 Stash_Pro_V26.00.stoverride Stash_SR_V26.00.stoverride ../Clash_iso/Clash_iso_V26.00.yaml)
 
 # 外部维护的去广告模块/脚本(被 Loon/Egern/SR 引用, 或供 Stash 用户参考),
 # 生效行里, 故显式列出让本脚本一并盯着 —— 这正是"去广告模块静默失效"的看门狗)
@@ -30,10 +30,9 @@ EXTRA_URLS=(
   "https://github.com/BiliUniverse/ADBlock/releases/latest/download/BiliBili.ADBlock.sgmodule"
   "https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/modules/script-hub.stash.stoverride"
   "https://raw.githubusercontent.com/Script-Hub-Org/Script-Hub/main/Rewrite-Parser.js"
-  # 信息流脚本的【上游源】—— 本仓库 scripts/ 里的是镜像;盯着上游, 死链/大改即回本仓库同步
+  # 信息流脚本的【上游源】—— 本仓库 scripts/ 里保留 Stash_SR 与小火箭引用的 11 个镜像; 盯着上游防死链
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/zhihu/zhihu.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/xiaohongshu/xiaohongshu.js"
-  "https://raw.githubusercontent.com/yichahucha/surge/master/wb_ad.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/myBlockAds.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/jingdong/jingdong.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/cnftp.js"

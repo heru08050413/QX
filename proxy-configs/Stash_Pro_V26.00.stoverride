@@ -1,0 +1,926 @@
+name: Stash Pro V26.00
+desc: Stash 3.4+ 单文件全栈覆写（18 个 MRS 二进制纯索引规则集 + 6 地区共享 lazy 测速池 + 开屏/信息流内嵌去广告 + YouTube 增强）。叠加在机场配置上启用，保留机场节点与 DNS。
+# 架构要点（发挥 Stash 原生优势，兼容 App Store 3.4+ 正式版）:
+#   1. mode: rule + tcp-concurrent: true —— 多 IP 并发 TCP 握手择快，提升 CDN 与弱网首包。
+#   2. 全二进制 format: mrs 规则集 —— 0 个 classical 大文本清单，毫秒级加载、低内存。
+#   3. 20 策略组（完整 6 地区池 + 稳定切换 + 手动节点）—— 7 个 url-test 统一 Google HTTPS 探针、
+#      900s、tolerance 200、lazy: true（Stash 同节点跨组共享测速结果，兼顾地区自选与低耗电）。
+#   4. 全量开屏与信息流去广告 —— 网络层(0 MITM + REJECT-DROP) + Stash 原生零 JS url-rewrite
+#      + 内嵌 payload JS(0 外部脚本下载，根治 Scripts Not Downloaded)；MITM 严格零银行/支付/政务域。
+#   5. YouTube 增强 —— Maasea 锁定 commit 65075cd（原生 binary-mode + 第三方 Worker，需真机观察；
+#      若播放卡顿可注释下方 YouTube 脚本 3 条 hook 后重载覆写，主分流与开屏去广告不受影响）。
+
+mode: rule
+tcp-concurrent: true
+
+proxy-groups: #!replace
+  # ---- 业务策略组（12 组）----
+  - name: 默认代理
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
+    proxies: [美国节点, 稳定切换, 日本节点, 新加坡节点, 台湾节点, 香港节点, 其他节点, 手动节点, REJECT]
+  - name: YouTube
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 香港节点, 稳定切换, 手动节点, REJECT]
+  - name: AI
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Bot.png
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 默认代理, 手动节点]
+    # 严格不含香港节点与 DIRECT；不直接铺开裸节点，单节点固定走「手动节点」。
+  - name: Google
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Google.png
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 香港节点, 默认代理, 手动节点]
+    # 共享 Google 登录 / FCM 与 AI 同默认美国池，且支持按需切地区。
+  - name: 社交媒体
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Twitter.png
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 香港节点, 默认代理, 手动节点]
+  - name: 国际媒体
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/ForeignMedia.png
+    proxies: [美国节点, 日本节点, 新加坡节点, 台湾节点, 香港节点, 默认代理, 手动节点]
+  - name: Spotify
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Spotify.png
+    proxies: [新加坡节点, 美国节点, 日本节点, 香港节点, 手动节点, REJECT]
+  - name: Telegram
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Telegram.png
+    proxies: [新加坡节点, 香港节点, 美国节点, 日本节点, 默认代理, 手动节点]
+  - name: Apple
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Apple.png
+    proxies: [DIRECT, 默认代理, 美国节点, 香港节点]
+  - name: Microsoft
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png
+    proxies: [DIRECT, 默认代理, 美国节点, 香港节点]
+  - name: 广告过滤
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Advertising.png
+    proxies: [REJECT, DIRECT]
+    # DIRECT 仅用于临时排查网络层误杀；不会关闭下方 url-rewrite 与 HTTP 脚本。
+  - name: 兜底流量
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
+    proxies: [默认代理, DIRECT]
+
+  # ---- 节点池（8 组：include-all 同时纳入机场订阅与本地自定义节点）----
+  # 全部 url-test 共用 Google HTTPS 探针、900s、tolerance 200、lazy: true；并排除机场信息条。
+  - name: 稳定切换
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 手动节点
+    type: select
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Static.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+  - name: 美国节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    filter: '(?i)(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?:$|[^a-z])|美国|美國|美西|美东|美東|美中|沪美|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|🇺🇸'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 日本节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    filter: '(?i)(?:^|[^a-z])(?:jp|jpn|japan|tokyo|osaka)(?:$|[^a-z])|日本|东京|東京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇯🇵'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 新加坡节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    filter: '(?i)(?:^|[^a-z])(?:sg|sgp|singapore)(?:$|[^a-z])|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新|🇸🇬'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 台湾节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    filter: '(?i)(?:^|[^a-z])(?:tw|twn|taiwan|taipei)(?:$|[^a-z])|台湾|台灣|台北|台中|新北|彰化|🇹🇼'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 香港节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    filter: '(?i)(?:^|[^a-z])(?:hk|hkg|hong[ _-]?kong)(?:$|[^a-z])|香港|深港|沪港|京港|🇭🇰'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+  - name: 其他节点
+    type: url-test
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
+    include-all: true
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB|🇺🇸|🇭🇰|🇹🇼|🇯🇵|🇸🇬|美国|美國|美西|美东|美東|美中|沪美|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|香港|深港|沪港|京港|台湾|台灣|台北|台中|新北|彰化|日本|东京|東京|大阪|京日|苏日|沪日|上日|川日|深日|广日|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley|hk|hkg|hong[ _-]?kong|tw|twn|taiwan|taipei|jp|jpn|japan|tokyo|osaka|sg|sgp|singapore)(?:$|[^a-z])'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+
+rule-providers: #!replace
+  # 全部采用 MRS 二进制索引格式（Stash 3.1+ 支持），体积小、加载快、低内存。
+  Ads:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockmihomo.mrs
+    path: ./rules/stash-pro-ads.mrs
+    interval: 86400
+  YouTube:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/youtube.mrs
+    path: ./rules/stash-pro-youtube.mrs
+    interval: 86400
+  AI:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-ai-!cn.mrs
+    path: ./rules/stash-pro-ai.mrs
+    interval: 86400
+  Google:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/google.mrs
+    path: ./rules/stash-pro-google.mrs
+    interval: 86400
+  Telegram:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/telegram.mrs
+    path: ./rules/stash-pro-telegram.mrs
+    interval: 86400
+  TelegramIP:
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/telegram.mrs
+    path: ./rules/stash-pro-telegram-ip.mrs
+    interval: 86400
+  Twitter:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/twitter.mrs
+    path: ./rules/stash-pro-twitter.mrs
+    interval: 86400
+  Facebook:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/facebook.mrs
+    path: ./rules/stash-pro-facebook.mrs
+    interval: 86400
+  Instagram:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/instagram.mrs
+    path: ./rules/stash-pro-instagram.mrs
+    interval: 86400
+  TikTok:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/tiktok.mrs
+    path: ./rules/stash-pro-tiktok.mrs
+    interval: 86400
+  Netflix:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/netflix.mrs
+    path: ./rules/stash-pro-netflix.mrs
+    interval: 86400
+  Disney:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/disney.mrs
+    path: ./rules/stash-pro-disney.mrs
+    interval: 86400
+  Spotify:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/spotify.mrs
+    path: ./rules/stash-pro-spotify.mrs
+    interval: 86400
+  Apple:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/apple.mrs
+    path: ./rules/stash-pro-apple.mrs
+    interval: 86400
+  Microsoft:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/microsoft.mrs
+    path: ./rules/stash-pro-microsoft.mrs
+    interval: 86400
+  PrivateDomains:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/private.mrs
+    path: ./rules/stash-pro-private.mrs
+    interval: 86400
+  ChinaDomains:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/cn.mrs
+    path: ./rules/stash-pro-cn.mrs
+    interval: 86400
+  ChinaIPs:
+    behavior: ipcidr
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geoip/cn.mrs
+    path: ./rules/stash-pro-cn-ip.mrs
+    interval: 86400
+
+rules: #!replace
+  # 1. 局域网、本地 DNS 与 Tailscale 家庭组网直连（所有 IP 规则均加 no-resolve）
+  - DOMAIN,dns.alidns.com,DIRECT
+  - DOMAIN,doh.pub,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,localhost,DIRECT
+  - DOMAIN-SUFFIX,home.arpa,DIRECT
+  - DOMAIN-SUFFIX,ts.net,DIRECT
+  - DOMAIN-SUFFIX,tailscale.com,DIRECT
+  - DOMAIN-SUFFIX,tailscale.io,DIRECT
+  - RULE-SET,PrivateDomains,DIRECT
+  - IP-CIDR,0.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # 2. MITM 域的应用层 UDP 443(QUIC) 回落 TCP（必须排在下方 DIRECT 保护区之前）
+  #    仅拦截对应 API 域名的 UDP 443 防止绕过 MITM，不影响全局 UDP 与 HY2/TUIC 节点隧道。
+  - AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN-SUFFIX,youtube.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,youtubei.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,youtubei-att.googleapis.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN-SUFFIX,ytimg.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN-SUFFIX,ggpht.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,sub.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,we.weibo.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,sdkapp.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,wbapp.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,sdkapp.mob.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,wbapp.mob.uve.weibo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,www.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,zhuanlan.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,edith.xiaohongshu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,www.xiaohongshu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,acs.m.taobao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,guide-acs.m.taobao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,acs.m.goofish.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.m.jd.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,m5.amap.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,amap-aos-info-nogw.amap.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.pinduoduo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api.yangkeduo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+
+  # 3. 国内关键连通性保护区（严格排在 Ads 之前，防止微信/微博/知乎/运营商一键登录转圈）
+  - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
+  - DOMAIN-SUFFIX,weixin.com,DIRECT
+  - DOMAIN-SUFFIX,wx.qq.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com.cn,DIRECT
+  - DOMAIN,dns.weixin.qq.com,DIRECT
+  - DOMAIN,teg.tencent-cloud.net,DIRECT
+  - DOMAIN-SUFFIX,wechat.com,DIRECT
+  - DOMAIN-SUFFIX,weixinbridge.com,DIRECT
+  - DOMAIN-SUFFIX,tenpay.com,DIRECT
+  - DOMAIN-SUFFIX,alipay.com,DIRECT
+  - DOMAIN,amdc.alipay.com,DIRECT
+  - DOMAIN,c-hzgt2.getui.com,DIRECT
+  - DOMAIN-SUFFIX,push.apple.com,DIRECT
+  - DOMAIN-SUFFIX,cmpassport.com,DIRECT
+  - DOMAIN-SUFFIX,id6.me,DIRECT
+  - DOMAIN,open.e.189.cn,DIRECT
+  - DOMAIN,mdn.open.wo.cn,DIRECT
+  - DOMAIN,opencloud.wostore.cn,DIRECT
+  - DOMAIN,auth.wosms.cn,DIRECT
+  - DOMAIN-SUFFIX,10099.com.cn,DIRECT
+  # 精确放行正文与开屏改写域，保留广告子域在下一节被拦截
+  - DOMAIN,api.weibo.cn,DIRECT
+  - DOMAIN,sub.weibo.cn,DIRECT
+  - DOMAIN,we.weibo.cn,DIRECT
+  - DOMAIN,sdkapp.uve.weibo.com,DIRECT
+  - DOMAIN,wbapp.uve.weibo.com,DIRECT
+  - DOMAIN,sdkapp.mob.uve.weibo.com,DIRECT
+  - DOMAIN,wbapp.mob.uve.weibo.com,DIRECT
+  - DOMAIN,api.zhihu.com,DIRECT
+  - DOMAIN,www.zhihu.com,DIRECT
+  - DOMAIN,zhuanlan.zhihu.com,DIRECT
+  - DOMAIN,zhstatic.zhihu.com,DIRECT
+  - DOMAIN,appcloud2.zhihu.com,DIRECT
+  - DOMAIN,link.zhihu.com,DIRECT
+  - DOMAIN,edith.xiaohongshu.com,DIRECT
+  - DOMAIN,www.xiaohongshu.com,DIRECT
+  - DOMAIN,ci.xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,browser-intake-datadoghq.com,AI
+
+  # 4. 高频遥测熔断（REJECT-DROP 静默丢包防死循环耗电）+ 0-MITM 精准 App 广告 + 全局广告集
+  - DOMAIN,umc.danuoyi.alicdn.com,REJECT-DROP
+  - DOMAIN,Aisou.ialicdn.com,REJECT-DROP
+  - DOMAIN-SUFFIX,mum.alibabachengdun.com,REJECT-DROP
+  - DOMAIN-KEYWORD,pangolin-sdk-toutiao,REJECT-DROP
+  - DOMAIN-SUFFIX,ctobsnssdk.com,REJECT-DROP
+  - DOMAIN-SUFFIX,px.ucweb.com,REJECT-DROP
+  - DOMAIN-SUFFIX,umeng.com,REJECT-DROP
+  - DOMAIN-SUFFIX,umeng.co,REJECT-DROP
+  - DOMAIN-SUFFIX,adsdk.com,REJECT-DROP
+  - DOMAIN-SUFFIX,e.qq.com,REJECT-DROP
+  - DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP
+  - DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP
+  # 小红书 / 知乎 / 闲鱼 纯网络层广告拦截（无需 MITM）
+  - DOMAIN,ads-img-qc.xhscdn.com,广告过滤
+  - DOMAIN,ads-img-al.xhscdn.com,广告过滤
+  - DOMAIN,ads-video-al.xhscdn.com,广告过滤
+  - DOMAIN,ads-video-qc.xhscdn.com,广告过滤
+  - DOMAIN,t-ads.xiaohongshu.com,广告过滤
+  - DOMAIN,appcloud.zhihu.com,广告过滤
+  - DOMAIN,appcloud2.in.zhihu.com,广告过滤
+  - DOMAIN,crash2.zhihu.com,广告过滤
+  - DOMAIN,mqtt.zhihu.com,广告过滤
+  - DOMAIN,sugar.zhihu.com,广告过滤
+  - DOMAIN,zxid-m.mobileservice.cn,广告过滤
+  - IP-CIDR,103.41.167.237/32,广告过滤,no-resolve
+  - IP-CIDR,118.89.204.198/32,广告过滤,no-resolve
+  - IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128,广告过滤,no-resolve
+  - DOMAIN-KEYWORD,iyes.youku.com,广告过滤
+  - RULE-SET,Ads,广告过滤
+
+  # 5. AI（排在 Google / Microsoft / ChinaDomains 之前）
+  - DOMAIN,gemini.google.com,AI
+  - DOMAIN,aistudio.google.com,AI
+  - DOMAIN,ai.google.dev,AI
+  - DOMAIN,generativelanguage.googleapis.com,AI
+  - DOMAIN,alkalimakersuite-pa.clients6.google.com,AI
+  - DOMAIN,makersuite.google.com,AI
+  - DOMAIN,proactivebackend-pa.googleapis.com,AI
+  - DOMAIN,copilot.microsoft.com,AI
+  - DOMAIN,sydney.bing.com,AI
+  - DOMAIN,edgeservices.bing.com,AI
+  - RULE-SET,AI,AI
+  - DOMAIN-SUFFIX,openai.com,AI
+  - DOMAIN-SUFFIX,chatgpt.com,AI
+  - DOMAIN-SUFFIX,oaistatic.com,AI
+  - DOMAIN-SUFFIX,oaiusercontent.com,AI
+  - DOMAIN-SUFFIX,auth0.com,AI
+  - DOMAIN-SUFFIX,claude.ai,AI
+  - DOMAIN-SUFFIX,claude.com,AI
+  - DOMAIN-SUFFIX,claudeusercontent.com,AI
+  - DOMAIN-SUFFIX,anthropic.com,AI
+  - DOMAIN-SUFFIX,perplexity.ai,AI
+  - DOMAIN-SUFFIX,x.ai,AI
+  - DOMAIN-SUFFIX,grok.com,AI
+  - DOMAIN-SUFFIX,muse.ai,AI
+  - DOMAIN-SUFFIX,meta.ai,AI
+  - DOMAIN-SUFFIX,metaaivm.com,AI
+  - DOMAIN-SUFFIX,hark.com,AI
+  - DOMAIN-SUFFIX,gethark.ai,AI
+  - DOMAIN-SUFFIX,wabi.ai,AI
+  - DOMAIN-SUFFIX,cueai.app,AI
+  - DOMAIN-SUFFIX,manus.im,AI
+  - DOMAIN-SUFFIX,manus.ai,AI
+  - DOMAIN-SUFFIX,today.ai,AI
+  - DOMAIN-SUFFIX,oneintent.today,AI
+  - DOMAIN-SUFFIX,cursor.sh,AI
+  - DOMAIN-SUFFIX,cursorapi.com,AI
+  - DOMAIN-SUFFIX,cursor-cdn.com,AI
+  - DOMAIN-SUFFIX,cursorvm.com,AI
+  - DOMAIN-SUFFIX,githubcopilot.com,AI
+
+  # 6. Google 登录/FCM 隔离 → YouTube → Google → 社交/媒体/GitHub/Notion/播客 → 微软/苹果
+  - DOMAIN,accounts.google.com,Google
+  - DOMAIN,oauth2.googleapis.com,Google
+  - DOMAIN,securetoken.googleapis.com,Google
+  - DOMAIN,identitytoolkit.googleapis.com,Google
+  - DOMAIN,mtalk.google.com,Google
+
+  - DOMAIN,init-stream.maasea.workers.dev,YouTube
+  - DOMAIN,yt3.googleusercontent.com,YouTube
+  - DOMAIN,youtubei-att.googleapis.com,YouTube
+  - DOMAIN,youtubei.googleapis.com,YouTube
+  - RULE-SET,YouTube,YouTube
+  - DOMAIN-SUFFIX,googlevideo.com,YouTube
+  - DOMAIN-SUFFIX,ytimg.com,YouTube
+  - DOMAIN-SUFFIX,ggpht.com,YouTube
+
+  - RULE-SET,Google,Google
+  - RULE-SET,Telegram,Telegram
+
+  - RULE-SET,Twitter,社交媒体
+  - RULE-SET,Facebook,社交媒体
+  - RULE-SET,Instagram,社交媒体
+  - RULE-SET,TikTok,社交媒体
+  - DOMAIN-SUFFIX,meta.com,社交媒体
+  - DOMAIN-SUFFIX,messenger.com,社交媒体
+  - DOMAIN-SUFFIX,threads.com,社交媒体
+  - DOMAIN-SUFFIX,threads.net,社交媒体
+  - DOMAIN-SUFFIX,discord.com,社交媒体
+  - DOMAIN-SUFFIX,discord.gg,社交媒体
+  - DOMAIN-SUFFIX,discordapp.com,社交媒体
+  - DOMAIN-SUFFIX,discordapp.net,社交媒体
+  - DOMAIN-SUFFIX,discord.media,社交媒体
+  - DOMAIN-SUFFIX,discordcdn.com,社交媒体
+  - DOMAIN-SUFFIX,dis.gd,社交媒体
+
+  - RULE-SET,Netflix,国际媒体
+  - RULE-SET,Disney,国际媒体
+  - RULE-SET,Spotify,Spotify
+  - DOMAIN-SUFFIX,spotify.com,Spotify
+  - DOMAIN-SUFFIX,scdn.co,Spotify
+  - DOMAIN-SUFFIX,spotify.link,Spotify
+  - DOMAIN-SUFFIX,spotifycdn.com,Spotify
+
+  # GitHub / Notion / Bing / Apple 播客海外音频托管（必须排在 Microsoft 之前）
+  - DOMAIN-SUFFIX,github.com,默认代理
+  - DOMAIN-SUFFIX,githubusercontent.com,默认代理
+  - DOMAIN-SUFFIX,githubassets.com,默认代理
+  - DOMAIN-SUFFIX,github.io,默认代理
+  - DOMAIN-SUFFIX,notion.so,默认代理
+  - DOMAIN-SUFFIX,notion.site,默认代理
+  - DOMAIN-SUFFIX,notion.com,默认代理
+  - DOMAIN-SUFFIX,notion-static.com,默认代理
+  - DOMAIN-SUFFIX,makenotion.com,默认代理
+  - DOMAIN-SUFFIX,bing.com,默认代理
+  - DOMAIN-SUFFIX,wasabisys.com,默认代理
+  - DOMAIN-SUFFIX,megaphone.fm,默认代理
+  - DOMAIN-SUFFIX,simplecast.com,默认代理
+  - DOMAIN-SUFFIX,libsyn.com,默认代理
+  - DOMAIN-SUFFIX,buzzsprout.com,默认代理
+  - DOMAIN-SUFFIX,art19.com,默认代理
+  - DOMAIN-SUFFIX,acast.com,默认代理
+  - DOMAIN-SUFFIX,omny.fm,默认代理
+  - DOMAIN-SUFFIX,omnycontent.com,默认代理
+  - DOMAIN-SUFFIX,captivate.fm,默认代理
+  - DOMAIN-SUFFIX,transistor.fm,默认代理
+  - DOMAIN-SUFFIX,podbean.com,默认代理
+  - DOMAIN-SUFFIX,spreaker.com,默认代理
+  - DOMAIN-SUFFIX,audioboom.com,默认代理
+  - DOMAIN-SUFFIX,anchor.fm,默认代理
+  - DOMAIN-SUFFIX,blubrry.com,默认代理
+  - DOMAIN-SUFFIX,redcircle.com,默认代理
+  - DOMAIN-SUFFIX,podtrac.com,默认代理
+  - DOMAIN-SUFFIX,chtbl.com,默认代理
+  - DOMAIN-SUFFIX,pdst.fm,默认代理
+
+  - RULE-SET,Microsoft,Microsoft
+  - RULE-SET,Apple,Apple
+
+  # 7. 国内白名单 + IP 段（no-resolve 防 DNS 泄漏）+ 默认代理兜底
+  - DOMAIN-SUFFIX,weibo.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.com.cn,DIRECT
+  - DOMAIN-SUFFIX,weibo.com,DIRECT
+  - DOMAIN-SUFFIX,sinaimg.cn,DIRECT
+  - DOMAIN-SUFFIX,weibocdn.com,DIRECT
+  - DOMAIN-SUFFIX,zhihu.com,DIRECT
+  - DOMAIN-SUFFIX,zhimg.com,DIRECT
+  - DOMAIN-SUFFIX,qq.com,DIRECT
+  - DOMAIN-SUFFIX,qpic.cn,DIRECT
+  - DOMAIN-SUFFIX,qlogo.cn,DIRECT
+  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,xhscdn.com,DIRECT
+  - RULE-SET,ChinaDomains,DIRECT
+  - RULE-SET,TelegramIP,Telegram,no-resolve
+  - RULE-SET,ChinaIPs,DIRECT,no-resolve
+  - GEOIP,CN,DIRECT,no-resolve
+  - MATCH,兜底流量
+
+http:
+  mitm:
+    # YouTube
+    - youtubei.googleapis.com
+    - '*.googlevideo.com'
+    # 微博（开屏 + 信息流）
+    - api.weibo.cn
+    - sub.weibo.cn
+    - we.weibo.cn
+    - sdkapp.uve.weibo.com
+    - wbapp.uve.weibo.com
+    - sdkapp.mob.uve.weibo.com
+    - wbapp.mob.uve.weibo.com
+    # 知乎（开屏 + 信息流 + 跳转直连）
+    - api.zhihu.com
+    - www.zhihu.com
+    - zhuanlan.zhihu.com
+    - zhstatic.zhihu.com
+    - appcloud2.zhihu.com
+    - link.zhihu.com
+    # 小红书（开屏 + 信息流 + 水印）
+    - edith.xiaohongshu.com
+    - www.xiaohongshu.com
+    - ci.xiaohongshu.com
+    # 淘宝（仅开屏与 Poplayer 路径，不触碰交易/订单接口）
+    - acs.m.taobao.com
+    - guide-acs.m.taobao.com
+    - poplayer.template.alibaba.com
+    # 京东（仅 functionId=start 开屏接口）
+    - api.m.jd.com
+    # 闲鱼
+    - acs.m.goofish.com
+    # 拼多多
+    - api.pinduoduo.com
+    - api.yangkeduo.com
+    # 高德地图
+    - m5.amap.com
+    - optimus-ads.amap.com
+    - amap-aos-info-nogw.amap.com
+    # 网易有道词典
+    - dict.youdao.com
+    - api-overmind.youdao.com
+    - cdke.youdao.com
+    - dictvip-business.youdao.com
+    - dsp-impr2.youdao.com
+    - impservice.dictapp.youdao.com
+    - oral.youdao.com
+    # 汽车之家 / 乐播投屏 / 猿辅导
+    - adproxy.autohome.com.cn
+    - app2.autoimg.cn
+    - rp.hpplay.cn
+    - xyst.yuanfudao.com
+
+  url-rewrite:
+    # 原生静态规则：不启动 JS 引擎、零外部依赖，集中清除 11 款国内 App 开屏/弹窗/水印
+    # 京东
+    - >-
+      ^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=getWidgetV1052 - reject
+    # 淘宝
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alibaba\.advertisementservice\.getadv - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alimama\.etao\.config\.query\/.+?etao_advertise - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.alimusic\.common\.mobileservice\.startinit - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.etao\.noah\.query\/.+tao_splash - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.film\.mtopadvertiseapi\.queryadvertise - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.o2o\.ad\.gateway\.get - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.taobao\.idle\.home\.welcome - reject-dict
+    - >-
+      ^https?:\/\/acs\.m\.taobao\.com\/gw\/mtop\.trip\.activity\.querytmsresources - reject-dict
+    - >-
+      ^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.(volvo\.secondfloor\.getconfig|wireless\.home\.newface\.awesome\.get) - reject-dict
+    # 小红书
+    - >-
+      ^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v1\/surprisebox\/(?:get_style|open|submit_action) - reject-dict
+    - >-
+      ^https?:\/\/www\.xiaohongshu\.com\/api\/marketing\/box\/trigger\? - reject-dict
+    - >-
+      ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/guide\? - reject-dict
+    - >-
+      ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/note\/detailfeed\/preload\? - reject-dict
+    - >-
+      ^https?:\/\/edith\.xiaohongshu\.com\/api\/sns\/v\d+\/guide\/user_banner - reject-dict
+    - >-
+      ^https?:\/\/www\.xiaohongshu\.com\/api\/sns\/(v\d+\/ads\/resource|v\d+\/hey\/\w+\/hey_gallery) - reject-dict
+    - >-
+      ^https?:\/\/ci\.xiaohongshu\.com\/system_config\/watermark - reject-img
+    # 知乎
+    - >-
+      ^https:\/\/api\.zhihu\.com\/unlimited\/go\/my_card - reject
+    - >-
+      ^https:\/\/api\.zhihu\.com\/ab\/api\/v1\/products\/zhihu\/platforms\/ios\/config - reject
+    - >-
+      ^https:\/\/link\.zhihu\.com\/\?target=(?:https?)?(?:%3A|:)?(?:\/\/|%2F%2F)?(.*) http://$1 302
+    - >-
+      ^https:\/\/www\.zhihu\.com\/api\/v4\/hot_recommendation - reject
+    - >-
+      ^https:\/\/www\.zhihu\.com\/api\/v4\/mcn\/v2\/linkcards\? - reject
+    - >-
+      ^https:\/\/www\.zhihu\.com\/api\/v4/(?:answers|questions)\/\d+/related-readings - reject
+    - >-
+      ^https:\/\/www\.zhihu\.com\/commercial_api\/banners_v3\/mobile_banner - reject
+    - >-
+      ^https:\/\/zhuanlan\.zhihu\.com\/api\/articles\/\d+\/recommendation - reject
+    - >-
+      ^https:\/\/zhstatic\.zhihu\.com\/brand-ad - reject
+    - >-
+      ^https:\/\/api\.zhihu\.com\/commercial_api\/(?:answer\/\d+\/bottom-v2|article\/\d+\/bottom-v2|banners_v3\/app_topstory_banner|launch_v2|real_time_launch_v2) - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/content-distribution-core\/bubble\/common\/settings - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/(?:moments\/lastread|drama\/hot-drama-list) - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/root\/window - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/(?:bazaar\/float_window|market\/popovers_v2) - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/me\/guides - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/search\/(hot_search|preset_words) - reject-dict
+    - >-
+      ^https:\/\/www\.zhihu\.com\/api\/v4\/search\/related_queries\/(?:article|answer)\/\d+ - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/comment_v5\/(?:articles|answers)\/\d+\/list-headers - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/prague\/related_suggestion_native\/feed\? - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/v5\.1\/topics\/answer\/\d+\/relation - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/ad-style-service\/request - reject-dict
+    - >-
+      ^https:\/\/appcloud2\.zhihu\.com\/v3\/resource\?group_name=mp - reject-dict
+    - >-
+      ^https:\/\/api\.zhihu\.com\/distribute\/rhea\/qa_ad_card\/h5\/recommendation\? - reject-dict
+    # 乐播投屏
+    - >-
+      ^https?:\/\/rp\.hpplay\.cn\/logouts - reject
+    # 高德地图
+    - >-
+      ^https?:\/\/m5\.amap\.com\/ws\/valueadded\/ - reject
+    - >-
+      ^https?:\/\/m5\.amap\.com\/ws\/shield\/dsp\/app\/startup\/init\? - reject-dict
+    - >-
+      ^https?://optimus-ads.amap.com/uploadimg/[a-zA-Z0-9]+.gif - reject-200
+    - >-
+      ^https?:\/\/amap-aos-info-nogw\.amap\.com\/ws\/aos\/alimama\/splash_screen - reject-200
+    # 汽车之家
+    - >-
+      ^https?:\/\/adproxy\.autohome\.com\.cn\/AdvertiseService\/ - reject-img
+    - >-
+      ^https?:\/\/app2\.autoimg\.cn\/apppdfs\/ - reject-img
+    # 网易有道词典
+    - >-
+      ^https?:\/\/dict\.youdao\.com\/course\/tab\/translateTab - reject-dict
+    - >-
+      ^https?:\/\/api-overmind\.youdao\.com\/openapi\/get\/luna\/dict\/dict-mobile\/prod\/dictCommonConfig - reject-dict
+    - >-
+      ^https?:\/\/cdke\.youdao\.com\/course3\/recommend\/dict\/startup - reject-dict
+    - >-
+      ^https?:\/\/dict\.youdao\.com\/commonsearch - reject-dict
+    - >-
+      ^https?:\/\/dict\.youdao\.com\/vip\/activity\/couponinfo - reject-dict
+    - >-
+      ^https?:\/\/dict\.youdao\.com\/dictusertask\/system - reject-dict
+    - >-
+      ^https?:\/\/dictvip-business\.youdao\.com\/home\/ad - reject-dict
+    - >-
+      ^https?:\/\/dsp-impr2\.youdao\.com\/adload - reject-200
+    - >-
+      ^https?:\/\/impservice\.dictapp\.youdao\.com\/imp\/request - reject-img
+    - >-
+      ^https?:\/\/oral\.youdao\.com\/oral\/adInfo - reject-img
+    # 拼多多
+    - >-
+      ^https?:\/\/api\.(pinduoduo|yangkeduo)\.com\/api\/cappuccino\/splash - reject
+    - >-
+      ^https?:\/\/api\.pinduoduo\.com\/api\/aquarius\/hungary\/global\/homepage\? - reject-dict
+    # 闲鱼
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.playboy\.recommend\/1\.0 - reject
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlemtopsearch\.item\.search\.activate\/2\.0 - reject-dict
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlemtopsearch\.search\.discover\/1\.0 - reject-dict
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.item\.resell\.recommendorhotcate\/1\.0 - reject-dict
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlehome\.idle\.coin\.nextfresh\/1\.0 - reject-dict
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.item\.buy\.feeds - reject-dict
+    - >-
+      ^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idlecommerce\.splash\.ads - reject-dict
+    # 猿辅导
+    - >-
+      ^https?:\/\/xyst\.yuanfudao\.com\/iphone\/splashesV\d - reject-200
+
+  script:
+    # ---- 1. 国内 App 开屏与信息流净化（内嵌 payload，零外部脚本下载）----
+    - name: stash-pro-ads
+      match: '^https?:\/\/(?:sdk|wb)app\.(?:mob\.)?uve\.weibo\.com\/(?:interface\/sdk\/sdkad\.php|wbapplua\/wbpullad\.lua)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https?:\/\/(?:api|sub|we)\.weibo\.cn\/2\/!\/client\/(?:wbpullad|sdkad|splash|launch|openscreen)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https:\/\/(?:api|sub|we)\.weibo\.cn\/\d+\/(?:groups\/timeline|statuses\/(?:unread|friends\/timeline|friends_timeline|video_timeline|container_timeline(?:_hot|_unread)?)|search\/container_timeline)(?:\?|$)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https:\/\/api\.zhihu\.com\/(?:topstory\/(?:recommend|hot-lists\/total)|next-bff|next-data|next-render)(?:\?|$|\/)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https:\/\/edith\.xiaohongshu\.com\/api\/sns\/v[12]\/(?:homefeed|search\/notes|system_service\/splash_config)(?:\?|$)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.(?:cloudvideo\.video\.query|wireless\.home\.splash\.awesome\.get)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https?:\/\/poplayer\.template\.alibaba\.com\/\w+\.json'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+    - name: stash-pro-ads
+      match: '^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=start(?:&|$)'
+      type: response
+      require-body: true
+      max-size: 2097152
+      timeout: 3
+
+    # ---- 2. YouTube 去广告 / 画中画 / 隐藏上传按钮（Maasea 锁定提交；实验性，含第三方 Worker 转发依赖）----
+    # 若真机播放异常，可临时注释下面 3 条 yt-* hook 与上方 YouTube 2 个 mitm 域排查，不影响主分流与开屏去广告。
+    - name: yt-response
+      match: '^https:\/\/youtubei\.googleapis\.com\/(youtubei\/v1\/(browse|next|player|search|reel\/reel_watch_sequence|guide|account\/get_setting|get_watch|log_event|config))(\?(.*))?$'
+      type: response
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off","blockUpload":true,"blockImmersive":true,"blockShorts":false,"debug":false}'
+    - name: yt-request
+      match: '^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback.+&ack.*'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+      argument: '{"captionLang":"off"}'
+    - name: yt-request
+      match: '^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/log_event'
+      type: request
+      require-body: true
+      binary-mode: true
+      max-size: 5242880
+      timeout: 10
+
+script-providers:
+  stash-pro-ads:
+    # 内嵌轻量脚本：零外部下载、不读取订阅/Cookie/存储、不发外部请求；未知或异常包原样放行。
+    payload: |
+      (() => {
+        let result = {};
+        try {
+          if ($response.status !== 200 || typeof $response.body !== "string" || !$response.body) {
+            $done(result); return;
+          }
+          const url = $request.url;
+          const body = $response.body;
+          let changed = false;
+          const yes = value => value === true || value === 1 || value === "1";
+          const filter = (parent, key, isAd) => {
+            if (!parent || !Array.isArray(parent[key])) return;
+            const original = parent[key];
+            const clean = original.filter(item => !isAd(item));
+            if (clean.length !== original.length) { parent[key] = clean; changed = true; }
+          };
+
+          if (/\/interface\/sdk\/sdkad\.php/.test(url)) {
+            const match = body.match(/\{[\s\S]*\}/);
+            if (!match) { $done(result); return; }
+            const obj = JSON.parse(match[0]);
+            if (!obj || typeof obj !== "object" || Array.isArray(obj)) { $done(result); return; }
+            if (Array.isArray(obj.ads) && obj.ads.length) { obj.ads = []; changed = true; }
+            if (obj.background_delay_display_time && obj.background_delay_display_time !== 86400000) {
+              obj.background_delay_display_time = 86400000; changed = true;
+            }
+            if (obj.show_push_splash_ad) { obj.show_push_splash_ad = false; changed = true; }
+            if (changed) {
+              const tail = body.slice(match.index + match[0].length);
+              result = {body: JSON.stringify(obj) + tail};
+            }
+            $done(result); return;
+          }
+
+          const obj = JSON.parse(body);
+          if (!obj || typeof obj !== "object" || Array.isArray(obj)) { $done(result); return; }
+
+          if (/\/wbapplua\/wbpullad\.lua|\/2\/!\/client\/(?:wbpullad|sdkad|splash|launch|openscreen)/.test(url)) {
+            if (Array.isArray(obj.cached_ad?.ads) && obj.cached_ad.ads.length) {
+              obj.cached_ad.ads = []; changed = true;
+            }
+            if (Array.isArray(obj.ads) && obj.ads.length) { obj.ads = []; changed = true; }
+            if (obj.show_push_splash_ad) { obj.show_push_splash_ad = false; changed = true; }
+          } else if (/^https:\/\/(?:api|sub|we)\.weibo\.cn\//.test(url)) {
+            const weiboAd = item => !!item && (
+              yes(item.mblogtype) || yes(item.ad_state) || item.promotion?.type === "ad"
+            );
+            filter(obj, "statuses", weiboAd);
+            filter(obj, "items", item => item?.category === "feed" && weiboAd(item.data));
+            for (const key of ["advertises", "ad"]) {
+              if (Array.isArray(obj[key]) && obj[key].length) { obj[key] = []; changed = true; }
+            }
+          } else if (/^https:\/\/api\.zhihu\.com\//.test(url)) {
+            const zhihuAd = item => !!item && (
+              ["feed_advert", "ad", "advert"].includes(item.type) ||
+              ["feed_advert", "ad", "advert"].includes(item.origin_data?.type) ||
+              ["ad", "advert"].includes(item.origin_data?.resource_type) ||
+              item.common_card?.footline?.elements?.some?.(e => e?.text?.panel_text === "广告") === true
+            );
+            filter(obj, "data", zhihuAd);
+            filter(obj.data, "data", zhihuAd);
+          } else if (/^https:\/\/edith\.xiaohongshu\.com\//.test(url)) {
+            if (/\/system_service\/splash_config(?:\?|$)/.test(url)) {
+              if (Array.isArray(obj.data?.ads_groups) && obj.data.ads_groups.length) {
+                obj.data.ads_groups = []; changed = true;
+              }
+            } else {
+              const xhsAd = item => !!item && (
+                ["ad", "ads"].includes(item.model_type) || yes(item.is_ad)
+              );
+              filter(obj.data, "items", xhsAd);
+              filter(obj, "data", xhsAd);
+            }
+          } else if (/^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.cloudvideo\.video\.query/.test(url)) {
+            const d = obj.data;
+            if (d && typeof d === "object") {
+              if (d.duration && d.duration !== "0") { d.duration = "0"; changed = true; }
+              if (Array.isArray(d.resources) && d.resources.length) { d.resources = []; changed = true; }
+              if (Array.isArray(d.caches) && d.caches.length) { d.caches = []; changed = true; }
+              if (d.respTimeInMs && d.respTimeInMs !== "3818332800000") {
+                d.respTimeInMs = "3818332800000"; changed = true;
+              }
+            }
+          } else if (/^https?:\/\/guide-acs\.m\.taobao\.com\/gw\/mtop\.taobao\.wireless\.home\.splash\.awesome\.get/.test(url)) {
+            const list = obj.data?.containers?.splash_home_base?.base?.sections;
+            if (Array.isArray(list)) {
+              for (const sec of list) {
+                const items = sec?.bizData?.["taobao-splash"]?.data;
+                if (!Array.isArray(items)) continue;
+                for (const item of items) {
+                  if (!item || typeof item !== "object") continue;
+                  item.waitTime = "0"; item.times = "0"; item.hotStart = "false";
+                  item.haveVoice = "false"; item.hideTBLogo = "false"; item.enable4G = "false"; item.coldStart = "false";
+                  item.startTime = "3818332800000"; item.endTime = "3818419199000";
+                  item.gmtStart = "2090-12-31 00:00:00"; item.gmtEnd = "2090-12-31 23:59:59";
+                  item.gmtStartMs = "3818332800000"; item.gmtEndMs = "3818419199000";
+                  if (item.imgUrl) item.imgUrl = "";
+                  if (item.videoUrl) item.videoUrl = "";
+                  changed = true;
+                }
+              }
+            }
+          } else if (/^https?:\/\/poplayer\.template\.alibaba\.com\/\w+\.json/.test(url)) {
+            if (Array.isArray(obj.res?.images) && obj.res.images.length) { obj.res.images = []; changed = true; }
+            if (Array.isArray(obj.res?.videos) && obj.res.videos.length) { obj.res.videos = []; changed = true; }
+            if (obj.enable) { obj.enable = false; changed = true; }
+            if (Array.isArray(obj.mainRes?.images) && obj.mainRes.images.length) { obj.mainRes.images = []; changed = true; }
+          } else if (/^https?:\/\/api\.m\.jd\.com\/client\.action\?functionId=start(?:&|$)/.test(url)) {
+            if (Array.isArray(obj.images) && obj.images.length) { obj.images = []; changed = true; }
+            if (obj.showTimesDaily) { obj.showTimesDaily = 0; changed = true; }
+          }
+
+          if (changed) result = {body: JSON.stringify(obj)};
+        } catch (_) {
+          // HTTP 错误、HTML、未知 JSON 结构一律保留原响应，不输出用户内容。
+          result = {};
+        }
+        $done(result);
+      })();
+  yt-response:
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js
+    interval: 86400
+  yt-request:
+    url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.request.js
+    interval: 86400
