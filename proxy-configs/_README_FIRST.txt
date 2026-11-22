@@ -5,7 +5,7 @@
   (YOUR_AIRPORT* / __REDACTED__),以便安全地 git init / 交给工具。
 - 这些是脱敏副本,不能直接导入 App 使用。要真正使用时,在各 App 内
   重新填入你自己的订阅链接(且建议先去机场面板"重置订阅"作废旧 token)。
-- Egern 中的 NextDNS profile ID (f3af17) 保留原样:它不暴露节点、风险低。
+- Egern 中的 NextDNS profile ID (YOUR_NEXTDNS_ID) 保留原样:它不暴露节点、风险低。
   如需一并脱敏,可手动把它也换成占位符。
 
 使用步骤

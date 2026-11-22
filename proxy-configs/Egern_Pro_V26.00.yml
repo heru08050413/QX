@@ -18,7 +18,7 @@
 # │ [T1] vif_only: true — 开启 TUN 模式。这是境外DNS可用的【前提】:   │
 # │   TUN下Egern接管整个网络栈, 境外DoH连接被路由捕获、走代理出去。    │
 # │ [T2] compat_route: true — TUN 模式标准搭配, 改善兼容性。           │
-# │ [T3] Foreign-DoH 改用 NextDNS(dns.nextdns.io/f3af17)+ Cloudflare/ │
+# │ [T3] Foreign-DoH 改用 NextDNS(dns.nextdns.io/YOUR_NEXTDNS_ID)+ Cloudflare/ │
 # │   Google 备用。境外域名解析经代理到达境外DNS → 国内DNS商和运营商   │
 # │   都【看不到】你的境外查询。隐私问题解决。                         │
 # │ [T4] hosts 硬编码境外DoH服务器IP(防其域名被污染解析)。            │
@@ -241,7 +241,7 @@ dns:
     #           走代理出去 → 境外DNS【可用】, 且查询经代理到达, 国内DNS商
     #           【看不到】你查境外站。这是隐私与可用性的两全, 但依赖TUN。
     #
-    # 主用户指定: NextDNS(https://dns.nextdns.io/f3af17, 带配置ID f3af17,
+    # 主用户指定: NextDNS(https://dns.nextdns.io/YOUR_NEXTDNS_ID, 带配置ID YOUR_NEXTDNS_ID,
     #   NextDNS会应用该profile的过滤/日志策略)。备用 Cloudflare/Google,
     #   防 NextDNS 偶发不可达。
     #
@@ -250,7 +250,7 @@ dns:
     # proxy DNS 则由下方 proxy_nameservers 强制覆盖，不能宣称所有查询都走代理。
     # 本批保持上游选择不变；解析异常需同时检查 DNS 与节点，不能只归因节点。
     Foreign-DoH:
-      - https://dns.nextdns.io/f3af17
+      - https://dns.nextdns.io/YOUR_NEXTDNS_ID
       - https://1.1.1.1/dns-query
       - https://dns.google/dns-query
       - https://cloudflare-dns.com/dns-query
