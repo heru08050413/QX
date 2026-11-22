@@ -90,13 +90,23 @@ def validate(c, check_dns=True):
         walk(name, set())
         if name not in {'美国节点', '新加坡节点'}:
             assert 'filter' not in g, 'only named regional groups may filter nodes'
-        assert 'url' not in g and 'benchmark-url' not in g, 'node benchmark is shared'
+        if name != '稳定切换':
+            assert 'exclude-filter' not in g
+        if g['type'] == 'url-test':
+            assert g.get('url') == 'https://www.gstatic.com/generate_204', f'bad probe url on {name}'
+        else:
+            assert 'url' not in g and 'benchmark-url' not in g, 'only url-test groups carry probe url'
+        assert 'benchmark-url' not in g, 'node benchmark is shared'
         assert g.get('proxies') or g.get('use') or g.get('include-all')
         for provider in g.get('use', []):
             assert provider in c['proxy-providers']
-    assert groups['稳定切换']['type'] == 'fallback'
-    assert 60 <= groups['稳定切换']['interval'] <= 180
-    assert groups['稳定切换']['lazy'] is False
+    assert groups['稳定切换']['type'] == 'url-test'
+    assert groups['稳定切换']['interval'] == 900
+    assert groups['稳定切换']['tolerance'] == 200
+    assert groups['稳定切换']['lazy'] is True
+    excl_rx = re.compile(groups['稳定切换']['exclude-filter'])
+    assert excl_rx.search('剩余流量 100GB') and excl_rx.search('到期时间 2027-01-01')
+    assert not excl_rx.search('US-1') and not excl_rx.search('SG-1')
     for name in ('默认代理', 'YouTube', 'AI', 'Google', '国际媒体'):
         assert groups[name]['proxies'][0] == '美国节点'
     for name in ('AI', '国际媒体'):
@@ -108,9 +118,11 @@ def validate(c, check_dns=True):
     assert groups['Apple']['proxies'][0] == 'DIRECT'
     assert groups['Microsoft']['proxies'][0] == 'DIRECT'
     for name in ('美国节点', '新加坡节点'):
-        assert groups[name]['type'] == 'fallback'
-        assert groups[name]['interval'] == 120
-        assert groups[name]['lazy'] is False
+        assert groups[name]['type'] == 'url-test'
+        assert groups[name]['url'] == 'https://www.gstatic.com/generate_204'
+        assert groups[name]['interval'] == 900
+        assert groups[name]['tolerance'] == 200
+        assert groups[name]['lazy'] is True
         re.compile(groups[name]['filter'])
     if 'proxy-providers' in c:
         assert c['proxy-providers']['Airport']['benchmark-url'] == 'https://www.gstatic.com/generate_204'
@@ -135,6 +147,13 @@ def validate(c, check_dns=True):
     assert rules.index('DOMAIN,api.zhihu.com,DIRECT') < rules.index('RULE-SET,Ads,广告过滤')
     assert rules.index('DOMAIN,gemini.google.com,AI') < rules.index('DOMAIN-SUFFIX,google.com,Google')
     assert rules.index('DOMAIN,copilot.microsoft.com,AI') < rules.index('DOMAIN-SUFFIX,microsoft.com,Microsoft')
+    assert rules.index('DOMAIN,sydney.bing.com,AI') < rules.index('DOMAIN-SUFFIX,bing.com,默认代理')
+    assert rules.index('DOMAIN-SUFFIX,bing.com,默认代理') < rules.index('DOMAIN-SUFFIX,microsoft.com,Microsoft')
+    for req_rule in ('DOMAIN-SUFFIX,claude.com,AI', 'DOMAIN-SUFFIX,claudeusercontent.com,AI',
+                     'DOMAIN,edgeservices.bing.com,AI', 'DOMAIN-SUFFIX,wabi.ai,AI',
+                     'DOMAIN-SUFFIX,discord.com,默认代理', 'DOMAIN-SUFFIX,notion.com,默认代理',
+                     'DOMAIN-SUFFIX,meta.com,默认代理'):
+        assert req_rule in rules, f'Missing synced rule: {req_rule}'
     assert rules.index('DOMAIN,init-stream.maasea.workers.dev,YouTube') < rules.index('RULE-SET,ChinaDomains,DIRECT')
     for host in ['googlevideo.com', 'youtubei.googleapis.com']:
         assert any(r.startswith('AND,') and host in r and '(NETWORK,udp),(DST-PORT,443)' in r for r in rules)
@@ -257,7 +276,10 @@ class Audit(unittest.TestCase):
             'dns.weixin.qq.com.cn': 'DIRECT', 'api.weibo.cn': 'DIRECT', 'api.zhihu.com': 'DIRECT',
             'weixin.qq.com': 'DIRECT', 'teg.tencent-cloud.net': 'DIRECT', '192.168.3.1': 'DIRECT',
             'gemini.google.com': 'AI', 'generativelanguage.googleapis.com': 'AI', 'chatgpt.com': 'AI',
-            'cdn.oaistatic.com': 'AI', 'copilot.microsoft.com': 'AI', 'accounts.google.com': 'Google',
+            'cdn.oaistatic.com': 'AI', 'copilot.microsoft.com': 'AI', 'claude.com': 'AI',
+            'sydney.bing.com': 'AI', 'wabi.ai': 'AI', 'www.bing.com': '默认代理',
+            'discord.com': '默认代理', 'notion.com': '默认代理', 'meta.com': '默认代理',
+            'accounts.google.com': 'Google',
             'www.youtube.com': 'YouTube', 'rr1.googlevideo.com': 'YouTube',
             'youtubei.googleapis.com': 'YouTube', 'init-stream.maasea.workers.dev': 'YouTube',
             'raw.githubusercontent.com': '默认代理', 'www.netflix.com': '国际媒体',
@@ -297,7 +319,9 @@ class Audit(unittest.TestCase):
             alter(['proxy-groups', 1, 'use'], ['missing']),
             alter(['proxy-groups', 1, 'filter'], 'US'),
             alter(['proxy-groups', 1, 'interval'], 3600),
-            alter(['proxy-groups', 1, 'url'], 'https://example.com'),
+            alter(['proxy-groups', 1, 'lazy'], False),
+            alter(['proxy-groups', 1, 'type'], 'fallback'),
+            alter(['proxy-groups', 1, 'url'], 'http://cp.cloudflare.com/generate_204'),
             alter(['rules', -1], 'MATCH,DIRECT'),
             alter(['http', 'mitm'], ['*']),
             alter(['http', 'script', 0, 'binary-mode'], False),

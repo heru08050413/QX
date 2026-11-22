@@ -59,7 +59,7 @@ proxy-groups: #!replace
   - name: '微软服务'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Microsoft.png'
-    proxies: ['美国节点', 'DIRECT', '香港节点', 'AutoSelect']
+    proxies: ['DIRECT', '美国节点', '香港节点', 'AutoSelect']
   - name: '哔哩哔哩'
     type: select
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/bilibili.png'
@@ -76,7 +76,7 @@ proxy-groups: #!replace
     type: url-test
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png'
     include-all: true
-    filter: '(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG'
+    filter: '(?i)🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?:$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港'
     url: 'https://www.gstatic.com/generate_204'
     interval: 900
     tolerance: 200
@@ -85,7 +85,7 @@ proxy-groups: #!replace
     type: url-test
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png'
     include-all: true
-    filter: '(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化'
+    filter: '(?i)🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?:$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化'
     url: 'https://www.gstatic.com/generate_204'
     interval: 900
     tolerance: 200
@@ -94,7 +94,7 @@ proxy-groups: #!replace
     type: url-test
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png'
     include-all: true
-    filter: '(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
+    filter: '(?i)🇯🇵|(?:^|[^A-Za-z])JP(?:$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日'
     url: 'https://www.gstatic.com/generate_204'
     interval: 900
     tolerance: 200
@@ -103,7 +103,7 @@ proxy-groups: #!replace
     type: url-test
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png'
     include-all: true
-    filter: '(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
+    filter: '(?i)🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?:$|[^A-Za-z])|Singapore|新加坡|狮城|沪新|京新|深新|杭新|广新'
     url: 'https://www.gstatic.com/generate_204'
     interval: 900
     tolerance: 200
@@ -121,6 +121,7 @@ proxy-groups: #!replace
     type: url-test
     icon: 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png'
     include-all: true
+    exclude-filter: '(?i)🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?:$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港|🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?:$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化|🇯🇵|(?:^|[^A-Za-z])JP(?:$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?:$|[^A-Za-z])|Singapore|新加坡|狮城|沪新|京新|深新|杭新|广新|🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?:$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley|剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     url: 'https://www.gstatic.com/generate_204'
     interval: 900
     tolerance: 200
@@ -226,6 +227,18 @@ rule-providers: #!replace
     format: yaml
     url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/BiliBili/BiliBili.yaml
     path: ./rules/stash-sr-bilibili.yaml
+    interval: 86400
+  Global:
+    behavior: classical
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Global/Global.yaml
+    path: ./rules/stash-sr-global.yaml
+    interval: 86400
+  Global_Domain:
+    behavior: domain
+    format: yaml
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Clash/Global/Global_Domain.yaml
+    path: ./rules/stash-sr-global_domain.yaml
     interval: 86400
   ChinaMax_Domain:
     behavior: domain
@@ -406,6 +419,8 @@ rules: #!replace
   - 'DOMAIN-SUFFIX,volces.com,DIRECT'
   - 'DOMAIN-SUFFIX,anthropic.com,AI'
   - 'DOMAIN-SUFFIX,claude.ai,AI'
+  - 'DOMAIN-SUFFIX,claude.com,AI'
+  - 'DOMAIN-SUFFIX,claudeusercontent.com,AI'
   - 'DOMAIN-SUFFIX,openai.com,AI'
   - 'DOMAIN-SUFFIX,chatgpt.com,AI'
   - 'DOMAIN-SUFFIX,oaistatic.com,AI'
@@ -423,6 +438,8 @@ rules: #!replace
   - 'DOMAIN-SUFFIX,grok.com,AI'
   - 'DOMAIN-SUFFIX,cohere.com,AI'
   - 'DOMAIN-SUFFIX,copilot.microsoft.com,AI'
+  - 'DOMAIN,sydney.bing.com,AI'
+  - 'DOMAIN,edgeservices.bing.com,AI'
   - 'DOMAIN-SUFFIX,cueai.app,AI'
   - 'DOMAIN-SUFFIX,manus.im,AI'
   - 'DOMAIN-SUFFIX,manus.ai,AI'
@@ -569,6 +586,7 @@ rules: #!replace
   - 'DOMAIN-SUFFIX,gstatic.com,Proxy'
   - 'DOMAIN-SUFFIX,googleusercontent.com,Proxy'
   - 'RULE-SET,Google,Proxy'
+  - 'DOMAIN-SUFFIX,bing.com,Proxy'
   - 'RULE-SET,Microsoft,微软服务'
   - 'DOMAIN-SUFFIX,apple.news,Proxy'
   - 'DOMAIN-SUFFIX,news-edge.apple.com,Proxy'
@@ -740,6 +758,8 @@ rules: #!replace
   - 'DOMAIN-SUFFIX,youdao.com,DIRECT'
   - 'DOMAIN-SUFFIX,douban.com,DIRECT'
   - 'DOMAIN-SUFFIX,doubanio.com,DIRECT'
+  - 'RULE-SET,Global,Proxy'
+  - 'RULE-SET,Global_Domain,Proxy'
   - 'RULE-SET,ChinaMax_Domain,DIRECT'
   - 'RULE-SET,ChinaMax_IP,DIRECT,no-resolve'
   - 'RULE-SET,ChinaIPs,DIRECT,no-resolve'
@@ -781,18 +801,10 @@ http:
     - 'zhstatic.zhihu.com'
     - 'appcloud2.zhihu.com'
     - 'link.zhihu.com'
-    - 'pan.baidu.com'
-    - 'ndstatic.cdn.bcebos.com'
-    - 'staticsns.cdn.bcebos.com'
-    - 'issuecdn.baidupcs.com'
-    - 'update.pan.baidu.com'
-    - 'fc-video.cdn.bcebos.com'
     - 'rp.hpplay.cn'
     - 'optimus-ads.amap.com'
     - 'adproxy.autohome.com.cn'
     - 'app2.autoimg.cn'
-    - 'gw.alicdn.com'
-    - 'img.alicdn.com'
     - 'dict.youdao.com'
     - 'api-overmind.youdao.com'
     - 'cdke.youdao.com'
@@ -800,14 +812,6 @@ http:
     - 'dsp-impr2.youdao.com'
     - 'impservice.dictapp.youdao.com'
     - 'oral.youdao.com'
-    - '*.ydstatic.com'
-    - 'api.alipan.com'
-    - 'member.alipan.com'
-    - 'm.client.10010.com'
-    - 'm1.ad.10010.com'
-    - 'res.mall.10010.cn'
-    - 'cloud.189.cn'
-    - 'zt-app.go189.cn'
     - 'api.pinduoduo.com'
     - 'api.yangkeduo.com'
     - 'acs.m.goofish.com'
@@ -832,7 +836,14 @@ http:
     - 'mobile.api.mgtv.com'
     - 'mobile-thor.api.mgtv.com'
     - 'mobileso.bz.mgtv.com'
-    - '*.smzdm.com'
+    - 'haojia.m.smzdm.com'
+    - 'haojia-api.smzdm.com'
+    - 's-api.smzdm.com'
+    - 'user-api.smzdm.com'
+    - 'app-api.smzdm.com'
+    - 'homepage-api.smzdm.com'
+    - 'article-api.smzdm.com'
+    - 'qianbao.smzdm.com'
     - 'ct.xiaojukeji.com'
     - 'freight.xiaojukeji.com'
     - 'res.xiaojukeji.com'
@@ -896,28 +907,10 @@ http:
     - '^https:\/\/api\.zhihu\.com\/ad-style-service\/request - reject-dict'
     - '^https:\/\/appcloud2\.zhihu\.com\/v3\/resource\?group_name=mp - reject-dict'
     - '^https:\/\/api\.zhihu\.com\/distribute\/rhea\/qa_ad_card\/h5\/recommendation\? - reject-dict'
-    - '^https?:\/\/pan\.baidu\.com\/rest\/\d\.\d\/pcs\/adx - reject'
-    - '^https?:\/\/pan\.baidu\.com\/rest\/2\.0\/pcs\/ad - reject'
-    - '^https?:\/\/pan\.baidu\.com\/act\/v\d\/(bchannel|welfare)\/list - reject'
-    - '^https?:\/\/pan\.baidu\.com\/act\/api\/activityentry - reject'
-    - '^https?:\/\/pan\.baidu\.com\/pmall\/order\/privilege\/info - reject'
-    - '^https?:\/\/pan\.baidu\.com\/rest\/.+\/pcs\/adx - reject'
-    - '^https?:\/\/pan\.baidu\.com\/api\/useractivity\/activity - reject'
-    - '^https?:\/\/pan\.baidu\.com\/act\/.+\/bchannel\/list - reject'
-    - '^https?:\/\/pan\.baidu\.com\/api\/certuser\/get - reject'
-    - '^https?:\/\/pan\.baidu\.com\/component\/view\/(1510|1130)\?vip - reject'
-    - '^https?:\/\/ndstatic\.cdn\.bcebos\.com\/activity\/welfare\/js\/.+\.js - reject'
-    - '^https?:\/\/ndstatic\.cdn\.bcebos\.com\/activity\/welfare\/index\.html - reject'
-    - '^https?:\/\/staticsns\.cdn\.bcebos\.com\/amis\/.+/banner.png - reject'
-    - '^https?:\/\/issuecdn\.baidupcs\.com\/issue\/netdisk\/guanggao - reject'
-    - '^https?:\/\/update\.pan\.baidu\.com\/statistics - reject'
-    - '^https?:\/\/fc-video\.cdn\.bcebos\.com - reject'
     - '^https?:\/\/rp\.hpplay\.cn\/logouts - reject'
     - '^https?://optimus-ads.amap.com/uploadimg/[a-zA-Z0-9]+.gif - reject-200'
     - '^https?:\/\/adproxy\.autohome\.com\.cn\/AdvertiseService\/ - reject-img'
     - '^https?:\/\/app2\.autoimg\.cn\/apppdfs\/ - reject-img'
-    - '^https?:\/\/(gw|img)\.alicdn\.com\/imgextra\/.+\/[\w!]+\d+-\d+-.+-\b([8-9]\d{2,}|[1-9]\d{3,})\b-\b([5-9]\d{2,}|[1-9]\d{3,})\b - reject-dict'
-    - '^https?:\/\/oimage([a-z])([0-9])\.ydstatic\.com\/.+adpublish - reject'
     - '^https?:\/\/dict\.youdao\.com\/course\/tab\/translateTab - reject-dict'
     - '^https?:\/\/api-overmind\.youdao\.com\/openapi\/get\/luna\/dict\/dict-mobile\/prod\/dictCommonConfig - reject-dict'
     - '^https?:\/\/cdke\.youdao\.com\/course3\/recommend\/dict\/startup - reject-dict'
@@ -925,19 +918,9 @@ http:
     - '^https?:\/\/dict\.youdao\.com\/vip\/activity\/couponinfo - reject-dict'
     - '^https?:\/\/dict\.youdao\.com\/dictusertask\/system - reject-dict'
     - '^https?:\/\/dictvip-business\.youdao\.com\/home\/ad - reject-dict'
-    - '^https?:\/\/oimage\w\d\.ydstatic\.com\/image\?.+?=adpublish - reject-img'
     - '^https?:\/\/dsp-impr2\.youdao\.com\/adload - reject-200'
     - '^https?:\/\/impservice\.dictapp\.youdao\.com\/imp\/request - reject-img'
     - '^https?:\/\/oral\.youdao\.com\/oral\/adInfo - reject-img'
-    - '^https:\/\/api\.alipan\.com\/adrive\/v1\/file\/getTopFolders - reject-dict'
-    - '^https:\/\/member\.alipan\.com\/v2\/activity\/sign_in_luckyBottle - reject-dict'
-    - '^https?:\/\/m\.client\.10010\.com\/mobileService\/(activity|customer)\/(accountListData|get_client_adv|get_startadv) - reject-img'
-    - '^https?:\/\/m\.client\.10010\.com\/mobileService\/customer\/getclientconfig\.htm - reject-dict'
-    - '^https?:\/\/m\.client\.10010\.com\/uniAdmsInterface\/(getHomePageAd|getWelcomeAd) - reject-img'
-    - '^https?:\/\/m1\.ad\.10010\.com\/noticeMag\/images\/imageUpload\/2\d{3} - reject-img'
-    - '^https?:\/\/res\.mall\.10010\.cn\/mall\/common\/js\/fa\.js?referer= - reject-img'
-    - '^https?:\/\/cloud\.189\.cn\/include\/splash\/ - reject'
-    - '^https?:\/\/zt-app\.go189\.cn\/zt-app\/welcome\/.*?Animation - reject-img'
     - '^https?:\/\/api\.(pinduoduo|yangkeduo)\.com\/api\/cappuccino\/splash - reject'
     - '^https?:\/\/api\.pinduoduo\.com\/api\/aquarius\/hungary\/global\/homepage\? - reject-dict'
     - '^https:\/\/acs\.m\.goofish\.com\/gw\/mtop\.taobao\.idle\.playboy\.recommend\/1\.0 - reject'
@@ -1476,18 +1459,6 @@ http:
       type: response
       require-body: true
       timeout: 60
-    # 扩展层: adrive
-    - name: 'adrive'
-      match: '^https:\/\/api\.alipan\.com\/apps\/v2\/users\/home\/(news|widgets)'
-      type: response
-      require-body: true
-      timeout: 60
-    # 扩展层: adrive
-    - name: 'adrive'
-      match: '^https:\/\/member\.alipan\.com\/v1\/users\/onboard_list'
-      type: response
-      require-body: true
-      timeout: 60
 
 script-providers:
   'weibo_main':
@@ -1503,7 +1474,7 @@ script-providers:
     url: https://raw.githubusercontent.com/NobyDa/Script/0b8d083d444f4476700cb9d5d059c07b42da85eb/QuantumultX/File/Wechat.js
     interval: 86400
   'zhihu':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
     interval: 86400
   'youtube.response':
     url: https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js
@@ -1515,35 +1486,32 @@ script-providers:
     url: https://raw.githubusercontent.com/001ProMax/Surge/2e3eb28d163d5e5de4d2f2532fe71eba22666634/Script/Spotify.Crack.Dev.js
     interval: 86400
   'xiaohongshu':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/xiaohongshu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/xiaohongshu.js
     interval: 86400
   'myBlockAds':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/myBlockAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/myBlockAds.js
     interval: 86400
   'jingdong':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/jingdong.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/jingdong.js
     interval: 86400
   'cnftp':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/cnftp.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/cnftp.js
     interval: 86400
   'smzdm_ads':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/smzdm_ads.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/smzdm_ads.js
     interval: 86400
   'Smzdm':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/Smzdm.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/Smzdm.js
     interval: 86400
   'didiAds':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/didiAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/didiAds.js
     interval: 86400
   'dianping':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dianping.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/dianping.js
     interval: 86400
   'quark':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/quark.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/quark.js
     interval: 86400
   'dict-youdao-ad':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dict-youdao-ad.js
-    interval: 86400
-  'adrive':
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/adrive.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/dict-youdao-ad.js
     interval: 86400

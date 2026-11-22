@@ -49,7 +49,6 @@ function main(config) {
   var G = "QXH-代理", MAN = "QXH-手动", AUTO = "QXH-自动";
   var YT = "QXH-YouTube", YTF = "QXH-YT故障转移", AI = "QXH-AI";
   var GOOGLE = "QXH-Google", TG = "QXH-Telegram", ADS = "QXH-广告";
-  var cf = "https://cp.cloudflare.com/generate_204";
   var google = "https://www.gstatic.com/generate_204";
   var groups = [];
   function select(name, members) { groups.push({name:name, type:"select", proxies:members}); }
@@ -76,21 +75,21 @@ function main(config) {
     buckets[r[0]] = members;
     if (!members.length) return;
     members.forEach(function (n) { used[n] = true; });
-    var generalName = "QXH-" + r[0], ytName = "QXH-YT-" + r[0];
-    regionGroups.push(generalName); ytGroups.push(ytName);
-    check(generalName, "url-test", members, cf, 300);
-    check(ytName, "url-test", members, google, 120);
+    var generalName = "QXH-" + r[0];
+    regionGroups.push(generalName); ytGroups.push(generalName);
+    check(generalName, "url-test", members, google, 300);
   });
   var others = poolNodes.filter(function (n) { return !used[n]; });
   if (others.length) {
-    check("QXH-YT-OTHER", "url-test", others, google, 120);
-    ytGroups.push("QXH-YT-OTHER");
+    check("QXH-OTHER", "url-test", others, google, 300);
+    regionGroups.push("QXH-OTHER");
+    ytGroups.push("QXH-OTHER");
   }
-  check(AUTO, "url-test", poolNodes, cf, 300);
-  check(YTF, "fallback", ytGroups, google, 60);
+  check(AUTO, "url-test", poolNodes, google, 300);
+  check(YTF, "fallback", ytGroups, google, 120);
   // AI: stable priority rather than fastest-node rotation; no silent DIRECT fallback.
   var aiNodes = [].concat(buckets.US, buckets.JP, buckets.SG, buckets.TW);
-  if (aiNodes.length) check("QXH-AI稳定", "fallback", aiNodes, cf, 180);
+  if (aiNodes.length) check("QXH-AI稳定", "fallback", aiNodes, google, 300);
   var aiRegions = ["US", "JP", "SG", "TW"].filter(function (r) { return buckets[r].length; })
     .map(function (r) { return "QXH-" + r; });
   select(G, [AUTO, MAN].concat(regionGroups));
@@ -162,8 +161,8 @@ function main(config) {
   });
   rules.push("AND,((DOMAIN,youtubei-att.googleapis.com),(NETWORK,UDP),(DST-PORT,443)),REJECT");
   ["OpenAI", "Gemini", "Claude"].forEach(function (n) { rules.push("RULE-SET,QXH-" + n + "," + AI); });
-  // Route Grok/Muse(Meta AI)/Hark/Wabi/Cue/Today and AI agents to QXH-AI before CN ruleset.
-  ["x.ai", "grok.com", "muse.ai", "meta.ai", "meta.com", "metaaivm.com",
+  // Route Claude Web, Grok/Muse(Meta AI)/Hark/Wabi/Cue/Today and AI agents to QXH-AI before CN ruleset.
+  ["claude.com", "claudeusercontent.com", "x.ai", "grok.com", "muse.ai", "meta.ai", "metaaivm.com",
     "hark.com", "gethark.ai", "wabi.ai", "cueai.app", "manus.im", "manus.ai",
     "today.ai", "oneintent.today", "perplexity.ai", "poe.com", "claude.ai"].forEach(function (d) { domain(d, AI); });
   // Keep shared Google auth / FCM isolated from both AI and YouTube pools.
@@ -176,8 +175,8 @@ function main(config) {
   rules.push("RULE-SET,QXH-Google," + GOOGLE);
   rules.push("RULE-SET,QXH-Telegram," + TG);
   rules.push("RULE-SET,QXH-TelegramIP," + TG + ",no-resolve");
-  // Ensure Discord, Notion, and X/Twitter (Grok bot) hit proxy before QXH-CN/MATCH.
-  ["discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media", "discordcdn.com", "dis.gd",
+  // Ensure Meta general accounts, Discord, Notion, and X/Twitter (Grok bot) hit proxy before QXH-CN/MATCH.
+  ["meta.com", "discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media", "discordcdn.com", "dis.gd",
     "notion.so", "notion.site", "notion.com", "notion-static.com", "makenotion.com",
     "x.com", "twitter.com", "twimg.com", "t.co", "pscp.tv"].forEach(function (d) { domain(d, G); });
   rules.push("RULE-SET,QXH-CN,DIRECT");

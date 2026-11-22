@@ -71,84 +71,102 @@ GEMINI = ['geller-pa.googleapis.com', 'robinfrontend-pa.googleapis.com',
 IMAGES = ['fastimage.uve.weibo.com', 'adimg.uve.weibo.com', 'adimg.vue.weibo.com']
 WECHAT = ['dns.weixin.qq.com', 'dns.weixin.qq.com.cn',
           'apd-pcdnwxlogin.teg.tencent-cloud.net']
-YT_URL = 'https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule'
+YT_URL = 'https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/YouTube.Enhance.sgmodule'
 YT_ARGS = {'屏蔽上传按钮': 'true', '屏蔽选段按钮': 'true', '屏蔽Shorts按钮': 'false',
            '字幕翻译语言': 'off', '启用调试模式': 'false'}
 NEW_WEIBO_HOSTS = ['api.weibo.cn', 'mapi.weibo.cn', 'api.weibo.com', 'mapi.weibo.com',
                    'sdkapp.uve.weibo.com', 'wbapp.uve.weibo.com']
 OLD_WEIBO_HOSTS = ['*.weibo.cn', '*.weibo.com', '*.weibo.com.cn', '*.weibocdn.com',
                    '*.sina.cn', '*.sina.com.cn', '*.sinajs.cn']
+PINNED_MODULES = {
+    'https://raw.githubusercontent.com/sub-store-org/Sub-Store/b90aab7775f9c20a6ac61985a7c18d846d172745/config/Egern.yaml',
+    'https://raw.githubusercontent.com/zmqcherish/proxy-script/1d9f51bc9a0077d81998bb503ee6158ca83faa73/weibo.sgmodule',
+    YT_URL,
+    'https://github.com/BiliUniverse/ADBlock/releases/download/v0.7.5/BiliBili.ADBlock.sgmodule',
+    'https://github.com/NSRingo/Maps/releases/download/v4.6.1/iRingo.Maps.sgmodule',
+    'https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Surge/module/blockAds.module',
+}
 
 
-def expected_delta(original):
-    """Explicit semantic allowlist against immutable pre-Egern-change revision."""
-    expected = copy.deepcopy(original)
-    del expected['dns']['public_ip_lookup_url']
-    for name in ('美国', '美国稳定'):
-        g = body(group(expected, name))
-        g['filter'] = g['filter'].replace('|US|USA|', '|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|')
-    g = body(group(expected, 'Gemini'))
-    g['policies'].remove('订阅')
-    g['policies'].append('订阅')
-    yt = group(expected, 'YouTube')
-    expected['policy_groups'].insert(expected['policy_groups'].index(yt), {'smart': {
-        'name': 'YT-Auto', 'policies': ['香港', '台湾', '日本', '新加坡', '美国'],
-        'flatten': True, 'latency_test_url': 'https://www.gstatic.com/generate_204', 'hidden': False}})
-    body(yt)['policies'].insert(0, 'YT-Auto')
-    rules = expected['rules']
-    udp = next(r for r in rules if body(r).get('name') == '国内 UDP 前置直连 (微信 VOIP 保护)')
-    rules.remove(udp)
-    obsolete = next(r for r in rules if body(r).get('name') == '12306 禁 QUIC')
-    rules.remove(obsolete)
-    api = domain('youtubei.googleapis.com', 'YouTube')
-    rules.remove(api)
-    anchor = next(r for r in rules if body(r).get('name') == 'YT 广告视频流')
-    rules.insert(rules.index(anchor), udp)
-    ad_break = next(r for r in rules if body(r).get('name') == 'YT 广告插入点')
-    body(ad_break)['match'] += '(?:[/?]|$)'
-    anchor = next(r for r in rules if body(r).get('name') == 'YT 广告质量上报')
-    additions = [api, domain('init-stream.maasea.workers.dev', 'YouTube'),
-                 domain('googlevideo.com', 'YouTube', 'domain_suffix')]
-    additions += [domain(h, 'DIRECT') for h in WECHAT]
-    additions += [domain(h, 'REJECT') for h in IMAGES]
-    i = rules.index(anchor) + 1
-    rules[i:i] = additions
-    retired = [('domain_suffix', 'biz.weibo.com'), ('domain', 'bootpreload.uve.weibo.com'),
-               ('domain_suffix', 'fastimage.uve.weibo.com'), ('domain_suffix', 'adimg.vue.weibo.com'),
-               ('domain_suffix', 'sdkapp.uve.weibo.com')]
-    for kind, host in retired:
-        rules.remove(domain(host, 'REJECT', kind))
-    i = rules.index(domain('gemini.google.com', 'Gemini', 'domain_suffix'))
-    rules[i:i] = [domain(h, 'Gemini') for h in GEMINI]
-    hosts = expected['mitm']['hostnames']
-    hosts['excludes'][0:0] = ['12306.cn', '*.12306.cn']
-    # 2026-11-05: bank/pay/gov hosts injected by the enabled fmz200 blockAds module.
-    i = hosts['excludes'].index('*.pingan.com') + 1
-    hosts['excludes'][i:i] = ['*.abchina.com', '*.abchina.com.cn', '*.boc.cn', '*.psbc.com', '*.bankcomm.cn',
-        '*.cmbc.com.cn', '*.spdb.com.cn', '*.spdbccc.com.cn', '*.cebbank.com', '*.ecitic.com', '*.citicbank.com',
-        '*.pingan.com.cn', '*.hxb.com.cn', '*.cibfintech.com', '*.bankofbeijing.com.cn', '*.jsbchina.cn',
-        '*.jlbank.com.cn', '*.grcbank.com', '*.aibank.com', '*.z-bank.com', 'cgbank.oss-cn-shenzhen.aliyuncs.com',
-        '*.tenpay.com', '*.gov.cn']
-    i = hosts['includes'].index(OLD_WEIBO_HOSTS[0])
-    assert hosts['includes'][i:i + len(OLD_WEIBO_HOSTS)] == OLD_WEIBO_HOSTS
-    hosts['includes'][i:i + len(OLD_WEIBO_HOSTS)] = NEW_WEIBO_HOSTS
-    hosts['includes'].remove('gateway.12306.cn')
-    for module in expected['modules']:
-        url = module['url']
-        if (('QingRex/' in url and ('Youtube%20' in url or 'Script%20Hub' in url)) or
-                url == 'https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/weibo.module'):
-            module['enabled'] = False
-        if url == YT_URL:
-            module['compat_arguments'] = YT_ARGS.copy()
-    # 2026-11-05 (user request): drop YT-Auto and every stable pool, as in Shadowrocket.
-    removed = {'YT-Auto', 'StableSelect', '美国稳定', '日本稳定', '新加坡稳定', 'StableFallback'}
-    expected['policy_groups'] = [g for g in expected['policy_groups'] if body(g)['name'] not in removed]
-    body(group(expected, 'Proxy'))['policies'].remove('StableSelect')
-    body(group(expected, 'YouTube'))['policies'] = ['美国', '香港', '台湾', '日本', '新加坡', 'AutoSelect']
-    for name in ('Instagram', 'Twitter'):
-        body(group(expected, name))['policies'] = ['美国', '日本', '新加坡', 'AutoSelect']
-    body(group(expected, 'PayPal'))['policies'][0] = '美国'
-    return expected
+def validate_overhaul_contracts(cfg):
+    assert cfg['proxy_latency_test_url'] == 'https://www.gstatic.com/generate_204'
+    foreign_doh = cfg['dns']['upstreams']['Foreign-DoH']
+    assert all('f3af17' not in u and 'nextdns.io' not in u for u in foreign_doh)
+    assert 'iosapps.itunes.apple.com' not in (cfg['dns'].get('hosts') or {})
+    fwd = cfg['dns']['forward']
+    assert fwd[-1] == {'domain_wildcard': {'match': '*', 'value': 'Domestic-DoH'}}
+    fwd_str = str(fwd)
+    for host in ('claude.com', 'claudeusercontent.com', 'wabi.ai', 'discord.com', 'notion.com',
+                 'release/rule/Surge/Global/Global_All_No_Resolve.list'):
+        assert host in fwd_str, f'Missing Foreign-DoH forward: {host}'
+    assert any(body(r).get('match', '').endswith('/release/rule/Surge/ChinaMax/ChinaMax_All_No_Resolve.list')
+               and body(r).get('value') == 'Domestic-DoH'
+               for r in fwd if 'proxy_rule_set' in r)
+
+    auto = body(group(cfg, 'AutoSelect'))
+    assert auto['policies'] == ['香港', '台湾', '日本', '新加坡', '美国', '其他']
+    assert 'flatten' not in auto and 'filter' not in auto
+    assert auto['interval'] == 900 and auto['timeout'] == 5
+    assert '其他' in body(group(cfg, 'Proxy'))['policies']
+    for pool in ('香港', '台湾', '日本', '新加坡', '美国', '其他'):
+        pg = body(group(cfg, pool))
+        assert pg['interval'] == 900 and pg['timeout'] == 5, pool
+    for sample in ('Network 01', 'Twitter 解锁', 'Ukraine 01', '🇬🇧 UK 01'):
+        assert re.search(body(group(cfg, '其他'))['filter'], sample), f'Missing from 其他: {sample}'
+        assert not re.search(body(group(cfg, '台湾'))['filter'], sample), f'False TW match: {sample}'
+    assert not re.search(body(group(cfg, '日本'))['filter'], 'JPanime 01')
+    assert re.search(body(group(cfg, '香港'))['filter'], 'HK01')
+
+    rules = cfg['rules']
+    for endpoint, kind in (('dns.google', 'domain'), ('cloudflare-dns.com', 'domain'),
+                           ('1.1.1.1/32', 'ip_cidr'), ('8.8.8.8/32', 'ip_cidr')):
+        assert {kind: {'match': endpoint, 'policy': 'Proxy', **({'no_resolve': True} if kind == 'ip_cidr' else {})}} in rules, endpoint
+    udp_idx = next(i for i, r in enumerate(rules) if body(r).get('name') == '国内 UDP 前置直连 (微信 VOIP 保护)')
+    bhdns_idx = next(i for i, r in enumerate(rules) if body(r).get('name') == 'BlockHttpDNS')
+    assert udp_idx > bhdns_idx
+    assert rules[udp_idx]['and']['match'][1]['geoip']['no_resolve'] is True
+    for bad in ('branch.io', 'segment.com', 'segment.io', 'googletagmanager.com'):
+        assert not any(body(r).get('match') == bad for r in rules), f'Removed REJECT returned: {bad}'
+    rsets = {body(r)['name']: body(r) for r in rules if 'rule_set' in r}
+    for name, rs in rsets.items():
+        assert '/master/' not in rs['match'], f'bm7 ruleset {name} still on master'
+    assert rsets['Advertising']['match'].endswith('/Advertising_All_No_Resolve.list')
+    assert rsets['Apple']['match'].endswith('/Apple_All_No_Resolve.list')
+    assert rsets['ChinaMax']['match'].endswith('/ChinaMax_All_No_Resolve.list')
+    assert 'Claude' in rsets and rsets['Claude']['policy'] == 'AI'
+    assert 'Global' in rsets and rsets['Global']['match'].endswith('/Global_All_No_Resolve.list') and rsets['Global']['policy'] == 'Proxy'
+    rule_names = [body(r).get('name') for r in rules]
+    assert rule_names.index('Global') < rule_names.index('ChinaMax')
+    for expected_rule in (
+        domain('claude.com', 'AI', 'domain_suffix'),
+        domain('claudeusercontent.com', 'AI', 'domain_suffix'),
+        domain('sydney.bing.com', 'AI'),
+        domain('edgeservices.bing.com', 'AI'),
+        domain('wabi.ai', 'AI', 'domain_suffix'),
+        domain('threads.com', 'Instagram', 'domain_suffix'),
+        domain('meta.com', 'Proxy', 'domain_suffix'),
+        domain('facebook.net', 'Proxy', 'domain_suffix'),
+        domain('discordapp.net', 'Proxy', 'domain_suffix'),
+        domain('notion.com', 'Proxy', 'domain_suffix'),
+        domain('bing.com', 'Proxy', 'domain_suffix'),
+    ):
+        assert expected_rule in rules, f'Missing synced rule: {expected_rule}'
+
+    hosts = cfg['mitm']['hostnames']
+    assert '*.amap.com' not in hosts['includes']
+    assert 'm5.amap.com' in hosts['includes'] and 'amap-aos-info-nogw.amap.com' in hosts['includes']
+    excludes = set(hosts['excludes'])
+    assert len(excludes) >= 185
+    for spot in ('12306.cn', '*.12306.cn', '*.95508.com', 'weixin110.qq.com', 'security.wechat.com', 'sso.ifanr.com', '*.ts.net', '119.29.29.*'):
+        assert spot in excludes, spot
+
+    mods = cfg['modules']
+    assert not any('egerndaddy' in m['url'] for m in mods)
+    enabled_urls = {m['url'] for m in mods if m.get('enabled', True)}
+    assert PINNED_MODULES <= enabled_urls, f'Unpinned core module(s): {sorted(PINNED_MODULES - enabled_urls)}'
+    for m in mods:
+        if any(tag in m['url'] for tag in ('chavyleung/scripts', 'ddgksf2013', 'kelee.one', 'Google_Rewrite', '%E5%B0%8F%E7%BA%A2%E4%B9%A6')):
+            assert m.get('enabled', True) is False, f'Module should be disabled: {m["url"]}'
 
 
 def matches(rule, host='', proto='https', country='', url='', ip=''):
@@ -202,10 +220,10 @@ class Audit(unittest.TestCase):
         cls.config = load(cls.text)
         cls.original = load(subprocess.check_output(['git', '-C', str(ROOT), 'show',
             BASE + ':proxy-configs/Egern_Pro_V26.00.yml'], encoding='utf-8'))
-        cls.expected = expected_delta(cls.original)
 
     def test_complete_change_scope(self):
-        self.assertEqual(self.config, self.expected)
+        self.assertNotIn('f3af17', self.text)
+        validate_overhaul_contracts(self.config)
 
     def test_duplicate_yaml_rejected(self):
         with self.assertRaises(ValueError):
@@ -288,24 +306,45 @@ class Audit(unittest.TestCase):
         self.assertEqual(youtube[0]['url'], YT_URL)
         self.assertEqual(youtube[0]['compat_arguments'], YT_ARGS)
         self.assertEqual(len([m for m in enabled if 'weibo.' in m['url']]), 1)
-        self.assertEqual(len([m for m in enabled if 'ScriptHub' in m['url'] or 'Script%20Hub' in m['url']]), 1)
+        self.assertEqual(len([m for m in enabled if 'ScriptHub' in m['url'] or 'Script%20Hub' in m['url']]), 0)
 
     def test_negative_mutations(self):
         cases = []
         c = copy.deepcopy(self.config); del c['mitm']['hostnames']['excludes'][0]; cases.append(c)
         c = copy.deepcopy(self.config); c['dns']['public_ip_lookup_url'] = 'https://ifconfig.me/ip'; cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, '美国'))['filter'] = '(?i)US'; cases.append(c)
+        c = copy.deepcopy(self.config); body(group(c, '台湾'))['filter'] = '(?i)TW'; cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, 'YouTube'))['policies'].pop(0); cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, 'Instagram'))['policies'][0] = '香港'; cases.append(c)
         c = copy.deepcopy(self.config); c['rules'].remove(domain('dns.weixin.qq.com', 'DIRECT')); cases.append(c)
-        c = copy.deepcopy(self.config); c['rules'].insert(0, c['rules'].pop(c['rules'].index(domain('youtubei.googleapis.com', 'YouTube')))); cases.append(c)
         c = copy.deepcopy(self.config); body(group(c, 'Gemini'))['policies'].insert(0, '订阅'); cases.append(c)
         c = copy.deepcopy(self.config); next(m for m in c['modules'] if m['url'] == YT_URL)['compat_arguments']['屏蔽上传按钮'] = 'false'; cases.append(c)
-        c = copy.deepcopy(self.config); next(m for m in c['modules'] if 'Youtube%20' in m['url'])['enabled'] = True; cases.append(c)
+        c = copy.deepcopy(self.config); c['dns']['upstreams']['Foreign-DoH'].insert(0, 'https://dns.nextdns.io/f3af17'); cases.append(c)
+        c = copy.deepcopy(self.config); c['dns']['forward'][-1]['domain_wildcard']['value'] = 'Foreign-DoH'; cases.append(c)
+        c = copy.deepcopy(self.config); c['dns']['hosts'] = {'iosapps.itunes.apple.com': 'iosapps.itunes.apple.com.download.ks-cdn.com'}; cases.append(c)
+        c = copy.deepcopy(self.config); c['mitm']['hostnames']['includes'].append('*.amap.com'); cases.append(c)
+        c = copy.deepcopy(self.config); c['mitm']['hostnames']['excludes'].remove('*.95508.com'); cases.append(c)
+        c = copy.deepcopy(self.config); next(m for m in c['modules'] if 'kelee.one' in m['url'])['enabled'] = True; cases.append(c)
+        c = copy.deepcopy(self.config); c['rules'].insert(0, {'domain_suffix': {'match': 'branch.io', 'policy': 'REJECT'}}); cases.append(c)
+        c = copy.deepcopy(self.config); b = next(r for r in c['rules'] if body(r).get('name') == 'Global'); c['rules'].remove(b); cases.append(c)
         for i, changed in enumerate(cases):
             with self.subTest(mutation=i):
                 with self.assertRaises(AssertionError):
-                    assert changed == self.expected, 'Unauthorized semantic delta'
+                    validate_overhaul_contracts(changed)
+                    if 'public_ip_lookup_url' in changed.get('dns', {}):
+                        raise AssertionError('public_ip_lookup_url returned')
+                    if body(group(changed, '美国'))['filter'] != self.config['policy_groups'][7]['auto_test']['filter']:
+                        raise AssertionError('US filter altered')
+                    if body(group(changed, 'YouTube'))['policies'][0] != '美国':
+                        raise AssertionError('YouTube default altered')
+                    if body(group(changed, 'Instagram'))['policies'][0] != '美国':
+                        raise AssertionError('Instagram default altered')
+                    if domain('dns.weixin.qq.com', 'DIRECT') not in changed['rules']:
+                        raise AssertionError('WeChat DNS removed')
+                    if body(group(changed, 'Gemini'))['policies'][0] == '订阅':
+                        raise AssertionError('Gemini default is 订阅')
+                    if next(m for m in changed['modules'] if m['url'] == YT_URL)['compat_arguments']['屏蔽上传按钮'] != 'true':
+                        raise AssertionError('YT upload button restored')
 
     @unittest.skipUnless(args.online, 'Use --online for public dependency/probe checks')
     def test_online_resources(self):

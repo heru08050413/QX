@@ -93,8 +93,10 @@ dns:
     - https://doh.pub/dns-query
     - https://dns.alidns.com/dns-query
   nameserver-policy:
-    # Tailscale MagicDNS(100.100.100.100)与家里内网/路由器域名走系统或 Tailscale DNS,不送公共 DoH
-    "+.ts.net": "100.100.100.100"
+    # 家里内网/路由器域名走系统 DNS,不送公共 DoH
+    # 注意:iOS 同时只能开一个 VPN;未确认 Hako 内置 type: tailscale + ts://tailscale 前,
+    # 先不在 nameserver-policy 写死 "+.ts.net": "100.100.100.100",避免 Hako 开启期间 *.ts.net 超时。
+    # 若真机确认 Hako 支持 Mihomo type: tailscale 出站,可改配 tsnet 出站 + ts://tailscale。
     "+.lan": system
     "+.local": system
     "+.home.arpa": system
@@ -592,13 +594,14 @@ rules:
   - RULE-SET,Gemini,AI
   - RULE-SET,Claude,AI
   - RULE-SET,AI海外,AI
+  - DOMAIN-SUFFIX,claude.com,AI
+  - DOMAIN-SUFFIX,claudeusercontent.com,AI
   # Grok / Muse(Meta AI) / Hark / Wabi / Cue / Today 等 AI Agent 显式归入 AI 组
   # (实测 today.ai 被上游 cn.mrs 误收录会导致直连断联; hark/wabi/cueai 未被 AI海外 收录)
   - DOMAIN-SUFFIX,x.ai,AI
   - DOMAIN-SUFFIX,grok.com,AI
   - DOMAIN-SUFFIX,muse.ai,AI
   - DOMAIN-SUFFIX,meta.ai,AI
-  - DOMAIN-SUFFIX,meta.com,AI
   - DOMAIN-SUFFIX,metaaivm.com,AI
   - DOMAIN-SUFFIX,hark.com,AI
   - DOMAIN-SUFFIX,gethark.ai,AI
@@ -631,6 +634,8 @@ rules:
   - RULE-SET,Telegram,Telegram
   - RULE-SET,Twitter,社交媒体
   - RULE-SET,Facebook,社交媒体
+  # Meta 通用账号/Quest/非 AI 业务走社交媒体,不与 AI 节点绑定
+  - DOMAIN-SUFFIX,meta.com,社交媒体
   - RULE-SET,Instagram,社交媒体
   - RULE-SET,TikTok,社交媒体
   # Discord(含语音网关、附件 CDN 与短链,走默认美国节点的社交媒体组)

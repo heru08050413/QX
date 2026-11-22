@@ -49,8 +49,11 @@ RULESETS = {
     'Google': [('Google', 'Google/Google.yaml', 'classical', False)],
     'Microsoft': [('Microsoft', 'Microsoft/Microsoft.yaml', 'classical', False)],
     'BiliBili': [('BiliBili', 'BiliBili/BiliBili.yaml', 'classical', False)],
+    'Global': [('Global', 'Global/Global.yaml', 'classical', False)],
+    'Global_Domain': [('Global_Domain', 'Global/Global_Domain.yaml', 'domain', False)],
     'ChinaMax': [('ChinaMax_Domain', 'ChinaMax/ChinaMax_Domain.yaml', 'domain', False),
                  ('ChinaMax_IP', 'ChinaMax/ChinaMax_IP.yaml', 'ipcidr', True)],
+    'ChinaMax_Domain': [('ChinaMax_Domain', 'ChinaMax/ChinaMax_Domain.yaml', 'domain', False)],
     'ChinaIPs': [('ChinaIPs', 'ChinaIPs/ChinaIPs_IP.yaml', 'ipcidr', True)],
 }
 QURE = 'https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/'
@@ -143,7 +146,10 @@ def convert_groups(lines):
             else:
                 g.append('    include-all: true')
                 flt = opts.get('filter', '')
-                if flt and '(?!' not in flt:
+                m_excl = re.match(r'^(\(\?i\))\^\(\?!\.\*\(\?:(.+)\)\)\.\*\$$', flt)
+                if m_excl:
+                    g.append(f'    exclude-filter: {q(m_excl.group(1) + de_lookaround(m_excl.group(2)))}')
+                elif flt and '(?!' not in flt:
                     g.append(f'    filter: {q(de_lookaround(flt))}')
             if opts.get('url'):
                 g.append(f"    url: {q(opts['url'])}")
@@ -160,13 +166,17 @@ def convert_groups(lines):
 
 def convert_rules(lines, mitm_hosts):
     rules, providers, dropped, rewrites = [], {}, [], []
+    seen_rule_sets = set()
     for line in active(lines):
         if line.startswith(('RULE-SET,', 'DOMAIN-SET,')):
             kind, url, policy = line.split(',', 2)
             base = url.rsplit('/', 1)[-1].rsplit('.', 1)[0]
             for pname, path, behavior, nores in RULESETS[base]:
                 providers[pname] = (path, behavior)
-                rules.append(f'RULE-SET,{pname},{policy}' + (',no-resolve' if nores else ''))
+                rule_line = f'RULE-SET,{pname},{policy}' + (',no-resolve' if nores else '')
+                if rule_line not in seen_rule_sets:
+                    seen_rule_sets.add(rule_line)
+                    rules.append(rule_line)
             continue
         m = re.match(r'^AND,\(\((.+)\),\(PROTOCOL,UDP\)\),(\w+)$', line)
         if m:

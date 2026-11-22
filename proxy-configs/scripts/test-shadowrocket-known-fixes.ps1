@@ -387,10 +387,23 @@ foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡�
 }
 $otherGroupLine = @($active | Where-Object { $_.StartsWith('其他节点 = ') })[0]
 $otherPattern = ($otherGroupLine -split 'policy-regex-filter=', 2)[1]
-foreach ($name in @('🇬🇧 英国 01', '🇩🇪 德国 01', '🇰🇷 韩国 01', '🇳🇱 荷兰 01')) {
+foreach ($name in @('🇬🇧 英国 01', '🇩🇪 德国 01', '🇰🇷 韩国 01', '🇳🇱 荷兰 01', 'Network 01', 'Twitter 解锁', 'Ukraine 01')) {
     Assert-True ([regex]::IsMatch($name, $otherPattern)) "其他节点 excludes non-region fixture: $name"
     $regexChecks++
 }
+$twGroupLine = @($active | Where-Object { $_.StartsWith('台湾节点 = ') })[0]
+$twPattern = ($twGroupLine -split 'policy-regex-filter=', 2)[1]
+$jpGroupLine = @($active | Where-Object { $_.StartsWith('日本节点 = ') })[0]
+$jpPattern = ($jpGroupLine -split 'policy-regex-filter=', 2)[1]
+$hkGroupLine = @($active | Where-Object { $_.StartsWith('香港节点 = ') })[0]
+$hkPattern = ($hkGroupLine -split 'policy-regex-filter=', 2)[1]
+foreach ($name in @('Network 01', 'Twitter 解锁')) {
+    Assert-True (![regex]::IsMatch($name, $twPattern)) "TW word boundary broken on: $name"
+    $regexChecks++
+}
+Assert-True (![regex]::IsMatch('JPanime 01', $jpPattern)) 'JP word boundary broken on JPanime 01'
+Assert-True ([regex]::IsMatch('HK01', $hkPattern)) 'HK region filter missed HK01'
+$regexChecks += 2
 foreach ($name in @('🇭🇰 香港 01', '🇹🇼 台湾 01', '🇯🇵 日本 01', '🇸🇬 新加坡 01', '🇺🇸 US 01', '剩余流量 100GB', '套餐到期 2027-01-01', '官网: example.com')) {
     Assert-True (![regex]::IsMatch($name, $otherPattern)) "其他节点 admits region/info fixture: $name"
     $regexChecks++
@@ -414,14 +427,17 @@ Assert-True ($scriptStart -ge 0 -and $mitmStart -gt $scriptStart) 'Missing Scrip
 foreach ($line in $active[($scriptStart + 1)..($mitmStart - 1)]) {
     Assert-True (!$line.Contains('max-size=-1')) "Unbounded max-size=-1 forbidden in [Script]: $line"
     Assert-True (!$line.Contains('ddgksf2013')) "Removed obfuscated ddgksf2013 script found: $line"
-    if (!$line.Contains('heru08050413/QX/main/proxy-configs/scripts/zhihu.js')) {
-        Assert-True ($line -notmatch '/(main|master)/') "Floating script branch forbidden: $line"
-    }
+    Assert-True ($line -notmatch '/(main|master)/') "Floating script branch forbidden: $line"
 }
 $hostnameLines = @($active[($mitmStart + 1)..($active.Count - 1)] | Where-Object { $_.StartsWith('hostname = ') })
 Assert-True ($hostnameLines.Count -eq 1) 'Expected single MITM hostname line'
 Assert-True (!$hostnameLines[0].StartsWith('hostname = *,')) 'Wildcard MITM root forbidden'
 Assert-True ($hostnameLines[0].Contains('-*.ts.net') -and $hostnameLines[0].Contains('-*.alipay.com') -and $hostnameLines[0].Contains('-12306.cn')) 'Critical MITM exclusions missing'
+$mitmExcludes = @($hostnameLines[0].Substring('hostname = '.Length).Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_.StartsWith('-') })
+Assert-True ($mitmExcludes.Count -ge 185) "Expected >= 185 MITM exclusions, got $($mitmExcludes.Count)"
+foreach ($newExcl in @('-*.95508.com', '-weixin110.qq.com', '-security.wechat.com', '-sso.ifanr.com')) {
+    Assert-True ($mitmExcludes -contains $newExcl) "New MITM exclusion missing: $newExcl"
+}
 foreach ($removedHost in @('restapi.amap.com', 'mps.amap.com', 'preload-impression.uve.weibo.com', 'kadmimage.biz.weibo.com')) {
     Assert-True (!$hostnameLines[0].Contains($removedHost)) "Removed MITM host returned: $removedHost"
 }
@@ -463,7 +479,7 @@ $expectedDefaults = @{
     Proxy='美国节点'; AI='美国节点'; 谷歌AI='美国节点'; Meta='美国节点';
     YouTube='美国节点'; Netflix='美国节点'; Spotify='新加坡节点'; TikTok='美国节点';
     Telegram='美国节点'; Instagram='美国节点'; Twitter='美国节点';
-    苹果服务='DIRECT'; 微软服务='美国节点'; 哔哩哔哩='DIRECT'; Final='DIRECT'
+    苹果服务='DIRECT'; 微软服务='DIRECT'; 哔哩哔哩='DIRECT'; Final='DIRECT'
 }
 foreach ($entry in $expectedDefaults.GetEnumerator()) {
     Assert-True ((Resolve-DefaultPool $entry.Key) -ceq $entry.Value) "Wrong initial region/pool: $($entry.Key)"
@@ -530,4 +546,23 @@ foreach ($rule in $googleAuthRules) {
     $idx = [array]::IndexOf($active, $rule)
     Assert-True ($idx -ge 0 -and $idx -lt $youtubeRemoteIdx) "Google auth missing or can be captured by remote YouTube rules: $rule"
 }
+# 2026-11-21 audit overhaul invariants
+foreach ($aiRule in @(
+    'DOMAIN-SUFFIX,claude.com,AI',
+    'DOMAIN-SUFFIX,claudeusercontent.com,AI',
+    'DOMAIN,sydney.bing.com,AI',
+    'DOMAIN,edgeservices.bing.com,AI'
+)) {
+    Assert-True ($active.Contains($aiRule)) "Missing AI routing rule: $aiRule"
+}
+$bingIdx = [array]::IndexOf($active, 'DOMAIN-SUFFIX,bing.com,Proxy')
+$msListIdx = [array]::IndexOf($active, 'RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务')
+Assert-True ($bingIdx -gt $firstAd -and $msListIdx -gt $bingIdx) 'bing.com -> Proxy must precede Microsoft.list'
+$globalRuleIdx = [array]::IndexOf($active, 'RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Global/Global.list,Proxy')
+$globalDomainIdx = [array]::IndexOf($active, 'DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Global/Global_Domain.list,Proxy')
+$chinaRuleIdx = [array]::IndexOf($active, 'RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax.list,DIRECT')
+$chinaDomainIdx = [array]::IndexOf($active, 'DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax_Domain.list,DIRECT')
+Assert-True ($globalRuleIdx -ge 0 -and $globalDomainIdx -gt $globalRuleIdx -and $chinaRuleIdx -gt $globalDomainIdx -and $chinaDomainIdx -gt $chinaRuleIdx) 'Global + Global_Domain -> Proxy must precede ChinaMax + ChinaMax_Domain -> DIRECT'
+Assert-True (@($active | Where-Object { $_ -match '^dns\.google\s*=' }).Count -eq 0) 'Stale dns.google = 8.8.8.8 bootstrap host must stay deleted'
+Assert-True ($active.Contains('cloudflare-dns.com = 1.1.1.1, 1.0.0.1')) 'cloudflare-dns.com Host bootstrap unexpectedly removed'
 Write-Output "PASS: $regexChecks region/other-regex cases; v2.6.25 compatibility, scripts and MITM invariants; Google-probed region pools and nested AutoSelect; historical v2.6.16 through v2.6.21 invariants; Tailscale TUN/IPv6/control-plane routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini/AI/LinkedIn selection; Meta suffix safety."

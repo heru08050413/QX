@@ -12,13 +12,15 @@ proxy-groups: #!replace
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Global.png
     proxies: [美国节点, 稳定切换, 手动节点, REJECT]
   - name: 稳定切换
-    type: fallback
+    type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
     include-all: true
-    interval: 120
-    lazy: false
-    # 按订阅顺序选健康节点，优先节点恢复后可能切回；不保证既有连接迁移。
-    # 不用地区 filter，避免新机场命名不同导致空组被 Stash 当成 DIRECT。
+    exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
+    # 按 Google HTTPS 探针低功耗选优(900s lazy); 不用地区 filter, 避免新机场命名不同导致空组被 Stash 当成 DIRECT.
   - name: 手动节点
     type: select
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Static.png
@@ -26,19 +28,23 @@ proxy-groups: #!replace
     interval: 600
     lazy: true
   - name: 美国节点
-    type: fallback
+    type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
     include-all: true
     filter: '(?i)(^|[^a-z])(us|usa|united states)([^a-z]|$)|美国|美國|美西|美东|美東|美中|🇺🇸'
-    interval: 120
-    lazy: false
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
   - name: 新加坡节点
-    type: fallback
+    type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
     include-all: true
     filter: '(?i)(^|[^a-z])(sg|singapore)([^a-z]|$)|新加坡|狮城|獅城|🇸🇬'
-    interval: 120
-    lazy: false
+    url: https://www.gstatic.com/generate_204
+    interval: 900
+    tolerance: 200
+    lazy: true
   - name: YouTube
     type: select
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/YouTube.png
@@ -167,8 +173,28 @@ rules: #!replace
   - DOMAIN-SUFFIX,oaiusercontent.com,AI
   - DOMAIN-SUFFIX,auth0.com,AI
   - DOMAIN-SUFFIX,claude.ai,AI
+  - DOMAIN-SUFFIX,claude.com,AI
+  - DOMAIN-SUFFIX,claudeusercontent.com,AI
   - DOMAIN-SUFFIX,anthropic.com,AI
   - DOMAIN-SUFFIX,perplexity.ai,AI
+  - DOMAIN-SUFFIX,x.ai,AI
+  - DOMAIN-SUFFIX,grok.com,AI
+  - DOMAIN-SUFFIX,muse.ai,AI
+  - DOMAIN-SUFFIX,meta.ai,AI
+  - DOMAIN-SUFFIX,metaaivm.com,AI
+  - DOMAIN-SUFFIX,hark.com,AI
+  - DOMAIN-SUFFIX,gethark.ai,AI
+  - DOMAIN-SUFFIX,wabi.ai,AI
+  - DOMAIN-SUFFIX,cueai.app,AI
+  - DOMAIN-SUFFIX,manus.im,AI
+  - DOMAIN-SUFFIX,manus.ai,AI
+  - DOMAIN-SUFFIX,today.ai,AI
+  - DOMAIN-SUFFIX,oneintent.today,AI
+  - DOMAIN-SUFFIX,cursor.sh,AI
+  - DOMAIN-SUFFIX,cursorapi.com,AI
+  - DOMAIN-SUFFIX,cursor-cdn.com,AI
+  - DOMAIN-SUFFIX,cursorvm.com,AI
+  - DOMAIN-SUFFIX,githubcopilot.com,AI
   - DOMAIN,gemini.google.com,AI
   - DOMAIN,aistudio.google.com,AI
   - DOMAIN,ai.google.dev,AI
@@ -177,7 +203,8 @@ rules: #!replace
   - DOMAIN,makersuite.google.com,AI
   - DOMAIN,proactivebackend-pa.googleapis.com,AI
   - DOMAIN,copilot.microsoft.com,AI
-  - DOMAIN-SUFFIX,bing.com,AI
+  - DOMAIN,sydney.bing.com,AI
+  - DOMAIN,edgeservices.bing.com,AI
   - DOMAIN-SUFFIX,google.com,Google
   - DOMAIN-SUFFIX,googleapis.com,Google
   - DOMAIN-SUFFIX,gstatic.com,Google
@@ -208,9 +235,30 @@ rules: #!replace
   - DOMAIN-SUFFIX,github.com,默认代理
   - DOMAIN-SUFFIX,githubusercontent.com,默认代理
   - DOMAIN-SUFFIX,githubassets.com,默认代理
+  - DOMAIN-SUFFIX,discord.com,默认代理
+  - DOMAIN-SUFFIX,discord.gg,默认代理
+  - DOMAIN-SUFFIX,discordapp.com,默认代理
+  - DOMAIN-SUFFIX,discordapp.net,默认代理
+  - DOMAIN-SUFFIX,discord.media,默认代理
+  - DOMAIN-SUFFIX,discordcdn.com,默认代理
+  - DOMAIN-SUFFIX,dis.gd,默认代理
+  - DOMAIN-SUFFIX,notion.so,默认代理
+  - DOMAIN-SUFFIX,notion.site,默认代理
+  - DOMAIN-SUFFIX,notion.com,默认代理
+  - DOMAIN-SUFFIX,notion-static.com,默认代理
+  - DOMAIN-SUFFIX,makenotion.com,默认代理
+  - DOMAIN-SUFFIX,meta.com,默认代理
+  - DOMAIN-SUFFIX,facebook.com,默认代理
+  - DOMAIN-SUFFIX,facebook.net,默认代理
+  - DOMAIN-SUFFIX,fbcdn.net,默认代理
+  - DOMAIN-SUFFIX,messenger.com,默认代理
+  - DOMAIN-SUFFIX,instagram.com,默认代理
+  - DOMAIN-SUFFIX,threads.com,默认代理
+  - DOMAIN-SUFFIX,threads.net,默认代理
   - DOMAIN-SUFFIX,apple.com,Apple
   - DOMAIN-SUFFIX,icloud.com,Apple
   - DOMAIN-SUFFIX,icloud-content.com,Apple
+  - DOMAIN-SUFFIX,bing.com,默认代理
   - DOMAIN-SUFFIX,microsoft.com,Microsoft
   - DOMAIN-SUFFIX,live.com,Microsoft
   - DOMAIN-SUFFIX,office.com,Microsoft

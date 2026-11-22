@@ -1,6 +1,6 @@
 # Clash by Hako · iPhone 配置生成器
 
-V26.00 / revision 2 · 2026-11-14。目标客户端：用户提供的 iOS **1.0.9**。
+V26.00 / revision 3 · 2026-11-21。目标客户端：用户提供的 iOS **1.0.9**。
 
 这是一个在手机内运行的 `main(config)` 配置生成脚本，采用 V3 式“保留机场 DNS/TUN、重建分流”的方案；不是机场订阅，也不是可直接导入为 Profile 的 YAML。机场节点、密码和订阅链接不进入本仓库。其他客户端文件不变。
 
@@ -32,8 +32,8 @@ V26.00 / revision 2 · 2026-11-14。目标客户端：用户提供的 iOS **1.0.
 
 | 入口 | 默认行为 |
 | --- | --- |
-| `QXH-代理` | 全可用节点（自动过滤信息条）自动测速，300 秒、150 ms 切换容差；可手动固定 |
-| `QXH-YouTube` | JP → SG → TW → HK → US → OTHER 的地区故障转移；每个存在的地区先按 Google 探针选点 |
+| `QXH-代理` | 全可用节点（自动过滤信息条）按 Google 204 探针自动测速，300 秒、150 ms 切换容差；可手动固定 |
+| `QXH-YouTube` | JP → SG → TW → HK → US → OTHER 的单层地区故障转移（与地区池共用 Google 探针，消除双倍重复测速） |
 | `QXH-AI` | 美国 → 日本 → 新加坡 → 台湾节点的顺序故障转移，避免按最快延迟频繁轮换出口 |
 | `QXH-Google` | 默认通用代理，与 YouTube / AI 组完全隔离（纯港节点机场不阻断 Google 登录）；Google 账户认证与 FCM 归此组 |
 | `QXH-Telegram` | 通用代理；域名和 Telegram IP 均有分流 |
@@ -41,7 +41,7 @@ V26.00 / revision 2 · 2026-11-14。目标客户端：用户提供的 iOS **1.0.
 | 国内 / 内网 / Tailscale | 私有网段、Tailscale（`ts.net` / `tailscale.com` / `tailscale.io` / `fd7a:115c:a1e0::/48`）、必要国内服务与运营商一键登录直连；CN 域名 + CN IP 兜底 |
 | 未分类流量 | 代理，不在全部节点坏掉时偷偷直连 |
 
-YouTube 地区池 120 秒、外层故障转移 60 秒，Google HTTPS 204 探针；不是“60 秒内一定修好”，实际检查受懒检查、系统调度和节点状态影响。150 ms 容差用于减少小幅延迟波动引起的切换。探针仅代表基础可达，不验证吞吐、视频 CDN、AI 地区资格或账户授权。
+各地区池采用 300 秒、外层 `QXH-YT故障转移` 采用 120 秒 Google HTTPS 204 单一套探针（全组启用 `lazy: true`）；不是“120 秒内一定修好”，实际检查受懒检查、系统调度和节点状态影响。150 ms 容差用于减少小幅延迟波动引起的切换。探针仅代表基础可达，不验证吞吐、视频 CDN、AI 地区资格或账户授权。
 
 仅对 `googlevideo.com`、`youtube.com`、`ytimg.com`、`ggpht.com`、`youtubei.googleapis.com`、`youtubei-att.googleapis.com` 的 **应用侧 UDP 443** 拒绝，促使应用使用 TCP。不封所有 UDP，不禁微信语音，不改 Hysteria2/TUIC 节点的底层 QUIC 传输。
 
@@ -68,7 +68,7 @@ YouTube 地区池 120 秒、外层故障转移 60 秒，Google HTTPS 204 探针�
 
 ## 已验证 / 待手机验收
 
-已完成 JavaScript 语法检查、32 项离线回归、10 份远程 MRS 的标识校验和原生 Zstd 完整解码及 2 个 HTTPS 204 探针（详见 [test-clash-hako.cjs](scripts/test-clash-hako.cjs)；历史 revision 1 曾进行 10 个路由夹具与 mihomo 1.19.31 `-t` 检查，见 [审查记录](reviews/clash-hako-2026-09-20.md)，revision 2 尚未重跑 `mihomo -t`）。
+已完成 JavaScript 语法检查与 32 项离线回归（详见 [test-clash-hako.cjs](scripts/test-clash-hako.cjs)；历史 revision 1 曾进行 10 份 MRS 完整解码、10 个路由夹具与 mihomo 1.19.31 `-t` 检查，见 [审查记录](reviews/clash-hako-2026-09-20.md)，revision 3 单一套探针池尚未重跑 `mihomo -t`）。
 
 **不是 Hako 1.0.9 真机认证。**官方客户端源码没有可明确对应你 iOS 1.0.9 二进制的公开标签；本机不能运行 Apple JavaScriptCore/Network Extension，也未在本环境运行新版 `mihomo -t`。不能把离线检查说成手机导入实测。
 

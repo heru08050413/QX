@@ -108,7 +108,7 @@ test('junk info nodes excluded from automated pools but kept in manual',()=>{
   const r=run(fixture(['剩余流量 88GB','套餐到期 2027-01-01','US-01','Other-01']));
   validate(r);
   assert.deepEqual(group(r,'QXH-自动').proxies,['US-01','Other-01']);
-  assert.deepEqual(group(r,'QXH-YT-OTHER').proxies,['Other-01']);
+  assert.deepEqual(group(r,'QXH-OTHER').proxies,['Other-01']);
   assert(group(r,'QXH-手动').proxies.includes('剩余流量 88GB'));
 });
 test('unknown/HK-only AI requires explicit selection',()=>{
@@ -126,10 +126,13 @@ test('Tailscale home device domains and IPv6 ULA route DIRECT',()=>{
     assert.equal(route(output,d,'TCP',443,['QXH-Ads']),'DIRECT');
   assert(output.rules.includes('IP-CIDR6,fd7a:115c:a1e0::/48,DIRECT,no-resolve'));
 });
-test('YouTube two-level Google probes, stable tolerance',()=>{
-  assert.equal(group(output,'QXH-YT故障转移').interval,60);
+test('YouTube and general pools share single Google HTTPS probe, no duplicate pools',()=>{
+  assert.equal(group(output,'QXH-YT故障转移').interval,120);
+  assert.equal(group(output,'QXH-自动').url,'https://www.gstatic.com/generate_204');
+  assert.equal(group(output,'QXH-AI稳定').url,'https://www.gstatic.com/generate_204');
   for(const n of group(output,'QXH-YT故障转移').proxies) {
-    const g=group(output,n); assert.equal(g.type,'url-test'); assert.equal(g.interval,120);
+    assert(!n.startsWith('QXH-YT-'),'no duplicate YT region pool: '+n);
+    const g=group(output,n); assert.equal(g.type,'url-test'); assert.equal(g.interval,300);
     assert.equal(g.tolerance,150); assert.equal(g.url,'https://www.gstatic.com/generate_204');
   }
 });
@@ -191,10 +194,10 @@ test('Gemini, GPT, Claude precede Google/CN sets',()=>{
   for(const n of ['Gemini','OpenAI','Claude'])
     assert.equal(route(output,'service.example.invalid','TCP',443,['QXH-'+n,'QXH-Google','QXH-CN']),'QXH-AI');
 });
-test('Hark, Wabi, Cue, Muse, Today, Grok, Discord and Notion beat QXH-CN',()=>{
-  for(const d of ['api.x.ai','grok.com','muse.ai','meta.ai','hatch.metaaivm.com','hark.com','gethark.ai','wabi.ai','cueai.app','manus.im','today.ai','oneintent.today'])
+test('Hark, Wabi, Cue, Muse, Today, Grok, Claude, Discord, Meta and Notion beat QXH-CN',()=>{
+  for(const d of ['claude.com','claudeusercontent.com','api.x.ai','grok.com','muse.ai','meta.ai','hatch.metaaivm.com','hark.com','gethark.ai','wabi.ai','cueai.app','manus.im','today.ai','oneintent.today'])
     assert.equal(route(output,d,'TCP',443,['QXH-CN']),'QXH-AI',d);
-  for(const d of ['discord.com','discord.gg','cdn.discordapp.com','media.discordapp.net','www.notion.so','www.notion.com','x.com'])
+  for(const d of ['www.meta.com','discord.com','discord.gg','cdn.discordapp.com','media.discordapp.net','www.notion.so','www.notion.com','x.com'])
     assert.equal(route(output,d,'TCP',443,['QXH-CN']),'QXH-代理',d);
 });
 test('ad bypass resumes routing, not blanket direct',()=>{

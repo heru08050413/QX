@@ -19,20 +19,20 @@
   > **不收录**:B站(kokoryh/Sparkle 依赖 `engine=webview`+protobuf, Stash 无 webview)、网易云音乐/百度贴吧/Spotify/YouTube(binary-body-mode protobuf)、银行/政务/证件类(12306/航旅纵横/招商证券/建行生活/买单吧…一律不 MITM)。
 - `Stash_All_V26.00.stoverride` — **三合一总覆写**(上面三份合并, 一个链接全都有)。`rules:` 81 条(网络层 REJECT + App 网络规则)、`http.mitm:` 80 域(两份去重)、`http.url-rewrite:` 94 条、`http.script:` 83 hooks、`script-providers:` 13。①网络层免 MITM 即生效;②③需开 MITM。**三份分文件保留**(便于按需单开某层);总文件供"一键全量"。由 `/tmp/merge.py` 从三份源文件抽段合并生成,177 条 url-rewrite+script 正则全过 `new RegExp` 编译。
 
-> 版本号:五套已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
-> Stash 与安全基线的适用性:无 MITM 段 → 基线 1/6 不适用;基线 2(保护区)以本地 `qq.com.cn`/`teg` 规则实现;基线 5 例外——Stash 采用 `MATCH→漏网之鱼(默认代理)+ CN 白名单` 的 fail-closed 哲学,与四套 Final=DIRECT 是两种自洽取舍,不强行对齐。
+> 版本号:各端主配置已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
+> 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连)。关于 DNS 防泄露与国内直连的权衡:在没有完备本地/Fake-IP 域名的情况下,末尾 `GEOIP,CN` 前的未命中长尾域若触发本地解析,就会让本地 DNS 看见查询(QX 无 Fake-IP 属已知架构限制;Loon/Clash_iso/Stash_V26 需保持完整国内域名集 + `no-resolve` 才能兼顾)。
 
 ---
 
-## 一、安全基线(四套必须逐字一致,改任何一个都要对齐另外三个)
+## 一、安全基线(各 App 必须对齐;改动后运行 `scripts/check-mitm-exclusions.py` 校验)
 
-1. **MITM 排除清单**:银行/支付/登录/账户子域必须全部排除(`*.alipay.com`、`*.unionpay.com`、`*.cmbchina.com`、`*.icbc.com.cn`、`passport.*`、`account.*`、`pay.*`、`*.icloud.com` 等)。少一个 = 一个高敏感解密缺口。
-   - ⚠️ **2026-11 查实:fmz200 blockAds 模块/插件会把约 60 个银行/支付/政务主机(工行/农行/建行/中行/邮储/交行/民生/浦发/光大/中信/平安/华夏/兴业/财付通/`*.gov.cn` 等)注入解密列表**。启用它的 SR、Egern、Loon 已逐一补排除(Hako 用 `Clash_iso/MITM_Safe.sgmodule`)。模块更新后重新核对:把模块的 hostname 列表与排除项比对,敏感主机须为 0 遗漏。
+1. **MITM 排除清单**:银行/支付/券商/保险/登录/账户子域及个人网盘/安全域必须全部排除(`*.alipay.com`、`*.unionpay.com`、`*.cmbchina.com`、`*.icbc.com.cn`、`*.95508.com`、`*.lakala.com`、`*.helipay.com`、`*.xueqiu.com`、`weixin110.qq.com`、`security.wechat.com`、`passport.*`、`account.*`、`pay.*`、`*.icloud.com` 等,当前基准 **187 项**)。少一个 = 一个高敏感解密缺口。
+   - ⚠️ **2026-11 查实:fmz200 blockAds 模块/插件会把约 60+ 个银行/支付/政务/券商/安全主机注入解密列表**。启用它的 SR、Egern、Loon 已逐一补全排除(QX 预置全套排除防止启用重写时穿透;Hako 用 `Clash_iso/MITM_Safe.sgmodule`)。模块更新后运行 `python scripts/check-mitm-exclusions.py --online` 自动比对,敏感主机须为 0 遗漏。
    - ⚠️ **2026-11-07 教训(已撤回的错误修复)**:曾据一份 SR 日志判断 blockAds 自带的 YouTube 规则(initplayback→`{}`、log_event→GIF)导致起播失败,做了去掉这几条的镜像并让四个 App 改引镜像(commit 01434a4)。复核日志后证据不成立(被替换的 initplayback 之后视频流照常返回);用户在 Hako 实测:原版正常,换镜像后 YouTube 反而打不开。已 revert,四个 App 回到上游原版,银行排除仍由各配置自身的排除项(Hako 用 MITM_Safe)承担。教训:**单份日志里的'被拦截'不等于'导致故障',要看拦截之后对应功能是否真的失败,并在改动后要求真机对照**。
 2. **保护区顺序**:微博/新浪、微信(`*.qq.com.cn`、`teg.tencent-cloud.net`)、字节系的 `DIRECT` 规则必须排在广告 `REJECT` 段**之前**。
 3. **熔断**:高频重试源用 `REJECT-DROP`(静默丢包),不是 `REJECT`。
 4. **配置文件绝不内嵌订阅 token**(见禁止项)。
-5. **Final 默认 `DIRECT`**。
+5. **Final 策略按 App 分述**:`Shadowrocket / Egern / Stash_SR` 维持 `Final=DIRECT`(且必须在 `ChinaMax` 前配齐 `Global`/`Global_Domain` 境外兜底与 `ChinaMax_Domain`);`Clash_iso / Clash_Hako / Loon / QX / Stash_V26 / Stash_Pro` 维持 `Final=Proxy`(搭配完整 `ChinaMax`/`cn` 国内白名单)。
 6. **统一 QUIC 策略(V26.00 起)**:凡 MITM 去广告依赖的域名,必须强制走 TCP(MITM 无法解密 QUIC/HTTP3,QUIC = 去广告盲区且失效无报错)。**各 App 用自己架构内的确定性手段实现,不依赖模糊的全局开关**:
    - **SR**:`[Rule]` 段 `AND,((DOMAIN-SUFFIX,x),(PROTOCOL,UDP)),REJECT`(§0.55);`block-quic=auto` 语义无权威文档,不作依赖。
    - **Egern**:`rules` 段 `and:[domain_suffix + protocol:quic]→REJECT`(§0.68);全局 `block_quic:false` 保留 HTTP/3。

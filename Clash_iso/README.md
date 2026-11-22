@@ -1,6 +1,6 @@
 # Clash_iso · Clash by Hako(clash.md)iPhone 配置
 
-V26.00 · 2026-11-14。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + Tailscale 家庭组网支持 + 域名级去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
+V26.00 · 2026-11-21。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + Tailscale 家庭组网支持 + 域名级去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
 
 链接（用作**规则方案**）：
 
@@ -70,7 +70,7 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 
 - **Tailscale 访问家里设备**：
   - `fake-ip-filter` 覆盖 `+.ts.net`、`+.tailscale.com`、`+.tailscale.io`、`+.lan`、`+.home.arpa` 及常见家用路由器 / NAS 域名，避免控制面与家庭设备域名被分配 `198.18.x.x` Fake-IP。
-  - `nameserver-policy` 将 `+.ts.net` 指定至 Tailscale MagicDNS（`100.100.100.100`），家用内网及路由器域名走 `system` DNS，不泄露给公共 DoH。
+  - `nameserver-policy` 将家用内网及路由器域名走 `system` DNS，不泄露给公共 DoH；**未写死** `"+.ts.net": "100.100.100.100"`（因为 iOS 同一时间只能开一个系统级 VPN，开 Hako 时官方 Tailscale App 断开，写死 `100.100.100.100` 会导致 `*.ts.net` 解析超时）。待真机确认 Hako 是否支持 Mihomo 原生 `type: tailscale` 出站与 `ts://tailscale` DNS 后可再接入。
   - 规则层放行 `100.64.0.0/10`、`fd7a:115c:a1e0::/48` 及 `tailscale.com` / `tailscale.io`（`DIRECT`），保证 DERP 与 P2P 打洞直连。若家里开启了 **Tailscale Subnet Router** 且子网段不在常规 `10/8`、`172.16/12`、`192.168/16` 内，可在 `Clash_iso_V26.00.yaml` 的 `rules` 顶部按注释示例追加对应 `IP-CIDR,...,DIRECT,no-resolve`。
 - **只在用到时测速**：所有 `url-test` 测速组全部启用 `lazy: true`（无流量不测速）、间隔 900 秒、且统一使用 Google `gstatic/generate_204` 探针（避免「能通 Cloudflare 但不通 Google」的节点胜出并消除重复探针耗电）。订阅本身不做健康检查。
 - **YouTube 强制 TCP & Google 登录隔离**：拒绝 YouTube 及缩略图（`ytimg.com`、`ggpht.com`、`youtubei-att.googleapis.com`）的 UDP 443（QUIC），强制 TCP 以利于起播、拖动及模块解密（不影响 Hysteria2/TUIC 节点自身）；并将 Google 登录与 FCM（`accounts.google.com`、`oauth2.googleapis.com`、`mtalk.google.com` 等）固定走「谷歌服务」，与 AI / YouTube 组隔离。
@@ -86,20 +86,21 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 **第二层：Modules 页手动添加**。配置文件管不到模块，需要你在 App 里加：
 
 1. Modules 页打开 **HTTPS Decryption**，在 Certificate 里生成证书并安装、信任（设置 → 通用 → 关于本机 → 证书信任设置）。
-2. 在 Module Link 里依次粘贴：
+2. 在 Module Link 里**务必先添加第一项（MITM 安全排除）**，再按需添加其余已锁定 commit 的模块：
 
 | 模块 | 作用 | 链接 |
 |---|---|---|
-| **MITM 安全排除**（必加） | 不解密 Tailscale（`*.ts.net`）/Apple/12306/银行/支付/券商/保险/加密资产/航司/运营商/网盘/政务/登录隐私（159 项） | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
-| Youtube (Music) Enhance | YouTube 去视频广告 + 画中画 + 后台播放 | `https://raw.githubusercontent.com/Maasea/sgmodule/master/YouTube.Enhance.sgmodule` |
-| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告 | `https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module` |
-| Spotify（可选） | 去广告、部分解锁（灰色功能） | `https://raw.githubusercontent.com/app2smile/rules/master/module/spotify.module` |
+| **MITM 安全排除**（必加·第一步） | 不解密 Tailscale（`*.ts.net`）/Apple/12306/银行/支付/券商/保险/加密资产/航司/运营商/网盘/政务/登录与安全域（187 项） | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
+| Youtube (Music) Enhance | YouTube 去视频广告 + 画中画 + 后台播放 | `https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/YouTube.Enhance.sgmodule` |
+| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告（如不想开大合集可不装） | `https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Surge/module/blockAds.module` |
+| Spotify（可选） | 去广告、部分解锁（灰色功能） | `https://raw.githubusercontent.com/app2smile/rules/df6366a7024e0b3f0aa3510c5b791eea6f3cba89/module/spotify.module` |
 
-**为什么必须加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把大量银行、支付、政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、财付通、医保局等），且开启 HTTPS 解密时也可能误伤 Tailscale 内网设备（`*.ts.net`）。排除模块用 `-域名` 写法把 Tailscale（`*.ts.net`）、Apple/iCloud、12306、银行/支付/券商/保险/加密资产、航司、运营商、网盘、政务及微博/B站/知乎/高德账户支付隐私（共 159 项）挡在解密之外，代价是这些银行等 App 的开屏广告不再被去掉。
+**为什么必须先加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把大量银行、支付、券商、安全与政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、广发、财付通、拉卡拉、合利宝、雪球、微信安全中心、医保局等），且开启 HTTPS 解密时也可能误伤 Tailscale 内网设备（`*.ts.net`）。如果忘记安装 `MITM_Safe.sgmodule` 就直接开大合集，这些敏感主机将被默认解密；排除模块用 `-域名` 写法将其挡在解密之外（共 187 项），代价是银行等 App 的开屏广告不再被去掉。
 ⚠️ `-域名` 排除是 Surge 的模块语法，Hako 是否同样支持**未经真机实测验证**。验证方法：开着模块打开一个银行 App 或家庭 `*.ts.net` HTTPS 服务，在 Hako 的请求记录里看该域名是否标为已解密；如果被解密了，说明排除不生效，请关掉「广告拦截&净化合集」。
 
 **配置和模块的配合**：
 - 本配置拒绝 YouTube 及缩略图的 UDP 443（QUIC），App 只能走 TCP，模块才能解密并改写，这是 YouTube 模块生效的前提；并已补充 Maasea 模块所需 `init-stream.maasea.workers.dev` 走 `YouTube` 组。
+- `217heidai/adblockmihomo.mrs` 偏激进，若遇正常 App 误杀，可在策略组中临时将「广告拦截」切到 `PASS`（继续走后续分流，而非全盘直连）排查。
 - 装了 YouTube 模块后画中画不再依赖美国节点；YouTube 组默认仍是美国节点，切别的地区也可以。
 - 首次生效：杀掉 YouTube 重开；YouTube 设置里打开「画中画」。
 - 解密会增加耗电：YouTube 模块要解密视频流（`*.googlevideo.com`），播放时发热会比不解密时高一些；大合集模块解密的主机越多，后台耗电越大。
@@ -109,10 +110,10 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 ## 六、安全
 
 - 配置里没有订阅 token；不关闭证书校验；不开局域网共享（`allow-lan: false`）。
-- 规则集从 GitHub Raw 下载，经「节点选择」出口（GitHub 在国内直连不稳定）。
+- 规则集从 GitHub Raw 下载，经「节点选择」出口；备用完整配置模式下 `proxy-providers` 使用 `proxy: DIRECT` 拉取机场订阅，若机场订阅域被墙导致更新失败，请临时切换更新方式。
 
 ## 七、已验证 / 待真机验收
 
-已做（本机离线与 HTTP 状态验证）：通过 [test-clash-configs.py](../proxy-configs/scripts/test-clash-configs.py) 8 项自动化测试与 [test-clash-hako.cjs](../proxy-configs/scripts/test-clash-hako.cjs) 32 项离线测试：严格 YAML 解析（禁止重复键）；19 个分组、142 条规则、22 个规则集之间引用完整且无循环（全部 `IP-CIDR`/`IP-CIDR6` 与 IP 规则集均有 `no-resolve`）；6 地区池分区与机场信息条排除正则边界测试通过；`url-test` 探针统一为 `gstatic/generate_204` 且全部 `lazy`；Tailscale MagicDNS 与 `tailscale.com` / `tailscale.io` 直连分流、Hark/Discord/Notion/Wabi/Cue/Muse/Today/Grok 显式代理分流及 `MITM_Safe.sgmodule`（159 项排除）覆盖校验通过；22 个规则集链接和图标链接返回 HTTP 200（探针返回 204）；32 项 `Clash_Hako` 离线用例与 10 份远程 MRS 完整解码通过。
+已做（本机离线与 HTTP 状态验证）：通过 [test-clash-configs.py](../proxy-configs/scripts/test-clash-configs.py) 8 项自动化测试、[check-mitm-exclusions.py](../proxy-configs/scripts/check-mitm-exclusions.py) 与 [test-clash-hako.cjs](../proxy-configs/scripts/test-clash-hako.cjs) 32 项离线测试：严格 YAML 解析（禁止重复键）；19 个分组、144 条规则、22 个规则集之间引用完整且无循环（全部 `IP-CIDR`/`IP-CIDR6` 与 IP 规则集均有 `no-resolve`）；6 地区池分区与机场信息条排除正则边界测试通过；`url-test` 探针统一为 `gstatic/generate_204` 且全部 `lazy`；Tailscale、Hark/Discord/Notion/Wabi/Cue/Muse/Today/Grok/Claude 显式分流、`meta.com` 归社交媒体及 `MITM_Safe.sgmodule`（187 项排除）覆盖校验通过；第三方模块链接已全部锁定 commit SHA 并返回 HTTP 200。
 
-**未做**：没有在 iPhone 上导入实测；本环境未运行 mihomo 内核做 `-t` 语法检查，也未对家庭 Tailscale 设备做真机端到端抓包。请导入后确认：无报错、规则集全部加载、分组里有节点；再实测家庭 `*.ts.net` 设备访问、YouTube 去广告与画中画、ChatGPT/Gemini、微信/微博，以及银行 App 与 `*.ts.net` 是否未被解密（见第五节）。
+**未做**：没有在 iPhone 上导入实测；本环境未运行 mihomo 内核做 `-t` 语法检查，也未对家庭 Tailscale 设备做真机端到端抓包。请导入后确认：无报错、规则集全部加载、分组里有节点；再实测是否支持 `type: tailscale`、YouTube 去广告与画中画、ChatGPT/Gemini/Claude、微信/微博，以及银行 App 与 `*.ts.net` 是否未被解密（见第五节）。

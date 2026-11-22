@@ -79,7 +79,7 @@ def evaluate_rule(rules, domain, network="TCP", port=443, active_sets=()):
 
 
 class ClashIsoAuditTests(unittest.TestCase):
-    def test_line_endings_preserve_crlf(self):
+    def test_line_endings_consistent(self):
         targets = [
             YAML_PATH,
             MITM_PATH,
@@ -94,9 +94,8 @@ class ClashIsoAuditTests(unittest.TestCase):
             lf = raw.count(b"\n")
             crlf = raw.count(b"\r\n")
             self.assertGreater(lf, 0, f"{path} unexpectedly empty")
-            self.assertEqual(
-                lf, crlf, f"{path} has LF-only lines (lf={lf}, crlf={crlf})"
-            )
+            # Cross-platform (.gitattributes * text=auto): allow all-LF (Linux/macOS) or all-CRLF (Windows), reject mixed.
+            self.assertIn(crlf, (0, lf), f"{path} mixes LF and CRLF line endings (lf={lf}, crlf={crlf})")
 
     def test_security_defaults(self):
         raw_text = YAML_PATH.read_text(encoding="utf-8")
@@ -315,7 +314,8 @@ class ClashIsoAuditTests(unittest.TestCase):
             self.assertIn(required, fake_ip, f"Missing fake-ip-filter: {required}")
 
         policy = dns.get("nameserver-policy", {})
-        self.assertEqual(policy.get("+.ts.net"), "100.100.100.100")
+        # +.ts.net intentionally omitted until iPhone Hako confirms built-in type: tailscale + ts://tailscale.
+        self.assertNotIn("+.ts.net", policy)
         for lan_key in ["+.lan", "+.local", "+.home.arpa", "+.miwifi.com", "router.asus.com", "router.synology.com"]:
             self.assertEqual(policy.get(lan_key), "system", lan_key)
 
@@ -414,9 +414,11 @@ class ClashIsoAuditTests(unittest.TestCase):
                 host,
             )
 
-        # AI agents, Grok, Muse, Discord, Notion beat 国内 ruleset (today.ai is in cn.mrs!)
+        # AI agents, Claude Web, Grok, Muse, Discord, Notion beat 国内 ruleset (today.ai is in cn.mrs!)
         # Note: deliberately evaluated after 广告 so telemetry subhosts (exp.notion.so / client-metrics.discordapp.net) stay blocked.
         for host in [
+            "claude.com",
+            "claudeusercontent.com",
             "api.x.ai",
             "grok.com",
             "muse.ai",
@@ -437,7 +439,7 @@ class ClashIsoAuditTests(unittest.TestCase):
                 host,
             )
 
-        for host in ["discord.com", "gateway.discord.gg", "cdn.discordapp.com", "media.discordapp.net"]:
+        for host in ["www.meta.com", "discord.com", "gateway.discord.gg", "cdn.discordapp.com", "media.discordapp.net"]:
             self.assertEqual(
                 evaluate_rule(rules, host, "TCP", 443, active_sets=("国内",)),
                 "社交媒体",
@@ -475,6 +477,7 @@ class ClashIsoAuditTests(unittest.TestCase):
 
         missing = sr_excludes - mitm_items
         self.assertEqual(missing, set(), f"Missing SR exclusions in MITM_Safe: {missing}")
+        self.assertGreaterEqual(len(mitm_items), 185)
         self.assertIn("-*.ts.net", mitm_items)
         self.assertIn("-119.29.29.*", mitm_items)
         self.assertIn("-*.gov.cn", mitm_items)

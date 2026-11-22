@@ -1179,7 +1179,7 @@ Twitter = select, 美国节点, 日本节点, 新加坡节点, AutoSelect
 #   不含香港(Gemini 不服务香港). 通用 Google(搜索/登录/Play/gstatic/翻译/推送)改走 Proxy,
 #   YouTube App 共用的登录、头像、静态资源因此不再经过本组.
 谷歌AI = select, 美国节点, 日本节点, 新加坡节点, 台湾节点, AutoSelect
-微软服务 = select, 美国节点, DIRECT, 香港节点, AutoSelect
+微软服务 = select, DIRECT, 美国节点, 香港节点, AutoSelect
 哔哩哔哩 = select, DIRECT, 香港节点, 台湾节点
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1243,14 +1243,14 @@ AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点
 # 地区节点池 (url-test, 每个 regex 锁定单一地区, 不跨地区漂移)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇭🇰|HK|HongKong|Hong Kong|hong kong|香港|深港|沪港|京港|HKG
-台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇹🇼|TW|TWN|Taiwan|Taipei|taiwan|台湾|台灣|台北|台中|新北|彰化
-日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇯🇵|JP|Japan|japan|Tokyo|tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇸🇬|SG|SGP|Singapore|singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
+香港节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?=$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港
+台湾节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化
+日本节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇯🇵|(?:^|[^A-Za-z])JP(?=$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
+新加坡节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?=$|[^A-Za-z])|Singapore|新加坡|狮城|沪新|京新|深新|杭新|广新
 美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|america|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
 # 全节点入组 (CLAUDE.md §一.9): 承接五区外节点(韩/英/德/法/加/澳/俄/土等)与手动导入的本地自建节点,
 # 同时排除机场剩余流量/到期官网等状态假节点(含 GB/MB 字样)。
-其他节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)^(?!.*(?:🇭🇰|HK|HongKong|Hong Kong|香港|深港|沪港|京港|HKG|🇹🇼|TW|TWN|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化|🇯🇵|JP|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇸🇬|SG|SGP|Singapore|新加坡|狮城|沪新|京新|深新|杭新|广新|🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley|剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
+其他节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5, policy-regex-filter=(?i)^(?!.*(?:🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?=$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港|🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化|🇯🇵|(?:^|[^A-Za-z])JP(?=$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?=$|[^A-Za-z])|Singapore|新加坡|狮城|沪新|京新|深新|杭新|广新|🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley|剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
 
 # ---------- 漏网之鱼 ----------
 # v2.6.1 关键修复: 默认指向 DIRECT (v2.6.0 默认 Proxy)
@@ -1609,6 +1609,8 @@ DOMAIN-SUFFIX,volces.com,DIRECT
 # ---------------------------------------------------------------------
 DOMAIN-SUFFIX,anthropic.com,AI
 DOMAIN-SUFFIX,claude.ai,AI
+DOMAIN-SUFFIX,claude.com,AI
+DOMAIN-SUFFIX,claudeusercontent.com,AI
 DOMAIN-SUFFIX,openai.com,AI
 DOMAIN-SUFFIX,chatgpt.com,AI
 DOMAIN-SUFFIX,oaistatic.com,AI
@@ -1626,6 +1628,8 @@ DOMAIN-SUFFIX,x.ai,AI
 DOMAIN-SUFFIX,grok.com,AI
 DOMAIN-SUFFIX,cohere.com,AI
 DOMAIN-SUFFIX,copilot.microsoft.com,AI
+DOMAIN,sydney.bing.com,AI
+DOMAIN,edgeservices.bing.com,AI
 # v2.6.24 / v2.6.26: AI Agent App 一方服务域走 AI 组（默认美国节点）。
 DOMAIN-SUFFIX,cueai.app,AI
 DOMAIN-SUFFIX,manus.im,AI
@@ -1851,6 +1855,7 @@ DOMAIN-SUFFIX,googleapis.com,Proxy
 DOMAIN-SUFFIX,gstatic.com,Proxy
 DOMAIN-SUFFIX,googleusercontent.com,Proxy
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Google/Google.list,Proxy
+DOMAIN-SUFFIX,bing.com,Proxy
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Microsoft/Microsoft.list,微软服务
 
 # Apple News / Apple TV+
@@ -2098,8 +2103,13 @@ DOMAIN-SUFFIX,doubanio.com,DIRECT
 # v2.6.4 注: 以上为非 .cn 国内 App 域名硬编码兜底. 下面的 ChinaMax 规则集仍保留,
 # 作为更广泛的覆盖。即使 ChinaMax 加载失败,核心 App 已经直连。
 
+# 海外主流域名广覆盖兜底 (置于 ChinaMax 之前，配合 FINAL=DIRECT 防境外长尾域名漏网直连)
+RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Global/Global.list,Proxy
+DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Global/Global_Domain.list,Proxy
+
 # 国内域名广覆盖兜底
 RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax.list,DIRECT
+DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax_Domain.list,DIRECT
 
 # v2.6.1 新增: 国内主流 ISP IP 段直连兜底 (降低对 GEOIP 数据库依赖)
 # 这些段覆盖电信/联通/移动的主要骨干 IP, 在 GEOIP 数据库未更新时仍能正确路由。
@@ -2232,7 +2242,6 @@ FINAL,Final
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 # DoH Bootstrap (固定 DoH 上游 IP，防本地 DNS 污染或鸡生蛋回路)
-dns.google = 8.8.8.8, 8.8.4.4
 cloudflare-dns.com = 1.1.1.1, 1.0.0.1
 
 *.cn = server:system
@@ -2463,11 +2472,11 @@ B站首页 = type=http-response,pattern=^https://(app\.biliapi\.net|app\.bilibil
 # LAST-VERIFIED: 2026-11-13
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-知乎个人页 = type=http-response,pattern=^https?://api\.zhihu\.com/people/,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
-知乎推荐流 = type=http-response,pattern=^https://api\.zhihu\.com/topstory/recommend,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
-知乎评论 = type=http-response,pattern=^https?://api\.zhihu\.com/(comment_v5/)?(answers|comments?|articles|pins)/\d+/(root_|child_)?comments?,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
-知乎问答 = type=http-response,pattern=^https?://api\.zhihu\.com/(v4/)?questions/\d+,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
-知乎热榜 = type=http-response,pattern=^https?://api\.zhihu\.com/topstory/hot-lists?(\?|/),requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
+知乎个人页 = type=http-response,pattern=^https?://api\.zhihu\.com/people/,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
+知乎推荐流 = type=http-response,pattern=^https://api\.zhihu\.com/topstory/recommend,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
+知乎评论 = type=http-response,pattern=^https?://api\.zhihu\.com/(comment_v5/)?(answers|comments?|articles|pins)/\d+/(root_|child_)?comments?,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
+知乎问答 = type=http-response,pattern=^https?://api\.zhihu\.com/(v4/)?questions/\d+,requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
+知乎热榜 = type=http-response,pattern=^https?://api\.zhihu\.com/topstory/hot-lists?(\?|/),requires-body=1,max-size=2097152,script-path=https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 高德地图 (v2.6.25 已移除第三方混淆脚本，改由 [URL Rewrite] 原生静态拦截)
@@ -2620,7 +2629,7 @@ client-source-address = false
 # V26.00 hostname 同步:
 #   + app.biliapi.net / + *-spclient.spotify.com
 #   - B站旧接口域、国内 App 无脚本 hostname (已交 blockAds 模块), 仅保留主配置实际用到域名
-hostname = -*.ts.net, -119.29.29.*, -*.apple.com, -*.apple.com.akadns.net, -*.icloud.com, -12306.cn, -*.12306.cn, -alipay.com, -*.alipay.com, -alipay.com.cn, -*.alipay.com.cn, -*.unionpay.com, -*.95516.com, -*.tenpay.com, -*.tenpay.com.cn, -*.pay.weixin.qq.com, -*.cmbchina.com, -*.icbc.com.cn, -*.abchina.com, -*.abchina.com.cn, -*.ccb.com, -*.boc.cn, -*.psbc.com, -*.bankcomm.com, -*.bankcomm.cn, -*.cmbc.com.cn, -*.spdb.com.cn, -*.spdbccc.com.cn, -*.cebbank.com, -*.ecitic.com, -*.citicbank.com, -*.pingan.com, -*.pingan.com.cn, -*.hxb.com.cn, -*.cibfintech.com, -*.bankofbeijing.com.cn, -*.jsbchina.cn, -*.jlbank.com.cn, -*.grcbank.com, -*.aibank.com, -*.z-bank.com, -cgbank.oss-cn-shenzhen.aliyuncs.com, -*.cib.com.cn, -*.cgbchina.com.cn, -*.czbank.com, -*.cbhb.com.cn, -*.hfbank.com.cn, -*.hsbank.com.cn, -*.njcb.com.cn, -*.nbcb.com.cn, -*.bosc.cn, -*.bocd.com.cn, -*.cqcbank.com, -*.srcb.com, -*.jdpay.com, -*.jr.jd.com, -*.duxiaoman.com, -*.antgroup.com, -*.bestpay.com.cn, -*.citics.com, -*.htsc.com.cn, -*.gtja.com, -*.cmschina.com, -*.gf.com.cn, -*.swhysc.com, -*.cicc.com, -*.csc108.com, -*.orientsec.com.cn, -*.foundersc.com, -*.essencesecurities.com, -*.ebscn.com, -*.guosen.com.cn, -*.eastmoney.com, -*.futunn.com, -*.futuhk.com, -*.tigerbrokers.com, -*.itiger.com, -*.ibkr.com, -*.interactivebrokers.com, -*.chinalife.com.cn, -*.e-chinalife.com, -*.cpic.com.cn, -*.picc.com.cn, -*.epicc.com.cn, -*.taikang.com, -*.newchinalife.com, -*.sinosig.com, -*.zhongan.com, -*.aia.com.cn, -*.binance.com, -*.binance.info, -*.bnbstatic.com, -*.okx.com, -*.bybit.com, -*.coinbase.com, -*.kraken.com, -*.gate.io, -*.bitget.com, -*.htx.com, -*.kucoin.com, -*.metamask.io, -*.phantom.app, -*.airchina.com.cn, -*.airchina.com, -*.csair.com, -*.ceair.com, -*.chinaeastair.com, -*.hnair.com, -*.xiamenair.com, -*.sichuanair.com, -*.umetrip.com, -*.10086.cn, -*.chinamobile.com, -*.189.cn, -*.chinatelecom.com.cn, -*.10010.com, -*.chinaunicom.com, -pan.baidu.com, -*.pan.baidu.com, -pcs.baidu.com, -*.aliyundrive.com, -*.alipan.com, -*.115.com, -*.115cdn.com, -cloud.189.cn, -*.quark.cn, -pan.quark.cn, -*.ctfile.com, -*.gov.cn, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -account.amap.com, -wallet.amap.com, -pay.amap.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, bootpreload.uve.weibo.com, adstrategy.biz.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, amap-aos-info-nogw.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
+hostname = -*.ts.net, -119.29.29.*, -*.apple.com, -*.apple.com.akadns.net, -*.icloud.com, -12306.cn, -*.12306.cn, -alipay.com, -*.alipay.com, -alipay.com.cn, -*.alipay.com.cn, -*.unionpay.com, -*.95516.com, -*.tenpay.com, -*.tenpay.com.cn, -*.pay.weixin.qq.com, -*.cmbchina.com, -*.icbc.com.cn, -*.abchina.com, -*.abchina.com.cn, -*.ccb.com, -*.boc.cn, -*.psbc.com, -*.bankcomm.com, -*.bankcomm.cn, -*.cmbc.com.cn, -*.spdb.com.cn, -*.spdbccc.com.cn, -*.cebbank.com, -*.ecitic.com, -*.citicbank.com, -*.pingan.com, -*.pingan.com.cn, -*.hxb.com.cn, -*.cibfintech.com, -*.bankofbeijing.com.cn, -*.jsbchina.cn, -*.jlbank.com.cn, -*.grcbank.com, -*.aibank.com, -*.z-bank.com, -cgbank.oss-cn-shenzhen.aliyuncs.com, -*.cib.com.cn, -*.cgbchina.com.cn, -*.czbank.com, -*.cbhb.com.cn, -*.hfbank.com.cn, -*.hsbank.com.cn, -*.njcb.com.cn, -*.nbcb.com.cn, -*.bosc.cn, -*.bocd.com.cn, -*.cqcbank.com, -*.srcb.com, -*.jdpay.com, -*.jr.jd.com, -*.duxiaoman.com, -*.antgroup.com, -*.bestpay.com.cn, -*.citics.com, -*.htsc.com.cn, -*.gtja.com, -*.cmschina.com, -*.gf.com.cn, -*.swhysc.com, -*.cicc.com, -*.csc108.com, -*.orientsec.com.cn, -*.foundersc.com, -*.essencesecurities.com, -*.ebscn.com, -*.guosen.com.cn, -*.eastmoney.com, -*.futunn.com, -*.futuhk.com, -*.tigerbrokers.com, -*.itiger.com, -*.ibkr.com, -*.interactivebrokers.com, -*.chinalife.com.cn, -*.e-chinalife.com, -*.cpic.com.cn, -*.picc.com.cn, -*.epicc.com.cn, -*.taikang.com, -*.newchinalife.com, -*.sinosig.com, -*.zhongan.com, -*.aia.com.cn, -*.binance.com, -*.binance.info, -*.bnbstatic.com, -*.okx.com, -*.bybit.com, -*.coinbase.com, -*.kraken.com, -*.gate.io, -*.bitget.com, -*.htx.com, -*.kucoin.com, -*.metamask.io, -*.phantom.app, -*.airchina.com.cn, -*.airchina.com, -*.csair.com, -*.ceair.com, -*.chinaeastair.com, -*.hnair.com, -*.xiamenair.com, -*.sichuanair.com, -*.umetrip.com, -*.10086.cn, -*.chinamobile.com, -*.189.cn, -*.chinatelecom.com.cn, -*.10010.com, -*.chinaunicom.com, -pan.baidu.com, -*.pan.baidu.com, -pcs.baidu.com, -*.aliyundrive.com, -*.alipan.com, -*.115.com, -*.115cdn.com, -cloud.189.cn, -*.quark.cn, -pan.quark.cn, -*.ctfile.com, -*.gov.cn, -*.95508.com, -*.95504.net, -*.95598pay.com, -*.lakala.com, -*.helipay.com, -*.ysepay.com, -*.xueqiu.com, -*.cgws.com, -*.51credit.com, -*.u51.com, -*.jr.mi.com, -weixin110.qq.com, -security.wechat.com, -*.shenzhentong.com, -*.variflight.com, -*.10010.cn, -*.go189.cn, -*.wostore.cn, -*.mcloud.139.com, -*.thsi.cn, -*.10jqka.com.cn, -*.jrj.com, -*.jrj.com.cn, -api-account.soulapp.cn, -api-pay.soulapp.cn, -sso.ifanr.com, -audiobookpay.kuwo.cn, -musicpay.kuwo.cn, -passport.weibo.cn, -login.sina.com.cn, -security.weibo.cn, -pay.weibo.cn, -account.bilibili.com, -passport.bilibili.com, -pay.bilibili.com, -account.zhihu.com, -account.amap.com, -wallet.amap.com, -pay.amap.com, -wx1.sinaimg.cn, -wx2.sinaimg.cn, -wx3.sinaimg.cn, -wx4.sinaimg.cn, -tva1.sinaimg.cn, -tva2.sinaimg.cn, -tva3.sinaimg.cn, -tva4.sinaimg.cn, -ww1.sinaimg.cn, -ww2.sinaimg.cn, -ww3.sinaimg.cn, -ww4.sinaimg.cn, -tvax1.sinaimg.cn, -tvax2.sinaimg.cn, -tvax3.sinaimg.cn, -tvax4.sinaimg.cn, -us.sinaimg.cn, -video.weibocdn.com, -img.t.sinajs.cn, api.weibo.cn, mapi.weibo.cn, api.weibo.com, mapi.weibo.com, sdkapp.uve.weibo.com, wbapp.uve.weibo.com, sdkapp.mob.uve.weibo.com, wbapp.mob.uve.weibo.com, bootpreload.uve.weibo.com, adstrategy.biz.weibo.com, new.vip.weibo.cn, app.bilibili.com, app.biliapi.net, mp.weixin.qq.com, api.zhihu.com, m5.amap.com, amap-aos-info-nogw.amap.com, *.googlevideo.com, youtubei.googleapis.com, youtubei-att.googleapis.com, spclient.wg.spotify.com, *-spclient.spotify.com
 
 
 # =====================================================================

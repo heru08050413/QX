@@ -39,7 +39,16 @@ $cases = @(
     @{ Name='Tailscale IPv6 policy missing'; From='IP-CIDR6,fd7a:115c:a1e0::/48,TAILSCALE,no-resolve'; To='# removed by mutation' },
     @{ Name='Tailscale MITM exclusion missing'; From='hostname = -*.ts.net, '; To='hostname = ' },
     @{ Name='Unbounded script max-size reintroduced'; From='max-size=2097152'; To='max-size=-1' },
-    @{ Name='Floating script branch reintroduced'; From='/1d9f51bc9a0077d81998bb503ee6158ca83faa73/'; To='/main/' }
+    @{ Name='Floating script branch reintroduced'; From='/1d9f51bc9a0077d81998bb503ee6158ca83faa73/'; To='/main/' },
+    @{ Name='Zhihu script pin lost'; From='/8ff9afc/proxy-configs/scripts/zhihu.js'; To='/main/proxy-configs/scripts/zhihu.js' },
+    @{ Name='Microsoft defaulted back to US'; From='微软服务 = select, DIRECT, 美国节点'; To='微软服务 = select, 美国节点, DIRECT' },
+    @{ Name='Bing proxy rule removed'; From='DOMAIN-SUFFIX,bing.com,Proxy'; To='# removed by mutation' },
+    @{ Name='claude.com AI rule removed'; From='DOMAIN-SUFFIX,claude.com,AI'; To='# removed by mutation' },
+    @{ Name='Global_Domain fallback removed'; From='DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/Global/Global_Domain.list,Proxy'; To='# removed by mutation' },
+    @{ Name='ChinaMax_Domain removed'; From='DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax_Domain.list,DIRECT'; To='# removed by mutation' },
+    @{ Name='dns.google Host IP reintroduced'; From='cloudflare-dns.com = 1.1.1.1, 1.0.0.1'; To="dns.google = 8.8.8.8, 8.8.4.4`ncloudflare-dns.com = 1.1.1.1, 1.0.0.1" },
+    @{ Name='TW bare token reintroduced'; From='(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])'; To='TW|TWN' },
+    @{ Name='New MITM exclusion dropped'; From=', -*.95508.com'; To='' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {

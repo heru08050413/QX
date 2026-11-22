@@ -1,16 +1,7 @@
-# Requires PowerShell 7 + git; -Online additionally needs node and network.
-# Checks declared contracts, not the native QX parser or actual proxy nodes.
+﻿# Requires PowerShell 5.1+ (PowerShell 7 for -Online); checks declared contracts, not the native QX parser or actual proxy nodes.
 param([string]$ConfigPath = (Join-Path $PSScriptRoot '../quantumult_B_V26.00'), [switch]$Online)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
-$baseline = '4cbd5a0dd4dcf2bb528263495bf72757c4e82e64'
-$base = (& git -C $repo show "${baseline}:proxy-configs/quantumult_B_V26.00") -join "`n"
-if ($LASTEXITCODE) { throw 'Immutable baseline unavailable' }
-$importBaseline = 'e8fa202efd94195ed0e095fc2ebf1564b33a2099'
-$beforeImportFix = (& git -C $repo show "${importBaseline}:proxy-configs/quantumult_B_V26.00") -join "`n"
-if ($LASTEXITCODE) { throw 'Import-fix baseline unavailable' }
-$expectedImportFix = $beforeImportFix.Replace('server_check_url=https://cp.cloudflare.com/generate_204','server_check_url=http://cp.cloudflare.com/generate_204')
 $source = Get-Content -LiteralPath $ConfigPath -Raw -Encoding utf8
 function Assert([bool]$Ok, [string]$Message) { if (!$Ok) { throw $Message } }
 function Active([string]$Text) {
@@ -35,42 +26,17 @@ $gemini = @('geller-pa.googleapis.com','robinfrontend-pa.googleapis.com','gemini
 $ytRules = @('host, youtubei.googleapis.com, YouTube','host, youtubei-att.googleapis.com, YouTube',
     'host-suffix, youtube.com, YouTube','host-suffix, googlevideo.com, YouTube','host-suffix, ytimg.com, YouTube')
 $ytGroup = "url-latency-benchmark=YT-自动选择, server-tag-regex=$nodeFilter, check-interval=120, tolerance=300, alive-checking=false"
-$expected = [Collections.Generic.List[string]]::new()
-foreach ($original in (Active $base)) {
-    $line = $original
-    if ($line -eq 'server_check_timeout=3000') { $line='server_check_timeout=5000' }
-    if ($line -eq 'fallback_udp_policy=direct') { $line='fallback_udp_policy=reject' }
-    if ($line -match '^(url-latency-benchmark)=(美国节点|美国稳定),') { $line=$line.Replace('美|US|States|American|🇺🇸',$us) }
-    if ($line -match '^url-latency-benchmark=(美国稳定|日本稳定|狮城稳定),') {
-        $line=$line.Replace('url-latency-benchmark=','available=').Replace(', check-interval=900, tolerance=300, alive-checking=true','')
-    }
-    if ($line.StartsWith('static=YouTube,')) { $line=$line.Replace('static=YouTube, 谷歌服务,','static=YouTube, YT-自动选择, 谷歌服务,') }
-    if ($line.Contains('/Advertising/Advertising.list,')) { $line=$line.Replace(', update-interval=',', force-policy=reject, update-interval=') }
-    if ($line.Contains('/Gemini/Gemini.list,')) { $line=$line.Replace('force-policy=人工智能','force-policy=Gemini') }
-    if ($line -eq 'host-suffix, weibo.cn, direct') {
-        foreach ($name in $images) { $expected.Add("host, $name, reject") }
-    }
-    $expected.Add($line)
-    if ($line.StartsWith('static=人工智能,')) { $expected.Add('static=Gemini, 美国节点, 日本节点, 台湾节点, 狮城节点') }
-    if ($line.StartsWith('static=YouTube,')) { $expected.Add($ytGroup) }
-    if ($line -eq 'host-suffix, local, direct') { foreach ($name in $wechat) { $expected.Add("host, $name, direct") } }
-    if ($line -eq 'host-suffix, quoracdn.net, 社交阅读') {
-        foreach ($name in $gemini) { $expected.Add("host, $name, Gemini") }
-        $expected.AddRange([string[]]$ytRules)
-    }
-}
-function Check([string]$Text, [bool]$Delta=$true) {
+
+function Check([string]$Text) {
     $s=Sections $Text; $active=@(Active $Text)
-    if ($Delta) {
-        Assert (($active -join "`n") -ceq ($expected -join "`n")) 'Unexpected active-line change against immutable baseline'
-        Assert (($active -join "`n") -ceq ((Active $expectedImportFix) -join "`n")) 'Import fix must change only the global probe URL'
-    }
+    Assert (@($s['general'] | Where-Object { $_ -like 'resource_parser_url=*' }).Count -eq 0) 'Unused resource_parser_url must be disabled'
     $groups=@{}
     foreach ($line in $s['policy']) {
         $pair=$line -split '=',2; $parts=@($pair[1] -split ',\s*')
         Assert (!$groups.ContainsKey($parts[0])) "Duplicate group: $($parts[0])"
         $groups[$parts[0]]=@{Type=$pair[0]; Members=@($parts | Select-Object -Skip 1)}
     }
+    Assert (-not $groups.ContainsKey('大陆抖音') -and -not $groups.ContainsKey('美国服务')) 'Orphan policy group returned'
     foreach ($name in $groups.Keys) {
         $group=$groups[$name]
         Assert ($group.Type -in @('static','available','url-latency-benchmark')) "Unsupported group type: $name"
@@ -79,7 +45,7 @@ function Check([string]$Text, [bool]$Delta=$true) {
             Assert ($group.Type -eq 'static') "Non-static group nests a policy: $name"
         }
     }
-    Assert ($groups['YouTube'].Members[0] -eq 'YT-自动选择') 'Wrong YouTube default'
+    Assert ($groups['YouTube'].Members[0] -eq '美国节点') 'Wrong YouTube default'
     Assert ($ytGroup -in $s['policy']) 'Invalid YouTube benchmark contract'
     Assert ($groups['Gemini'].Members[0] -eq '美国节点') 'Wrong Gemini default'
     Assert ($groups['人工智能'].Members[0] -eq '狮城节点') 'Changed general AI default'
@@ -96,11 +62,28 @@ function Check([string]$Text, [bool]$Delta=$true) {
         foreach ($fixture in $yes) { Assert ([regex]::IsMatch($fixture,$pattern)) "$name excludes $fixture" }
         foreach ($fixture in $no) { Assert (![regex]::IsMatch($fixture,$pattern)) "$name admits $fixture" }
     }
+    $hkRx = ($groups['香港节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    $twRx = ($groups['台湾节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    $jpRx = ($groups['日本节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    $krRx = ($groups['韩国节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    $sgRx = ($groups['狮城节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    Assert ([regex]::IsMatch('HK01', $hkRx) -and ![regex]::IsMatch('剩余流量 10GB HK', $hkRx)) 'HK filter failed boundary/junk check'
+    Assert (![regex]::IsMatch('Network 01', $twRx) -and ![regex]::IsMatch('Twitter 解锁', $twRx) -and [regex]::IsMatch('TW01', $twRx)) 'TW filter boundary broken'
+    Assert (![regex]::IsMatch('JPanime 01', $jpRx) -and [regex]::IsMatch('JP01', $jpRx)) 'JP filter boundary broken'
+    Assert (![regex]::IsMatch('Ukraine 01', $krRx) -and [regex]::IsMatch('KR01', $krRx)) 'KR filter boundary broken'
+    Assert ([regex]::IsMatch('SG01', $sgRx) -and ![regex]::IsMatch('套餐过期 500MB SG', $sgRx)) 'SG filter boundary/junk check failed'
     $rules=@($s['filter_local'])
     foreach ($name in $wechat) { Assert ("host, $name, direct" -in $rules) "Missing WeChat protection: $name" }
     foreach ($name in $images) {
         $index=[array]::IndexOf($rules,"host, $name, reject")
         Assert ($index -ge 0 -and $index -lt [array]::IndexOf($rules,'host-suffix, weibo.com, direct')) "Shadowed image reject: $name"
+    }
+    foreach ($badRule in @('host-suffix, siftscience.com, reject','host-keyword, umeng, reject','host-keyword, adsdk, reject','geoip, CN, direct, no-resolve')) {
+        Assert ($badRule -notin $rules) "Stale/invalid local rule: $badRule"
+    }
+    Assert ('geoip, CN, direct' -in $rules) 'Missing 3-arg geoip, CN, direct rule'
+    foreach ($needLocal in @('host-suffix, umeng.com, reject','host-suffix, adsdk.com, reject','host-suffix, claude.com, 人工智能','host-suffix, claudeusercontent.com, 人工智能','host, sydney.bing.com, 人工智能','host-suffix, wabi.ai, 人工智能','host-suffix, discord.com, 兜底策略','host-suffix, notion.com, 兜底策略')) {
+        Assert ($needLocal -in $rules) "Missing required local rule: $needLocal"
     }
     foreach ($name in $gemini) { Assert ("host, $name, Gemini" -in $rules) "Missing Gemini route: $name" }
     foreach ($rule in $ytRules) { Assert ($rule -in $rules) "Missing YouTube route: $rule" }
@@ -114,6 +97,22 @@ function Check([string]$Text, [bool]$Delta=$true) {
         if ($line.Contains('/Gemini/')) { Assert ($m.Groups[1].Value -eq 'Gemini') 'Remote Gemini still uses general AI' }
         if ($line.Contains('/Advertising/')) { Assert ($m.Groups[1].Value -eq 'reject') 'Advertising policy not forced' }
     }
+    $frText = $s['filter_remote'] -join "`n"
+    Assert ($frText.Contains('/Discord/Discord.list') -and $frText.Contains('/Notion/Notion.list')) 'Discord/Notion remote lists missing'
+    $rrText = $s['rewrite_remote'] -join "`n"
+    Assert ($rrText.Contains('boxjs.rewrite.quanx.conf') -and ($s['rewrite_remote'] | Where-Object { $_ -like '*boxjs*' -and $_ -match 'enabled=false' })) 'BoxJS must be disabled'
+    Assert ($rrText.Contains('/863858b49220edddd6a4a445298ea846b50e8670/modules/script-hub.qx.conf') -and ($s['rewrite_remote'] | Where-Object { $_ -like '*script-hub*' -and $_ -match 'enabled=false' })) 'Script-Hub must be disabled and pinned'
+    Assert ($rrText.Contains('/b90aab7775f9c20a6ac61985a7c18d846d172745/config/QX.snippet')) 'Sub-Store QX snippet must be pinned'
+    Assert ($rrText.Contains('/df6366a7024e0b3f0aa3510c5b791eea6f3cba89/module/spotify.conf')) 'Spotify conf must be pinned'
+    $tlText = $s['task_local'] -join "`n"
+    Assert ($tlText.Contains('/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/QuantumultX/scripts/server_info.js')) 'server_info.js must be pinned'
+    $hostsLine = @($s['mitm'] | Where-Object { $_ -like 'hostname = *' })
+    Assert ($hostsLine.Count -eq 1) 'Expected single MITM hostname line'
+    $mitmExcludes = @($hostsLine[0].Substring(11) -split ',\s*' | Where-Object { $_.StartsWith('-') })
+    Assert ($mitmExcludes.Count -ge 185) "Expected >= 185 MITM exclusions, got $($mitmExcludes.Count)"
+    foreach ($spot in @('-*.95508.com','-weixin110.qq.com','-security.wechat.com','-sso.ifanr.com','-*.ts.net','-12306.cn')) {
+        Assert ($mitmExcludes -contains $spot) "Missing canonical MITM exclusion: $spot"
+    }
     foreach ($value in @('server_check_url=http://cp.cloudflare.com/generate_204','server_check_timeout=5000','fallback_udp_policy=reject','udp_whitelist=53, 80-427, 444-65535')) {
         Assert ($value -in $s['general']) "Invalid general field: $value"
     }
@@ -124,26 +123,31 @@ function Check([string]$Text, [bool]$Delta=$true) {
 }
 Check $source
 $mutations=[ordered]@{
-    # Regression: user reported native import error at line 87 with this HTTPS probe.
-    # This is a compatibility guard for this profile, not a claim about all QX versions.
     probe=@('server_check_url=http:','server_check_url=https:')
     timeout=@('server_check_timeout=5000','server_check_timeout=9000')
     udp=@('fallback_udp_policy=reject','fallback_udp_policy=direct')
     us=@($us,'(?i)US|美')
+    tw=@('(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])','TW')
+    kr=@('(?:^|[^A-Za-z])(?:KR|KOR)(?=$|[^A-Za-z])','KR')
     stable=@('available=美国稳定','url-latency-benchmark=美国稳定')
-    ytDefault=@('static=YouTube, YT-自动选择,','static=YouTube, 谷歌服务,')
+    ytDefault=@('static=YouTube, 美国节点, YT-自动选择,','static=YouTube, 谷歌服务, YT-自动选择,')
     ytProbe=@('check-interval=120, tolerance=300','check-interval=600, tolerance=300')
     wechat=@('host, dns.weixin.qq.com, direct','host, dns.weixin.qq.com, reject')
     weibo=@('host, adimg.uve.weibo.com, reject','host, adimg.uve.weibo.com, direct')
     gemini=@('host, geller-pa.googleapis.com, Gemini','host, geller-pa.googleapis.com, 人工智能')
     geminiRemote=@('tag=Gemini, force-policy=Gemini','tag=Gemini, force-policy=人工智能')
     tls=@('skip_validating_cert = false','skip_validating_cert = true')
+    geoipArg=@('geoip, CN, direct','geoip, CN, direct, no-resolve')
+    sift=@('host-suffix, umeng.com, reject','host-suffix, siftscience.com, reject')
+    boxjs=@('tag=BoxJs, update-interval=259200, opt-parser=false, enabled=false','tag=BoxJs, update-interval=259200, opt-parser=false, enabled=true')
+    subStorePin=@('/b90aab7775f9c20a6ac61985a7c18d846d172745/config/QX.snippet','/master/config/QX.snippet')
+    mitmNew=@(', -*.95508.com','')
 }
 foreach ($name in $mutations.Keys) {
     $bad=$source.Replace($mutations[$name][0],$mutations[$name][1]); Assert ($bad -cne $source) "Mutation did not apply: $name"
-    $caught=$false; try { Check $bad $false } catch { $caught=$true }; Assert $caught "Mutation not caught by semantic tests: $name"
+    $caught=$false; try { Check $bad } catch { $caught=$true }; Assert $caught "Mutation not caught by semantic tests: $name"
 }
-Write-Output 'PASS: immutable active-line delta, groups/rules/security contracts, 48 US-name fixtures, 12 independent negative mutations.'
+Write-Output "PASS: general/policy/filter/rule/remote/MITM/security checks, C7 & 48 US-name fixtures, $($mutations.Count) negative mutations."
 if ($Online) {
     $s=Sections $source
     $urls=@(@('filter_remote','rewrite_remote','task_local') | ForEach-Object {

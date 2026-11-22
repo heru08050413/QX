@@ -1,5 +1,5 @@
 name: "信息流去广告脚本合集 V26.00"
-desc: "脚本级信息流/开屏去广告。覆盖:知乎·小红书·微博·淘宝·京东·爱奇艺·优酷·芒果TV·什么值得买·滴滴出行·大众点评·夸克·有道词典·阿里云盘。全部脚本已镜像进本仓库 scripts/,script-providers 只引自己 raw 链接=无第三方死链。需开 MITM 并信任证书。上游 @fmz200/@yichahucha/@zirawell,逻辑未改。不含银行/政务/证件类;B站/网易云/YouTube 依赖 webview/protobuf,Stash 跑不了,未收录。"
+desc: "脚本级信息流/开屏去广告。覆盖:知乎·小红书·微博·淘宝·京东·爱奇艺·优酷·芒果TV·什么值得买·滴滴出行·大众点评·夸克·有道词典。全部脚本已镜像进本仓库 scripts/,script-providers 只引精确 commit raw 链接=无第三方死链。需开 MITM 并信任证书。上游 @fmz200/@yichahucha/@zirawell,逻辑未改。不含银行/政务/证件/网盘类;含淘宝/京东/值得买广告接口 MITM(精确主机名),介意电商接口解密可停用;B站/网易云/YouTube 依赖 webview/protobuf,Stash 跑不了,未收录。"
 
 http:
   mitm:
@@ -35,7 +35,14 @@ http:
     - "mobile.api.mgtv.com"
     - "mobile-thor.api.mgtv.com"
     - "mobileso.bz.mgtv.com"
-    - "*.smzdm.com"
+    - "haojia.m.smzdm.com"
+    - "haojia-api.smzdm.com"
+    - "s-api.smzdm.com"
+    - "user-api.smzdm.com"
+    - "app-api.smzdm.com"
+    - "homepage-api.smzdm.com"
+    - "article-api.smzdm.com"
+    - "qianbao.smzdm.com"
     - "ct.xiaojukeji.com"
     - "freight.xiaojukeji.com"
     - "res.xiaojukeji.com"
@@ -47,8 +54,6 @@ http:
     - "open-cms-api.uc.cn"
     - "open-cms-api.quark.cn"
     - "dict.youdao.com"
-    - "api.alipan.com"
-    - "member.alipan.com"
   script:
     # zhihu
     - match: ^https:\/\/(?:api|page-info)\.zhihu\.com\/(?:answers|articles)\/v2\/\d+
@@ -455,55 +460,40 @@ http:
       type: response
       require-body: true
       timeout: 60
-    # 阿里云盘
-    - match: ^https:\/\/api\.alipan\.com\/apps\/v2\/users\/home\/(news|widgets)
-      name: "adrive"
-      type: response
-      require-body: true
-      timeout: 60
-    - match: ^https:\/\/member\.alipan\.com\/v1\/users\/onboard_list
-      name: "adrive"
-      type: response
-      require-body: true
-      timeout: 60
-
 script-providers:
   "zhihu":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/zhihu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/zhihu.js
     interval: 86400
   "xiaohongshu":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/xiaohongshu.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/xiaohongshu.js
     interval: 86400
   "weibo":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/weibo.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/weibo.js
     interval: 86400
   "myBlockAds":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/myBlockAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/myBlockAds.js
     interval: 86400
   "jingdong":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/jingdong.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/jingdong.js
     interval: 86400
   "cnftp":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/cnftp.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/cnftp.js
     interval: 86400
   "smzdm_ads":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/smzdm_ads.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/smzdm_ads.js
     interval: 86400
   "Smzdm":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/Smzdm.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/Smzdm.js
     interval: 86400
   "didiAds":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/didiAds.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/didiAds.js
     interval: 86400
   "dianping":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dianping.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/dianping.js
     interval: 86400
   "quark":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/quark.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/quark.js
     interval: 86400
   "dict-youdao-ad":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/dict-youdao-ad.js
-    interval: 86400
-  "adrive":
-    url: https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/scripts/adrive.js
+    url: https://raw.githubusercontent.com/heru08050413/QX/8ff9afc/proxy-configs/scripts/dict-youdao-ad.js
     interval: 86400
