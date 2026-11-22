@@ -42,7 +42,6 @@ EXTRA_URLS=(
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/smzdm/Smzdm.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/smzdm/smzdm_ads.js"
   "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/youdao/dict-youdao-ad.js"
-  "https://raw.githubusercontent.com/fmz200/wool_scripts/main/Scripts/adrive/adrive.js"
   "https://raw.githubusercontent.com/zirawell/R-Store/main/Res/Scripts/AntiAd/dianping.js"
 )
 TIMEOUT=20

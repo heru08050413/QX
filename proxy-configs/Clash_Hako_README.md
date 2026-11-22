@@ -68,7 +68,7 @@ V26.00 / revision 3 · 2026-11-21。目标客户端：用户提供的 iOS **1.0.
 
 ## 已验证 / 待手机验收
 
-已完成 JavaScript 语法检查与 32 项离线回归（详见 [test-clash-hako.cjs](scripts/test-clash-hako.cjs)；历史 revision 1 曾进行 10 份 MRS 完整解码、10 个路由夹具与 mihomo 1.19.31 `-t` 检查，见 [审查记录](reviews/clash-hako-2026-09-20.md)，revision 3 单一套探针池尚未重跑 `mihomo -t`）。
+已完成 JavaScript 语法检查与离线回归（详见 [test-clash-hako.cjs](scripts/test-clash-hako.cjs)；历史 revision 1 曾进行 10 份 MRS 完整解码、10 个路由夹具与 mihomo 1.19.31 `-t` 检查，revision 3 单一套探针池尚未重跑 `mihomo -t`）。
 
 **不是 Hako 1.0.9 真机认证。**官方客户端源码没有可明确对应你 iOS 1.0.9 二进制的公开标签；本机不能运行 Apple JavaScriptCore/Network Extension，也未在本环境运行新版 `mihomo -t`。不能把离线检查说成手机导入实测。
 
