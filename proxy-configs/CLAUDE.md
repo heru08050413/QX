@@ -8,7 +8,6 @@
 - `quantumult_B_V26.00` — Quantumult X
 - `Egern_Pro_V26.00.yml` — Egern(YAML)
 - `Loon_V26.00` — Loon
-- `Stash_V26.00.yaml` — Stash(2026-07 纳入;Clash 系语法,fake-ip + 纯分流轻量定位,无 MITM/脚本层;规则源为 Coldvvater/Mononoke 单一个人仓库,已入巡检)
 - `Stash_AdBlock_V26.00.stoverride` — Stash 去广告覆写(**Override/`.stoverride` YAML 格式** —— Stash 只有 Override/Rewrite/MitM/Script 四入口,**不吃 `.sgmodule`**;纯 `rules:` 网络层 REJECT,覆写数组插到原规则最前、不替换分流,零脚本零 MITM 零腐坏)。信息流/开屏这类需脚本的去广告,指向维护良好的 `.stoverride`(deezertidal 系:微博/微信公众号/知乎/YouTube/去广告合集,原生 Override 格式)。
   > 教训:Stash≠Surge/Loon —— `.sgmodule`(blockAds 等)在 Stash 里导入会报"格式不正确",必须用 `.stoverride`(YAML)。
 - `Stash_AppAdBlock_V26.00.stoverride` — Stash **具体 App 深度去广告**覆写(**需开 MITM 并信任证书**)。从 fmz200/blockAds 精选 13 个消费类 App(京东/淘宝/闲鱼/小红书/拼多多/百度网盘/高德/有道/汽车之家/钉钉/我要自学网/知乎/联通/电信)的开屏与信息流去广告,把 `[URL Rewrite]` reject + `[Map Local]` 按 Script-Hub 的 Stash 映射折叠进 `http.url-rewrite:`(`reject`/`reject-dict`/`reject-array`/`reject-200`/`reject-img`),**纯静态正则、零外部脚本 = 不会因脚本死链而腐坏**。
@@ -20,7 +19,7 @@
 - `Stash_All_V26.00.stoverride` — **三合一总覆写**(上面三份合并, 一个链接全都有)。`rules:` 81 条(网络层 REJECT + App 网络规则)、`http.mitm:` 72 域(两份去重)、`http.url-rewrite:` 67 条、`http.script:` 81 hooks、`script-providers:` 12。①网络层免 MITM 即生效;②③需开 MITM。**三份分文件保留**(便于按需单开某层);总文件供"一键全量"。由 `/tmp/merge.py` 从三份源文件抽段合并生成,148 条 url-rewrite+script 正则全过 `new RegExp` 编译。
 
 > 版本号:各端主配置已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
-> 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连)。关于 DNS 防泄露与国内直连的权衡:在没有完备本地/Fake-IP 域名的情况下,末尾 `GEOIP,CN` 前的未命中长尾域若触发本地解析,就会让本地 DNS 看见查询(QX 无 Fake-IP 属已知架构限制;Loon/Clash_iso/Stash_V26 需保持完整国内域名集 + `no-resolve` 才能兼顾)。
+> 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连)。关于 DNS 防泄露与国内直连的权衡:在没有完备本地/Fake-IP 域名的情况下,末尾 `GEOIP,CN` 前的未命中长尾域若触发本地解析,就会让本地 DNS 看见查询(QX 无 Fake-IP 属已知架构限制;Loon/Clash_iso 需保持完整国内域名集 + `no-resolve` 才能兼顾)。
 
 ---
 
@@ -32,7 +31,7 @@
 2. **保护区顺序**:微博/新浪、微信(`*.qq.com.cn`、`teg.tencent-cloud.net`)、字节系的 `DIRECT` 规则必须排在广告 `REJECT` 段**之前**。
 3. **熔断**:高频重试源用 `REJECT-DROP`(静默丢包),不是 `REJECT`。
 4. **配置文件绝不内嵌订阅 token**(见禁止项)。
-5. **Final 策略按 App 分述**:`Shadowrocket / Egern / Stash_SR` 维持 `Final=DIRECT`(且必须在 `ChinaMax` 前配齐 `Global`/`Global_Domain` 境外兜底与 `ChinaMax_Domain`);`Clash_iso / Clash_Hako / Loon / QX / Stash_V26 / Stash_Pro` 维持 `Final=Proxy`(搭配完整 `ChinaMax`/`cn` 国内白名单)。
+5. **Final 策略按 App 分述**:`Shadowrocket / Egern / Stash_SR` 维持 `Final=DIRECT`(且必须在 `ChinaMax` 前配齐 `Global`/`Global_Domain` 境外兜底与 `ChinaMax_Domain`);`Clash_iso / Clash_Hako / Loon / QX / Stash_Pro` 维持 `Final=Proxy`(搭配完整 `ChinaMax`/`cn` 国内白名单)。
 6. **统一 QUIC 策略(V26.00 起)**:凡 MITM 去广告依赖的域名,必须强制走 TCP(MITM 无法解密 QUIC/HTTP3,QUIC = 去广告盲区且失效无报错)。**各 App 用自己架构内的确定性手段实现,不依赖模糊的全局开关**:
    - **SR**:`[Rule]` 段 `AND,((DOMAIN-SUFFIX,x),(PROTOCOL,UDP)),REJECT`(§0.55);`block-quic=auto` 语义无权威文档,不作依赖。
    - **Egern**:`rules` 段 `and:[domain_suffix + protocol:quic]→REJECT`(§0.68);全局 `block_quic:false` 保留 HTTP/3。
@@ -42,7 +41,7 @@
    - **Stash**:`AND,((DOMAIN-SUFFIX,googlevideo.com),(NETWORK,udp)),REJECT`(+youtubei;置于 YouTube 分流之前)。
 7. **探针同源原则(稳定性审查新增;fix2 修正落地方式)**:健康探针必须与它守护的业务**同源**。全用 `cp.cloudflare.com/generate_204` 的盲区:节点"能到 Cloudflare 但到不了 Google"(出口 IP 被 Google 封禁/限流是机场常态故障)时探针全绿、url-test 永不切换,YouTube 挂死只能手动换节点/重开 App。落地:SR/Loon/Stash 均建 `YT-Auto` fallback 组,探针 `http://www.gstatic.com/generate_204`(Google 自家 204)。Loon/Stash 维持 interval=600 控耗电;SR v2.6.12 针对"节点偶发不稳且要求无感切换"启用两级健康检查:地区池 interval=120、外层 fallback interval=60,这是以少量额外探针换取分钟级以内故障转移的明确取舍。
    - ⚠️ **fix2 血的教训——`YT-Auto` 成员必须是【地区池】,不能是【裸节点】**:初版 SR 把它写成 `fallback + 仅 policy-regex-filter`,成员=订阅全部节点、按订阅原始顺序,fallback 永远钉在"列表第一个能回 204 的节点"。恶果:① 选点从"全池选最快(url-test)"退化成"随缘第一个"(订阅排序与质量无关);② 204 小包只测【可达】不测【吞吐】,拥挤到卡视频的烂节点照样回 204、永不切走 → **YouTube 反而变差**。正确写法:成员=各地区 url-test 池 → 池【内】保最快、池【间】保 Google 可达自愈,两个目标都不牺牲。SR 的 YouTube 专用地区池也必须使用 Google 探针,不能复用 Cloudflare 探针的通用地区池。
-   - ★★ **2026-10-29 再简化(用户要求)**:小火箭及其派生的 Stash_SR **已删除 `YT-Auto` 与 美国/日本/新加坡稳定 三个池**(用户认为没必要)。保留的保障是:地区池用 Google HTTPS 探针,池内单节点连不上 Google 会自动换;代价是整个地区连不上 Google 时需手动切。Instagram/Twitter 改用普通地区池(fallback 防漂移改为 url-test,tolerance 200 抑制抖动)。**2026-11-05 Egern 同样删除 `YT-Auto`、`StableSelect`、三个稳定池与 `StableFallback`**(用户要求;YouTube 默认美国,IG/X/PayPal 改普通地区池)。注意 Egern 探针是全局 Cloudflare(见下),删掉 YT-Auto 后 Egern 不再有任何 Google 同源探针,整个地区连不上 Google 时需手动切。**2026-11-07 Loon 分组简化(用户要求:简单明了、省电、稳定)**:38→19 组(国内服务、哔哩哔哩组随后也取消, 国内 App 规则直接 DIRECT),测速组 15→8(自动选择 + 7 地区池,全部 900s);删 YT-Auto/稳定选择/StableFallback/四个稳定池,哔哩哔哩/Github 不再测速;自动选择改为在地区池之间比较(只测各池当前节点);合并 社交媒体(IG/X/脸书/Line)、流媒体(Netflix/迪士尼/Spotify);油管视频默认美国。Stash_V26 仍保留 YT-Auto。以下两条为历史记录。
+   - ★★ **2026-10-29 再简化(用户要求)**:小火箭及其派生的 Stash_SR **已删除 `YT-Auto` 与 美国/日本/新加坡稳定 三个池**(用户认为没必要)。保留的保障是:地区池用 Google HTTPS 探针,池内单节点连不上 Google 会自动换;代价是整个地区连不上 Google 时需手动切。Instagram/Twitter 改用普通地区池(fallback 防漂移改为 url-test,tolerance 200 抑制抖动)。**2026-11-05 Egern 同样删除 `YT-Auto`、`StableSelect`、三个稳定池与 `StableFallback`**(用户要求;YouTube 默认美国,IG/X/PayPal 改普通地区池)。注意 Egern 探针是全局 Cloudflare(见下),删掉 YT-Auto 后 Egern 不再有任何 Google 同源探针,整个地区连不上 Google 时需手动切。**2026-11-07 Loon 分组简化(用户要求:简单明了、省电、稳定)**:38→19 组(国内服务、哔哩哔哩组随后也取消, 国内 App 规则直接 DIRECT),测速组 15→8(自动选择 + 7 地区池,全部 900s);删 YT-Auto/稳定选择/StableFallback/四个稳定池,哔哩哔哩/Github 不再测速;自动选择改为在地区池之间比较(只测各池当前节点);合并 社交媒体(IG/X/脸书/Line)、流媒体(Netflix/迪士尼/Spotify);油管视频默认美国。以下两条为历史记录。
    - ★ **2026-10-29 定型(用户要求简化)**:不要为 YouTube 另建"专用地区池"——它与普通地区池是同一批节点、同一过滤,只是探针不同,等于每节点被测两遍(无 lazy 的小火箭/Loon 上整夜耗电)。做法:**普通地区池探针改用 Google HTTPS 204**(池内只挑能连 Google 的节点,对所有服务都更严格),`YT-Auto` = fallback 直接建在普通地区池上,只负责跨地区自愈(小火箭/Loon 300s,Stash 60s + lazy)。
    - ⚠️ **`YT-Auto` 只给 `YouTube`(大流量视频)当默认;`谷歌服务` 默认必须留 `AutoSelect`**:谷歌服务承载 `accounts.google.com`/`googleapis` 等轻流量登录接口(AI 应用的会话续期也走这里),让它默认走 YT-Auto 会把 AI 一起拖进自愈组、拖慢——这是 fix2 里"AI 也变差"的传导路径。YT-Auto 只作谷歌服务的备选。
    - ★ **2026-11-02 YouTube 与谷歌/AI 组隔离(用户要求)**:YouTube 组里不放谷歌服务/AI 组作选项,谷歌服务组里也不放 YT-Auto(QX、Loon 已去掉)。小火箭及 Stash_SR:`谷歌服务` 改名 **`谷歌AI`**,原 `Gemini` 组并入,只装 Gemini/AI Studio 等 Google AI 域名(不含香港);通用 Google(google.com/googleapis/gstatic/googleusercontent/Google.list、共享登录令牌、翻译、FCM)改走 `Proxy`,因为 YouTube 与所有 Google App 共用这些登录/头像/静态域名,域名层面无法按 App 区分。Clash_iso 的 `accounts.google.com` 同理改走谷歌服务而非 AI。

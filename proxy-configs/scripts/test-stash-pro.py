@@ -53,7 +53,6 @@ def read(name):
     return load((BASE / name).read_text(encoding='utf-8'))
 
 
-CONFIG = read('Stash_Pro_V26.00.yaml')
 POLICY = read('Stash_Pro_Policy_V26.00.stoverride')
 APP = read('Stash_Pro_AppAds_V26.00.stoverride')
 YT = read('Stash_Pro_YouTube_V26.00.stoverride')
@@ -99,7 +98,7 @@ def validate(c, check_dns=True):
         assert 'benchmark-url' not in g, 'node benchmark is shared'
         assert g.get('proxies') or g.get('use') or g.get('include-all')
         for provider in g.get('use', []):
-            assert provider in c['proxy-providers']
+            assert provider in c.get('proxy-providers', {})
     assert groups['稳定切换']['type'] == 'url-test'
     assert groups['稳定切换']['interval'] == 900
     assert groups['稳定切换']['tolerance'] == 200
@@ -178,7 +177,7 @@ def validate(c, check_dns=True):
     assert 'external-controller' not in c
 
 
-def route(host, network='tcp', port=443, sets=None, config=CONFIG):
+def route(host, network='tcp', port=443, sets=None, config=POLICY):
     """Small test model of rules used here, not a Stash parser/runtime."""
     sets = sets or {}
     def suffix(pattern):
@@ -219,8 +218,6 @@ def node_fixtures(remote=None):
 
 class Audit(unittest.TestCase):
     def test_config_and_combined_overrides(self):
-        validate(CONFIG)
-        validate(merge(merge(CONFIG, APP), YT))
         validate(POLICY)
         validate(merge(merge(POLICY, APP), YT))
 
@@ -262,14 +259,25 @@ class Audit(unittest.TestCase):
         with self.assertRaises(ValueError):
             load('dns: 1\ndns: 2\n')
 
-    def test_airport_url_change_preserves_rules_and_groups(self):
+    def test_airport_switch_preserves_rules_and_groups(self):
         for i in range(1, 4):
-            result = copy.deepcopy(CONFIG)
-            result['proxy-providers']['Airport']['url'] = f'https://airport-{i}.invalid/private-fixture'
-            self.assertEqual(result['rules'], CONFIG['rules'])
-            self.assertEqual(result['proxy-groups'], CONFIG['proxy-groups'])
-            self.assertEqual(result['proxy-providers']['Airport']['url'], f'https://airport-{i}.invalid/private-fixture')
-            self.assertEqual(result['proxy-providers']['Airport']['interval'], 21600)
+            airport = {
+                'proxies': [
+                    {'name': f'US-{i}', 'type': 'ss'},
+                    {'name': f'SG-{i}', 'type': 'ss'},
+                ],
+                'proxy-groups': [{'name': f'机场{i}策略', 'type': 'select', 'proxies': [f'US-{i}']}],
+                'rules': [f'MATCH,机场{i}策略'],
+                'dns': {'nameserver': ['9.9.9.9']},
+                'rule-providers': {'机场旧规则': {'url': f'https://airport-{i}.invalid/old'}},
+            }
+            result = merge(airport, POLICY)
+            for key in ('proxy-groups', 'rule-providers', 'rules'):
+                result[key] = copy.deepcopy(POLICY[key])
+            validate(result, check_dns=False)
+            self.assertEqual(result['rules'], POLICY['rules'])
+            self.assertEqual(result['proxy-groups'], POLICY['proxy-groups'])
+            self.assertEqual(result['proxies'], airport['proxies'])
 
     def test_routing_fixtures(self):
         tests = {
@@ -299,21 +307,19 @@ class Audit(unittest.TestCase):
         self.assertEqual(route('rr1.googlevideo.com', 'udp', 53), 'YouTube')
         self.assertEqual(route('node.example', 'udp'), '兜底流量')
         self.assertEqual(route('weixin.qq.com', 'udp'), 'DIRECT')
-        combined = merge(CONFIG, APP)
+        combined = merge(POLICY, APP)
         self.assertEqual(route('api.zhihu.com', 'udp', config=combined), 'REJECT')
         self.assertEqual(route('api.zhihu.com', 'tcp', config=combined), 'DIRECT')
 
     def test_negative_mutations(self):
         def alter(path, val):
-            c = copy.deepcopy(merge(CONFIG, YT))
+            c = copy.deepcopy(merge(POLICY, YT))
             o = c
             for k in path[:-1]:
                 o = o[k]
             o[path[-1]] = val
             return c
         mutations = [
-            alter(['dns', 'fake-ip-filter'], ['*']),
-            alter(['dns', 'follow-rule'], True),
             alter(['proxy-groups', 0, 'proxies'], ['missing']),
             alter(['proxy-groups', 0, 'proxies'], ['默认代理']),
             alter(['proxy-groups', 1, 'use'], ['missing']),
@@ -336,7 +342,7 @@ class Audit(unittest.TestCase):
 
     @unittest.skipUnless(args.online, 'use --online for public resource GETs')
     def test_remote_resources(self):
-        tasks = [('rule', name, p) for name, p in CONFIG['rule-providers'].items()]
+        tasks = [('rule', name, p) for name, p in POLICY['rule-providers'].items()]
         tasks += [('script', name, p) for name, p in YT['script-providers'].items()]
         def fetch(task):
             kind, name, p = task
@@ -377,7 +383,7 @@ class Audit(unittest.TestCase):
         }
         memberships = {}
         for kind, name, text in results:
-            if kind != 'rule' or CONFIG['rule-providers'][name]['behavior'] != 'domain':
+            if kind != 'rule' or POLICY['rule-providers'][name]['behavior'] != 'domain':
                 continue
             patterns = load(text)['payload']
             def matches(host, pattern):

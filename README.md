@@ -1,6 +1,6 @@
 # iOS 代理配置仓库(V26.00)
 
-六套 iOS 代理 App 配置 + Stash 去广告覆写。目标优先级:**安全 > 稳定 > 去广告 > 低功耗**。
+五套 iOS 代理 App 主配置 + Stash 策略/去广告覆写。目标优先级:**安全 > 稳定 > 去广告 > 低功耗**。
 维护准则见 [`proxy-configs/CLAUDE.md`](proxy-configs/CLAUDE.md)。
 
 ## 一、主配置导入链接
@@ -11,7 +11,6 @@
 | **Quantumult X** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/quantumult_B_V26.00` |
 | **Egern** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Egern_Pro_V26.00.yml` |
 | **Loon** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Loon_V26.00` |
-| **Stash** | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_V26.00.yaml` |
 | **Clash by Hako**(clash.md) | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/Clash_iso_V26.00.yaml` |
 
 **导入方法**
@@ -19,7 +18,7 @@
 - **Quantumult X**:设置 → 配置文件 → 下载配置 → 粘贴链接(会整份替换,注意先备份节点)。
 - **Egern**:配置 → 从 URL 导入 → 粘贴链接。
 - **Loon**:配置 → 远程配置(或粘贴导入)→ 粘贴链接。
-- **Stash**:配置 → 新建 → 从 URL 下载 → 粘贴链接,然后把 `proxy-providers` 里的订阅占位符换成你的机场订阅。
+- **Stash**:直接使用机场提供的 Stash/Clash 配置作为当前配置，再按需在 Override(覆写) 添加下方策略或去广告覆写。
 - **Clash by Hako**:这个链接作为**规则方案**添加,再用配置中心 ⊕「创建配置」勾选机场订阅 + Custom Nodes、规则选本方案,节点会自动分组;步骤见 [`Clash_iso/README.md`](Clash_iso/README.md)。YouTube 去广告/画中画需在 Modules 页开 HTTPS 解密并添加模块(该 README 第五节)。
 - 导入后均需:**填入/确认机场订阅 → 生成并信任 MITM 根证书**(设置 → 通用 → 关于本机 → 证书信任设置)。
 - ⚠️ **导入/切换配置前先停掉隧道,导入后再启动**(真机踩坑实录:隧道开着直接热导入,新旧路由/fake-ip 状态叠加,会出现"订阅正常、节点齐全、隧道显示已连,但流量 0 B/s"的假死;停一次重启即恢复)。
@@ -46,7 +45,7 @@
 https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_SR_V26.00.stoverride
 ```
 
-- 用法:当前配置选能显示节点的 Stash 主配置(如 `Stash_V26.00.yaml` 填好订阅),Override 里添加上面的链接。它会整体替换策略组和规则,DNS 和节点沿用主配置。
+- 用法:当前配置选能显示节点的 Stash 主配置(如机场提供的 Stash/Clash 配置),Override 里添加上面的链接。它会整体替换策略组和规则,DNS 和节点沿用主配置。
 - **去广告已全部集成在这一份里**:小火箭配置自带的去广告,加上 `Stash_AppAdBlock`(14+ 个 App 开屏拦截)和 `Stash_Script`(小红书、京东、淘宝、爱奇艺等信息流脚本)合并进来的扩展层;重叠的微博、知乎用小火箭的版本。
 - **启用它时请关掉其他 Stash 覆写**(`Stash_All`、`Stash_AdBlock`、`Stash_AppAdBlock`、`Stash_Script`、`Stash_Pro_*`),否则规则和脚本会重复。
 - 需开 MITM 并信任自己的 CA。YouTube 脚本含第三方 Worker 依赖,且未在 Stash 真机验证;Spotify 解锁属灰色功能。
@@ -97,7 +96,7 @@ https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds
 
 针对"代理开着但 YouTube 打不开,需重开 App/手动切节点"的症状:
 
-- **探针同源**:小火箭、Loon 的地区池测速改用 Google 自家 `gstatic/generate_204` 探针,池内节点"能到 Cloudflare 但到不了 Google"时自动换到同地区其他节点。小火箭已按用户要求删除 `YT-Auto` 和三个稳定池(2026-10-29),整个地区都连不上 Google 时,需在 YouTube 组手动换地区;Egern 也已删除 `YT-Auto` 和各稳定组(2026-11-05),其测速地址是全局 Cloudflare,整个地区连不上 Google 时同样需手动换;Loon 也已简化(2026-11-07):删除 YT-Auto 与稳定组,只留自动选择 + 7 个地区池共 8 个测速组;Stash 主配置仍保留 YT-Auto。
+- **探针同源**:小火箭、Loon 的地区池测速改用 Google 自家 `gstatic/generate_204` 探针,池内节点"能到 Cloudflare 但到不了 Google"时自动换到同地区其他节点。小火箭已按用户要求删除 `YT-Auto` 和三个稳定池(2026-10-29),整个地区都连不上 Google 时,需在 YouTube 组手动换地区;Egern 也已删除 `YT-Auto` 和各稳定组(2026-11-05),其测速地址是全局 Cloudflare,整个地区连不上 Google 时同样需手动换;Loon 也已简化(2026-11-07):删除 YT-Auto 与稳定组,只留自动选择 + 7 个地区池共 8 个测速组。
 - **UDP fail-fast**:节点不支持 UDP 时立即失败回落 TCP,不再直连进墙内黑洞挂死。
 - 详见 `proxy-configs/CLAUDE.md` 安全基线第 7、8 条。
 
