@@ -1,6 +1,6 @@
 # Clash_iso · Clash by Hako(clash.md)iPhone 配置
 
-V26.00 · 2026-11-21。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + Tailscale 家庭组网支持 + 域名级去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
+V26.00 · 2026-11-27。一份可以直接导入的完整配置：机场订阅 + 自建节点 + 自动分组 + 安全分流 DoH + Sniffer 域名嗅探 + Tailscale 家庭组网支持 + 域名级/HTTPDNS 去广告；YouTube 去广告 / 画中画 / 后台播放通过 App 的 Modules（HTTPS 解密）实现，见第五节。
 
 链接（用作**规则方案**）：
 
@@ -24,7 +24,7 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
    - 第一步「节点」：勾选**机场订阅**和 **Custom Nodes**（你的 10 个自建节点）；
    - 第二步「规则」：选 **Clash_iso**（刚添加的规则方案）；
    - 完成后切换到这份新配置，连接。
-4. 等 22 个规则集下载完（首次几十秒），到「代理」页检查各地区组里有没有节点。
+4. 等 24 个规则集下载完（首次几十秒），到「代理」页检查各地区组里有没有节点。
 
 以后机场节点变动，更新订阅即可；本仓库的规则更新会跟随规则方案的链接，不会覆盖你的订阅和自建节点。
 
@@ -72,9 +72,12 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
   - `fake-ip-filter` 覆盖 `+.ts.net`、`+.tailscale.com`、`+.tailscale.io`、`+.lan`、`+.home.arpa` 及常见家用路由器 / NAS 域名，避免控制面与家庭设备域名被分配 `198.18.x.x` Fake-IP。
   - `nameserver-policy` 将家用内网及路由器域名走 `system` DNS，不泄露给公共 DoH；**未写死** `"+.ts.net": "100.100.100.100"`（因为 iOS 同一时间只能开一个系统级 VPN，开 Hako 时官方 Tailscale App 断开，写死 `100.100.100.100` 会导致 `*.ts.net` 解析超时）。待真机确认 Hako 是否支持 Mihomo 原生 `type: tailscale` 出站与 `ts://tailscale` DNS 后可再接入。
   - 规则层放行 `100.64.0.0/10`、`fd7a:115c:a1e0::/48` 及 `tailscale.com` / `tailscale.io`（`DIRECT`），保证 DERP 与 P2P 打洞直连。若家里开启了 **Tailscale Subnet Router** 且子网段不在常规 `10/8`、`172.16/12`、`192.168/16` 内，可在 `Clash_iso_V26.00.yaml` 的 `rules` 顶部按注释示例追加对应 `IP-CIDR,...,DIRECT,no-resolve`。
-- **只在用到时测速**：所有 `url-test` 测速组全部启用 `lazy: true`（无流量不测速）、间隔 900 秒、且统一使用 Google `gstatic/generate_204` 探针（避免「能通 Cloudflare 但不通 Google」的节点胜出并消除重复探针耗电）。订阅本身不做健康检查。
-- **YouTube 强制 TCP & Google 登录隔离**：拒绝 YouTube 及缩略图（`ytimg.com`、`ggpht.com`、`youtubei-att.googleapis.com`）的 UDP 443（QUIC），强制 TCP 以利于起播、拖动及模块解密（不影响 Hysteria2/TUIC 节点自身）；并将 Google 登录与 FCM（`accounts.google.com`、`oauth2.googleapis.com`、`mtalk.google.com` 等）固定走「谷歌服务」，与 AI / YouTube 组隔离。
-- **防 DNS 泄漏与省电熔断**：`国内IP` 规则补全 `,no-resolve`，避免海外长尾域名落入兜底前触发国内 DoH 查询泄漏；高频遥测域（`umc.danuoyi.alicdn.com`、`Aisou.ialicdn.com`、`xz/xy.fbcdn.net`）采用 `REJECT-DROP` 静默丢包防止 SDK 死循环重连耗电。
+- **安全第一加密分流 DNS + 纯 IP 嗅探**：
+  - `fake-ip` 秒回应用解析请求，开启 `respect-rules: true`（不开启 `prefer-h3`）实现严格隔离：海外域名真实解析经代理隧道发往 Cloudflare / Google DoH（**国内 DNS 零感知**）；机场节点域名（`proxy-server-nameserver`）与国内直连（`direct-nameserver` + `rule-set:国内,私网`）走国内加密 IP-DoH（`https://223.5.5.5/dns-query`、`https://1.12.12.12/dns-query`），防蜂窝/公共 Wi-Fi 运营商明文劫持。
+  - 开启 Mihomo `sniffer:`（`force-dns-mapping` + `parse-pure-ip` + `override-destination: false`，跳过 Apple Push / `+.ts.net` / 米家），即使 App 缓存旧 IP 直连也能从 TLS SNI / HTTP Host 还原域名执行去广告与分流。
+- **只在用到时测速 + 快速切网恢复**：所有 `url-test` 测速组全部启用 `lazy: true`（无流量不测速）、间隔 300 秒、容差 100ms，统一使用 Google `gstatic/generate_204` 探针；TCP 保活收紧至 `keep-alive-idle: 120` / `keep-alive-interval: 15`，进出电梯或蜂窝切网时更快清理僵尸连接。订阅本身不做健康检查。
+- **YouTube 与国内开屏 API 强制 TCP & Google 登录隔离**：拒绝 YouTube 及缩略图以及微博/知乎/小红书/手淘/闲鱼/京东/高德/拼多多/B 站/有道等核心接口的 UDP 443（QUIC），防止 `Alt-Svc` 升级 HTTP/3 后绕过 Hako 模块解密（不影响 Hysteria2/TUIC 节点自身）；并将 Google 登录与 FCM 固定走「谷歌服务」，与 AI / YouTube 组隔离。
+- **HTTPDNS 封堵与省电熔断**：内置 `HTTPDNS` 规则集 + 22 段硬编码 HTTPDNS IPv4/IPv6 段阻断（置于微信 `dns.weixin.qq.com` 保护之后），切断国内 App 缓存纯广告 IP 绕过规则的通道；12 条高频遥测域采用 `REJECT-DROP` 静默丢包防止 SDK 死循环重连耗电。
 - **规则用 MRS 二进制格式**：体积小、加载快，iOS 网络扩展内存占用低，每天更新一次；关闭 IPv6（多数机场不支持，避免超时）、日志级别 `warning`、`tcp-concurrent` 并发握手、`微软服务` 扩充至含地区池可选。
 
 ## 五、去广告与 YouTube 画中画（新版 App 已支持 HTTPS 解密）
@@ -92,7 +95,7 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 |---|---|---|
 | **MITM 安全排除**（必加·第一步） | 不解密 Tailscale（`*.ts.net`）/Apple/12306/银行/支付/券商/保险/加密资产/航司/运营商/网盘/政务/登录与安全域（187 项） | `https://raw.githubusercontent.com/heru08050413/QX/main/Clash_iso/MITM_Safe.sgmodule` |
 | Youtube (Music) Enhance | YouTube 去视频广告 + 画中画 + 后台播放 | `https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/YouTube.Enhance.sgmodule` |
-| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告（如不想开大合集可不装） | `https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Surge/module/blockAds.module` |
+| 广告拦截&净化合集 | 约 730 款国内 App 开屏/弹窗广告（如不想开大合集可不装） | `https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Surge/module/blockAds.module` |
 | Spotify（可选） | 去广告、部分解锁（灰色功能） | `https://raw.githubusercontent.com/app2smile/rules/df6366a7024e0b3f0aa3510c5b791eea6f3cba89/module/spotify.module` |
 
 **为什么必须先加「MITM 安全排除」**：核对「广告拦截&净化合集」的源文件，它会把大量银行、支付、券商、安全与政务域名加进解密列表（工行、农行、建行、中行、邮储、招行、交行、浦发、平安、广发、财付通、拉卡拉、合利宝、雪球、微信安全中心、医保局等），且开启 HTTPS 解密时也可能误伤 Tailscale 内网设备（`*.ts.net`）。如果忘记安装 `MITM_Safe.sgmodule` 就直接开大合集，这些敏感主机将被默认解密；排除模块用 `-域名` 写法将其挡在解密之外（共 187 项），代价是银行等 App 的开屏广告不再被去掉。
@@ -114,6 +117,6 @@ Hako 把内容分成三个库：**配置**（Profiles）、**节点**（Nodes）
 
 ## 七、已验证 / 待真机验收
 
-已做（本机离线与 HTTP 状态验证）：通过 [test-clash-configs.py](../proxy-configs/scripts/test-clash-configs.py) 8 项自动化测试、[check-mitm-exclusions.py](../proxy-configs/scripts/check-mitm-exclusions.py) 与 [test-clash-hako.cjs](../proxy-configs/scripts/test-clash-hako.cjs) 32 项离线测试：严格 YAML 解析（禁止重复键）；19 个分组、144 条规则、22 个规则集之间引用完整且无循环（全部 `IP-CIDR`/`IP-CIDR6` 与 IP 规则集均有 `no-resolve`）；6 地区池分区与机场信息条排除正则边界测试通过；`url-test` 探针统一为 `gstatic/generate_204` 且全部 `lazy`；Tailscale、Hark/Discord/Notion/Wabi/Cue/Muse/Today/Grok/Claude 显式分流、`meta.com` 归社交媒体及 `MITM_Safe.sgmodule`（187 项排除）覆盖校验通过；第三方模块链接已全部锁定 commit SHA 并返回 HTTP 200。
+已做（本机离线与 HTTP 状态验证）：通过 [test-clash-configs.py](../proxy-configs/scripts/test-clash-configs.py) 自动化测试、[check-mitm-exclusions.py](../proxy-configs/scripts/check-mitm-exclusions.py)（含 `--online` 审计 970 个上游主机 0 遗漏）与 [test-clash-hako.cjs](../proxy-configs/scripts/test-clash-hako.cjs) 34 项离线 + 在线 MRS 校验：严格 YAML 解析（禁止重复键）；19 个分组、24 个 MRS 规则集与全量规则之间引用完整且无循环（全部 `IP-CIDR`/`IP-CIDR6` 与 IP 规则集均有 `no-resolve`）；安全分流 DoH（`respect-rules: true`）+ `sniffer` + HTTPDNS 阻断 + 国内开屏 API QUIC 阻断校验通过；6 地区池分区与机场信息条排除正则边界测试通过；`url-test` 探针统一为 `gstatic/generate_204`（300s / 100ms）且全部 `lazy`；第三方模块链接已全部锁定最新审计 commit SHA 并返回 HTTP 200。
 
 **未做**：没有在 iPhone 上导入实测；本环境未运行 mihomo 内核做 `-t` 语法检查，也未对家庭 Tailscale 设备做真机端到端抓包。请导入后确认：无报错、规则集全部加载、分组里有节点；再实测是否支持 `type: tailscale`、YouTube 去广告与画中画、ChatGPT/Gemini/Claude、微信/微博，以及银行 App 与 `*.ts.net` 是否未被解密（见第五节）。

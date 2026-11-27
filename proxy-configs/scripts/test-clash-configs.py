@@ -50,6 +50,8 @@ def evaluate_rule(rules, domain, network="TCP", port=443, active_sets=()):
             hit = domain == parts[1]
         elif kind == "DOMAIN-SUFFIX":
             hit = match_suffix(domain, parts[1])
+        elif kind == "DOMAIN-KEYWORD":
+            hit = parts[1] in domain
         elif kind == "RULE-SET":
             hit = parts[1] in active_sets
         elif kind == "MATCH":
@@ -107,6 +109,30 @@ class ClashIsoAuditTests(unittest.TestCase):
         self.assertFalse(CONFIG["ipv6"])
         self.assertEqual(CONFIG["mode"], "rule")
         self.assertEqual(CONFIG["log-level"], "warning")
+        self.assertEqual(CONFIG["keep-alive-idle"], 120)
+        self.assertEqual(CONFIG["keep-alive-interval"], 15)
+
+        sniffer = CONFIG["sniffer"]
+        self.assertTrue(sniffer["enable"])
+        self.assertTrue(sniffer["force-dns-mapping"])
+        self.assertTrue(sniffer["parse-pure-ip"])
+        self.assertFalse(sniffer["override-destination"])
+        self.assertIn("+.push.apple.com", sniffer["skip-domain"])
+        self.assertIn("+.ts.net", sniffer["skip-domain"])
+
+        dns = CONFIG["dns"]
+        self.assertTrue(dns["respect-rules"])
+        self.assertNotIn("prefer-h3", dns)
+        self.assertEqual(
+            dns["nameserver"],
+            ["https://1.1.1.1/dns-query", "https://dns.google/dns-query"],
+        )
+        for key in ("proxy-server-nameserver", "direct-nameserver"):
+            self.assertEqual(
+                dns[key],
+                ["https://223.5.5.5/dns-query", "https://1.12.12.12/dns-query"],
+                key,
+            )
 
     def test_groups_dag_and_probe_homogeneity(self):
         groups = {g["name"]: g for g in CONFIG["proxy-groups"]}
@@ -130,8 +156,8 @@ class ClashIsoAuditTests(unittest.TestCase):
                     f"{name} must use unified Google probe URL",
                 )
                 self.assertEqual(g["expected-status"], 204, name)
-                self.assertEqual(g["interval"], 900, name)
-                self.assertEqual(g["tolerance"], 200, name)
+                self.assertEqual(g["interval"], 300, name)
+                self.assertEqual(g["tolerance"], 100, name)
                 self.assertEqual(g["timeout"], 5000, name)
 
         self.assertEqual(
@@ -355,6 +381,10 @@ class ClashIsoAuditTests(unittest.TestCase):
         for host in [
             "umc.danuoyi.alicdn.com",
             "Aisou.ialicdn.com",
+            "a.mum.alibabachengdun.com",
+            "log-pangolin-sdk-toutiao.com",
+            "a.umeng.com",
+            "a.e.qq.com",
             "a.xz.fbcdn.net",
             "b.xy.fbcdn.net",
         ]:
@@ -363,6 +393,40 @@ class ClashIsoAuditTests(unittest.TestCase):
                 "REJECT-DROP",
                 host,
             )
+        self.assertEqual(sum(1 for r in rules if r.endswith(",REJECT-DROP")), 12)
+
+        # Encrypted DoH split routing & HTTPDNS + domestic splash QUIC protections
+        for doh_proxy in ["cloudflare-dns.com", "dns.google", "dns.quad9.net"]:
+            self.assertEqual(evaluate_rule(rules, doh_proxy, "TCP", 443), "节点选择", doh_proxy)
+        for doh_direct in ["dns.alidns.com", "doh.pub"]:
+            self.assertEqual(evaluate_rule(rules, doh_direct, "TCP", 443), "DIRECT", doh_direct)
+        self.assertIn("IP-CIDR,1.1.1.1/32,节点选择,no-resolve", rules)
+        self.assertIn("IP-CIDR,223.5.5.5/32,DIRECT,no-resolve", rules)
+        self.assertEqual(evaluate_rule(rules, "dig.bdurl.net", "TCP", 443), "广告拦截")
+        self.assertEqual(
+            evaluate_rule(rules, "httpdns.alicdn.com", "TCP", 443, active_sets=("HTTPDNS", "国内")),
+            "广告拦截",
+        )
+        self.assertLess(
+            rules.index("DOMAIN,dns.weixin.qq.com,DIRECT"),
+            rules.index("RULE-SET,HTTPDNS,广告拦截"),
+        )
+        self.assertIn("IP-CIDR,203.107.1.0/24,广告拦截,no-resolve", rules)
+        self.assertIn("IP-CIDR,119.29.29.98/31,广告拦截,no-resolve", rules)
+
+        for splash in [
+            "api.weibo.cn",
+            "sdkapp.uve.weibo.com",
+            "api.zhihu.com",
+            "edith.xiaohongshu.com",
+            "guide-acs.m.taobao.com",
+            "api.m.jd.com",
+            "m5.amap.com",
+            "api.pinduoduo.com",
+        ]:
+            self.assertEqual(evaluate_rule(rules, splash, "UDP", 443), "REJECT", splash)
+        self.assertEqual(evaluate_rule(rules, "appcloud.zhihu.com", "TCP", 443), "广告拦截")
+        self.assertEqual(evaluate_rule(rules, "www.zhihu.com", "TCP", 443), "DIRECT")
 
         # YouTube QUIC UDP 443 REJECT + TCP routing + Maasea endpoint
         for host in [

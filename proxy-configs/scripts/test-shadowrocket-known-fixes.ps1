@@ -383,7 +383,7 @@ Assert-True (!$active.Contains('DOMAIN-SUFFIX,weixin.qq.com,DIRECT') -or
 Assert-True (@($active | Where-Object { $_ -match '^YT-.+ = ' }).Count -eq 0) 'YouTube-specific groups are back'
 foreach ($name in @('香港节点', '台湾节点', '日本节点', '新加坡节点', '美国节点', '其他节点')) {
     $group = @($active | Where-Object { $_.StartsWith("$name = ") })
-    Assert-True ($group.Count -eq 1 -and $group[0].StartsWith("$name = url-test, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5,")) "Region pool must probe Google over HTTPS at 900s: $name"
+    Assert-True ($group.Count -eq 1 -and $group[0].StartsWith("$name = url-test, url=https://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5,")) "Region pool must probe Google over HTTPS at 600s/100ms: $name"
 }
 $otherGroupLine = @($active | Where-Object { $_.StartsWith('其他节点 = ') })[0]
 $otherPattern = ($otherGroupLine -split 'policy-regex-filter=', 2)[1]
@@ -408,7 +408,7 @@ foreach ($name in @('🇭🇰 香港 01', '🇹🇼 台湾 01', '🇯🇵 日本
     Assert-True (![regex]::IsMatch($name, $otherPattern)) "其他节点 admits region/info fixture: $name"
     $regexChecks++
 }
-Assert-True ($active.Contains('AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=900, tolerance=200, timeout=5')) 'AutoSelect nested url-test signature changed'
+Assert-True ($active.Contains('AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=600, tolerance=100, timeout=5')) 'AutoSelect nested url-test signature changed'
 foreach ($sig in @(
     'Proxy = select, 美国节点, AutoSelect, 香港节点, 台湾节点, 日本节点, 新加坡节点, 其他节点, DIRECT',
     'AI = select, 美国节点, 新加坡节点, 日本节点, AutoSelect',
@@ -565,4 +565,32 @@ $chinaDomainIdx = [array]::IndexOf($active, 'DOMAIN-SET,https://raw.githubuserco
 Assert-True ($globalRuleIdx -ge 0 -and $globalDomainIdx -gt $globalRuleIdx -and $chinaRuleIdx -gt $globalDomainIdx -and $chinaDomainIdx -gt $chinaRuleIdx) 'Global + Global_Domain -> Proxy must precede ChinaMax + ChinaMax_Domain -> DIRECT'
 Assert-True (@($active | Where-Object { $_ -match '^dns\.google\s*=' }).Count -eq 0) 'Stale dns.google = 8.8.8.8 bootstrap host must stay deleted'
 Assert-True ($active.Contains('cloudflare-dns.com = 1.1.1.1, 1.0.0.1')) 'cloudflare-dns.com Host bootstrap unexpectedly removed'
-Write-Output "PASS: $regexChecks region/other-regex cases; v2.6.25 compatibility, scripts and MITM invariants; Google-probed region pools and nested AutoSelect; historical v2.6.16 through v2.6.21 invariants; Tailscale TUN/IPv6/control-plane routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini/AI/LinkedIn selection; Meta suffix safety."
+
+# 2026-11-27 security-first DNS, HTTPDNS & QUIC anti-decay invariants
+Assert-True ($active.Contains('dns-direct-system = false')) 'dns-direct-system must be false so domestic domains use encrypted DoH'
+$fallbackDns = @($active | Where-Object { $_.StartsWith('fallback-dns-server = ') })
+Assert-True ($fallbackDns.Count -eq 1) 'Expected single fallback-dns-server line'
+Assert-True ($fallbackDns[0] -notmatch '(alidns|doh\.pub|\bsystem\b)') 'fallback-dns-server must not leak overseas queries to domestic or plaintext system DNS'
+foreach ($dohRule in @(
+    'DOMAIN,cloudflare-dns.com,Proxy',
+    'DOMAIN,dns.google,Proxy',
+    'DOMAIN,dns.quad9.net,Proxy',
+    'IP-CIDR,1.1.1.1/32,Proxy,no-resolve',
+    'IP-CIDR,1.0.0.1/32,Proxy,no-resolve',
+    'IP-CIDR,8.8.8.8/32,Proxy,no-resolve',
+    'IP-CIDR,9.9.9.9/32,Proxy,no-resolve',
+    'IP-CIDR,149.112.112.112/32,Proxy,no-resolve'
+)) {
+    $idx = [array]::IndexOf($active, $dohRule)
+    Assert-True ($idx -gt $ruleStart -and $idx -lt $firstAd) "Overseas DoH tunnel rule missing or misplaced: $dohRule"
+}
+$httpDnsSet = 'RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/BlockHttpDNS/BlockHttpDNS.list,REJECT'
+$httpDnsIdx = [array]::IndexOf($active, $httpDnsSet)
+$bdHttpDnsIdx = [array]::IndexOf($active, 'DOMAIN,dig.bdurl.net,REJECT')
+Assert-True ($httpDnsIdx -gt $dnsWeixinIdx -and $bdHttpDnsIdx -gt $dnsWeixinIdx) 'BlockHttpDNS / dig.bdurl.net must appear after WeChat DNS protection'
+foreach ($splashHost in @('edith.xiaohongshu.com', 'www.xiaohongshu.com', 'acs.m.taobao.com', 'guide-acs.m.taobao.com', 'acs.m.goofish.com', 'api.m.jd.com', 'api.pinduoduo.com', 'api.yangkeduo.com', 'dict.youdao.com')) {
+    Assert-True ($active.Contains("AND,((DOMAIN,$splashHost),(PROTOCOL,UDP)),REJECT")) "Missing exact UDP REJECT for splash API: $splashHost"
+}
+Assert-True ($active.Contains('*.cn = server:https://223.5.5.5/dns-query,https://1.12.12.12/dns-query')) '*.cn Host must use encrypted domestic IP-DoH'
+Assert-True ($active.Contains('*.local = server:system') -and $active.Contains('*.lan = server:system')) 'LAN Host rules must stay on server:system'
+Write-Output "PASS: $regexChecks region/other-regex cases; v2.6.27 zero-leak DNS, HTTPDNS & QUIC anti-decay invariants; Google-probed 600s/100ms region pools and nested AutoSelect; historical v2.6.16 through v2.6.21 invariants; Tailscale TUN/IPv6/control-plane routing; policy graph; $($expectedDefaults.Count) defaults; $($routingFixtures.Count) local routing fixtures; shared Google/Gemini/AI/LinkedIn selection; Meta suffix safety."

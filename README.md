@@ -27,7 +27,7 @@
 
 | 文件 | 适用场景 |导入链接(复制整行)|
 |---|---|---|
-| **Stash Pro V26.00(推荐 · Stash 3.4+)** | 原生单文件全栈：18 个 MRS 二进制规则集 + 6 地区共享 `lazy` 测速 + 11+ App 去开屏/信息流内嵌脚本 + YouTube 增强 | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_Pro_V26.00.stoverride` |
+| **Stash Pro V26.00(推荐 · Stash 3.4+)** | 原生单文件全栈：零泄露 Fake-IP DNS + 19 个 MRS 二进制规则集 + 6 地区共享 `lazy` 300s 测速 + HTTPDNS/100% QUIC 阻断 + 11+ App 内嵌去开屏 + YouTube 增强 | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_Pro_V26.00.stoverride` |
 | **Stash SR 移植版 V26.00(备选)** | 与 `shadowrocket_V26.00.lsr` 同源转换，保留小火箭全部 21 个 bm7 规则集与 18 个外部去广告脚本 | `https://raw.githubusercontent.com/heru08050413/QX/main/proxy-configs/Stash_SR_V26.00.stoverride` |
 
 - 用法：在 Stash 中选中能显示节点的机场配置作为当前配置（先停隧道再导入），然后在 **Override（覆写）** 添加上面**二选一**的链接并开启 MITM 信任证书即可；`Stash Pro` 详细说明见 [`proxy-configs/Stash_Pro_README.md`](proxy-configs/Stash_Pro_README.md)。
@@ -41,10 +41,10 @@
 的开屏去广告脚本——原依赖的 `ddgksf2013/Scripts` 的 `Filter/` 目录已被上游整库重构删除,
 10 条脚本全部 404,故连同对应 MITM hostname 一并移除(留着=无效解密纯耗电)。
 
-这块能力改由下面这个外部模块承担,**你需要在 Shadowrocket 里手动添加**:
+这块能力改由下面这个外部模块承担（已锁定 2026-11-25 经 187 项敏感域排除审计的提交 SHA）,**你需要在 Shadowrocket 里手动添加**:
 
 ```
-https://raw.githubusercontent.com/fmz200/wool_scripts/main/Surge/module/blockAds.module
+https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Surge/module/blockAds.module
 ```
 
 **添加步骤**:Shadowrocket → 首页 **配置** → 选中当前配置右侧 **编辑** →

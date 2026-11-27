@@ -8,7 +8,7 @@
 - `quantumult_B_V26.00` — Quantumult X
 - `Egern_Pro_V26.00.yml` — Egern(YAML)
 - `Loon_V26.00` — Loon
-- `Stash_Pro_V26.00.stoverride` — **Stash 3.4+ 原生单文件全栈覆写**（推荐使用）。用 `mode: rule` + `tcp-concurrent: true`、`#!replace` 接管 `proxy-groups`/`rule-providers`/`rules`（不改机场原有节点/DNS）；全 18 个规则集均采用 `format: mrs` 二进制索引格式（0 `classical`）；20 个策略组补齐美/日/新/台/港/其他 6 地区池 + `稳定切换` + `手动节点`，全 `url-test` 启用 Google HTTPS 探针、900s、tolerance 200、`lazy: true` 共享测速结果；三段式去开屏/信息流（网络层 + `REJECT-DROP` + 67 条静态 `url-rewrite` + 内嵌 `payload` JS 零外部下载，覆盖 11+ 国内 App 开屏/弹窗/水印并附带 YouTube `binary-mode` 锁定钩子）；MITM 严格白名单（39 域，0 银行/支付/政务/网盘/运营商/Apple/Tailscale/登录域）+ 精准 UDP 443 QUIC 回落。说明见 `Stash_Pro_README.md`，自动化校验脚本见 `scripts/test-stash-pro.py`。
+- `Stash_Pro_V26.00.stoverride` — **Stash 3.4+ 原生单文件全栈覆写**（推荐使用）。用 `mode: rule` + `tcp-concurrent: true`、`#!replace` 接管 `dns`/`proxy-groups`/`rule-providers`/`rules`（保留机场原有节点，以 Fake-IP + 国内加密 IP-DoH 替代底包可能存在的明文 DNS，代理域密文直交远端节点零泄露）；全 19 个规则集均采用 `format: mrs` 二进制索引格式（含 `HTTPDNS`）；20 个策略组补齐美/日/新/台/港/其他 6 地区池 + `稳定切换` + `手动节点`，全 `url-test` 启用 Google HTTPS 探针、300s、tolerance 100、`lazy: true` 共享测速结果；三段式去开屏/信息流（HTTPDNS 域名+22 段 IP 阻断 + `REJECT-DROP` + 67 条静态 `url-rewrite` + 内嵌 `payload` JS 零外部下载 + YouTube `binary-mode` 锁定钩子）；MITM 严格白名单（39 域，0 银行/支付/政务/网盘/运营商/Apple/Tailscale/登录域）+ 39 域 100% 精准 UDP 443 QUIC 回落。说明见 `Stash_Pro_README.md`，自动化校验脚本见 `scripts/test-stash-pro.py`。
 - `Stash_SR_V26.00.stoverride` + `scripts/*.js`(11 个镜像)— **Stash 小火箭同源移植备选覆写**（由 `scripts/sr2stash.py` 从 `shadowrocket_V26.00.lsr` 生成；其中 `scripts/zhihu.js` 同时被小火箭引用，其余 10 个为历史镜像供本文件使用）。与 `Stash_Pro_V26.00.stoverride` 二选一，勿同开。
 
 > 版本号:各端主配置已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。

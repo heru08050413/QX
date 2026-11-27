@@ -54,7 +54,10 @@ function validate(config) {
   }
   assert.equal(config.rules.at(-1),'MATCH,QXH-代理');
   assert.equal(config.mode,'rule'); assert.equal(config['allow-lan'],false);
-  assert.equal(Object.keys(config['rule-providers']).length,10);
+  assert.equal(config['tcp-concurrent'],true); assert.equal(config['keep-alive-idle'],120);
+  assert.equal(config.sniffer.enable,true); assert.equal(config.sniffer['parse-pure-ip'],true);
+  assert.equal(config.sniffer['override-destination'],false);
+  assert.equal(Object.keys(config['rule-providers']).length,11);
   const paths = new Set();
   for(const p of Object.values(config['rule-providers'])) {
     assert.equal(p.format,'mrs'); assert.equal(p.proxy,'QXH-代理');
@@ -73,6 +76,7 @@ function route(cfg, domain, network='TCP', port=443, remote=[], adSelection='REJ
     const p = rule.split(','); let hit=false;
     if(p[0]==='DOMAIN') hit=domain===p[1];
     if(p[0]==='DOMAIN-SUFFIX') hit=suffix(p[1]);
+    if(p[0]==='DOMAIN-KEYWORD') hit=domain.includes(p[1]);
     if(p[0]==='RULE-SET') hit=remote.includes(p[1]);
     if(p[0]==='MATCH') hit=true;
     if(p[0]==='AND') {
@@ -133,7 +137,7 @@ test('YouTube and general pools share single Google HTTPS probe, no duplicate po
   for(const n of group(output,'QXH-YT故障转移').proxies) {
     assert(!n.startsWith('QXH-YT-'),'no duplicate YT region pool: '+n);
     const g=group(output,n); assert.equal(g.type,'url-test'); assert.equal(g.interval,300);
-    assert.equal(g.tolerance,150); assert.equal(g.url,'https://www.gstatic.com/generate_204');
+    assert.equal(g.tolerance,100); assert.equal(g.url,'https://www.gstatic.com/generate_204');
   }
 });
 test('AI stable ordering has no HK / DIRECT automatic fallback',()=>{
@@ -205,6 +209,24 @@ test('ad bypass resumes routing, not blanket direct',()=>{
   assert.equal(route(output,'ads.example.invalid','TCP',443,['QXH-Ads'],'PASS'),'QXH-代理');
   assert.equal(route(output,'ads.example.invalid','TCP',443,['QXH-Ads','QXH-CN'],'PASS'),'DIRECT');
 });
+test('plaintext or missing airport DNS is auto-hardened to zero-leak split DoH',()=>{
+  const fPlain=fixture(['US-1']); fPlain.dns={enable:true,nameserver:['8.8.8.8','114.114.114.114']};
+  const hardened=run(fPlain);
+  assert.equal(hardened.dns['respect-rules'],true);
+  assert.deepEqual(hardened.dns.nameserver,['https://1.1.1.1/dns-query','https://dns.google/dns-query']);
+  assert.deepEqual(hardened.dns['direct-nameserver'],['https://223.5.5.5/dns-query','https://1.12.12.12/dns-query']);
+  const fMissing=fixture(['US-1']); delete fMissing.dns;
+  assert.equal(run(fMissing).dns['respect-rules'],true);
+});
+test('overseas DoH tunnels via QXH-代理, HTTPDNS & splash UDP 443 blocked',()=>{
+  for(const d of ['cloudflare-dns.com','dns.google','dns.quad9.net']) assert.equal(route(output,d),'QXH-代理');
+  for(const d of ['dns.alidns.com','doh.pub']) assert.equal(route(output,d),'DIRECT');
+  assert.equal(route(output,'dns.weixin.qq.com','TCP',443,['QXH-HTTPDNS','QXH-Ads']),'DIRECT');
+  assert.equal(route(output,'dig.bdurl.net','TCP',443,['QXH-CN']),'REJECT');
+  assert.equal(route(output,'httpdns.alicdn.com','TCP',443,['QXH-HTTPDNS','QXH-CN']),'REJECT');
+  for(const d of ['api.weibo.cn','sdkapp.uve.weibo.com','api.zhihu.com','edith.xiaohongshu.com','api.m.jd.com'])
+    assert.equal(route(output,d,'UDP',443),'REJECT');
+});
 test('large normal subscription stays inside 5-second script budget',()=>validate(run(fixture(Array.from({length:1000},(_,i)=>'US-'+i)))));
 
 async function online(corePath) {
@@ -272,6 +294,6 @@ async function online(corePath) {
   const coreIndex=process.argv.indexOf('--core');
   if(coreIndex>=0) assert(process.argv[coreIndex+1],'--core requires an executable path');
   if(process.argv.includes('--online')) await online(coreIndex>=0?process.argv[coreIndex+1]:null);
-  console.log('PASS '+passed+' offline cases'+(process.argv.includes('--online')?' + 10 live MRS headers + 2 live probes':''));
+  console.log('PASS '+passed+' offline cases'+(process.argv.includes('--online')?' + 11 live MRS headers + 2 live probes':''));
   console.log('NOT TESTED: iOS JavaScriptCore / Hako native import, actual airport reachability, video continuity or ad removal.');
 })().catch(error=>{console.error(error.message);process.exitCode=1;});

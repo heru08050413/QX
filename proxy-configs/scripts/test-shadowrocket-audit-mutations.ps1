@@ -14,10 +14,10 @@ $cases = @(
     @{ Name='YouTube pin lost'; From='/65075cdb388fc5e3094afd7e7314c67b243f3525/'; To='/master/' },
     @{ Name='Weibo SDK blocked'; From='DOMAIN-SUFFIX,weibomingzi.com,REJECT'; To="DOMAIN-SUFFIX,sdkapp.uve.weibo.com,REJECT`nDOMAIN-SUFFIX,weibomingzi.com,REJECT" },
     @{ Name='Region pools back on Cloudflare probe'; From='美国节点 = url-test, url=https://www.gstatic.com/generate_204'; To='美国节点 = url-test, url=http://cp.cloudflare.com/generate_204' },
-    @{ Name='Region probes too often (battery)'; From='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=900,'; To='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30,' },
-    @{ Name='Region probe timeout too aggressive'; From='interval=900, tolerance=200, timeout=5'; To='interval=900, tolerance=200, timeout=1' },
+    @{ Name='Region probes too often (battery)'; From='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=600,'; To='美国节点 = url-test, url=https://www.gstatic.com/generate_204, interval=30,' },
+    @{ Name='Region probe timeout too aggressive'; From='interval=600, tolerance=100, timeout=5'; To='interval=600, tolerance=100, timeout=1' },
     @{ Name='YT-Auto reintroduced'; From='YouTube = select, 美国节点,'; To='YouTube = select, YT-Auto, 美国节点,' },
-    @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=900'; To='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=30' },
+    @{ Name='General probes accidentally sped up'; From='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=600'; To='AutoSelect = url-test, 香港节点, 台湾节点, 日本节点, 新加坡节点, 美国节点, 其他节点, url=https://www.gstatic.com/generate_204, interval=30' },
     @{ Name='Region group type changed'; From='香港节点 = url-test,'; To='香港节点 = fallback,' },
     @{ Name='Gemini rule leaked to generic Google'; From='DOMAIN-SUFFIX,gemini.google.com,谷歌AI'; To='DOMAIN-SUFFIX,gemini.google.com,Proxy' },
     @{ Name='Google AI selector offers Hong Kong'; From='谷歌AI = select, 美国节点, 日本节点'; To='谷歌AI = select, 香港节点, 美国节点, 日本节点' },
@@ -48,7 +48,12 @@ $cases = @(
     @{ Name='ChinaMax_Domain removed'; From='DOMAIN-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/ChinaMax/ChinaMax_Domain.list,DIRECT'; To='# removed by mutation' },
     @{ Name='dns.google Host IP reintroduced'; From='cloudflare-dns.com = 1.1.1.1, 1.0.0.1'; To="dns.google = 8.8.8.8, 8.8.4.4`ncloudflare-dns.com = 1.1.1.1, 1.0.0.1" },
     @{ Name='TW bare token reintroduced'; From='(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])'; To='TW|TWN' },
-    @{ Name='New MITM exclusion dropped'; From=', -*.95508.com'; To='' }
+    @{ Name='New MITM exclusion dropped'; From=', -*.95508.com'; To='' },
+    @{ Name='Plaintext system DNS leaked in fallback'; From='fallback-dns-server = https://149.112.112.112/dns-query, https://8.8.8.8/dns-query'; To='fallback-dns-server = https://dns.alidns.com/dns-query, system' },
+    @{ Name='Plaintext dns-direct-system re-enabled'; From='dns-direct-system = false'; To='dns-direct-system = true' },
+    @{ Name='Overseas DoH 1.1.1.1 proxy tunnel rule dropped'; From='IP-CIDR,1.1.1.1/32,Proxy,no-resolve'; To='# removed by mutation' },
+    @{ Name='BlockHttpDNS ruleset dropped'; From='RULE-SET,https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Shadowrocket/BlockHttpDNS/BlockHttpDNS.list,REJECT'; To='# removed by mutation' },
+    @{ Name='Domestic .cn Host reverted to plaintext system'; From='*.cn = server:https://223.5.5.5/dns-query,https://1.12.12.12/dns-query'; To='*.cn = server:system' }
 )
 & $testPath -ConfigText $source
 foreach ($case in $cases) {

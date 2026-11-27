@@ -1,17 +1,84 @@
 name: Stash Pro V26.00
-desc: Stash 3.4+ 单文件全栈覆写（18 个 MRS 二进制纯索引规则集 + 6 地区共享 lazy 测速池 + 开屏/信息流内嵌去广告 + YouTube 增强）。叠加在机场配置上启用，保留机场节点与 DNS。
+desc: Stash 3.4+ 单文件全栈覆写（零泄露安全 Fake-IP DNS + 19 个 MRS 二进制纯索引规则集 + 6 地区共享 lazy 300s 测速池 + 100% QUIC 防逃逸 + 开屏/信息流内嵌去广告 + YouTube 增强）。叠加在机场配置上启用，保留机场节点。
 # 架构要点（发挥 Stash 原生优势，兼容 App Store 3.4+ 正式版）:
-#   1. mode: rule + tcp-concurrent: true —— 多 IP 并发 TCP 握手择快，提升 CDN 与弱网首包。
-#   2. 全二进制 format: mrs 规则集 —— 0 个 classical 大文本清单，毫秒级加载、低内存。
-#   3. 20 策略组（完整 6 地区池 + 稳定切换 + 手动节点）—— 7 个 url-test 统一 Google HTTPS 探针、
-#      900s、tolerance 200、lazy: true（Stash 同节点跨组共享测速结果，兼顾地区自选与低耗电）。
-#   4. 全量开屏与信息流去广告 —— 网络层(0 MITM + REJECT-DROP) + Stash 原生零 JS url-rewrite
-#      + 内嵌 payload JS(0 外部脚本下载，根治 Scripts Not Downloaded)；MITM 严格零银行/支付/政务域。
-#   5. YouTube 增强 —— Maasea 锁定 commit 65075cd（原生 binary-mode + 第三方 Worker，需真机观察；
+#   1. 安全第一 DNS —— #!replace 接管 dns（Fake-IP 0ms 响应 + follow-rule: false + 全 IP 规则 no-resolve）：
+#      海外域名密文直交远端代理节点解析（本地 0 海外 DNS 查询泄露），国内直连走加密 IP-DoH，彻底消除机场底包明文 DNS 隐患。
+#   2. mode: rule + tcp-concurrent: true —— 多 IP 并发 TCP 握手择快，提升蜂窝与弱网首包。
+#   3. 全二进制 format: mrs 规则集（19 个，含 HTTPDNS）—— 0 个 classical 大文本清单，毫秒级加载、低内存。
+#   4. 20 策略组（完整 6 地区池 + 稳定切换 + 手动节点）—— 7 个 url-test 统一 Google HTTPS 探针、
+#      300s、tolerance 100、lazy: true（Stash 同节点跨组共享测速结果，兼顾切网自愈灵敏度与低耗电）。
+#   5. 全量开屏与信息流去广告防衰减 —— HTTPDNS 域名集 + 22 段硬编码 IP 封堵 + 39 个 MITM 域 100% UDP 443(QUIC) 阻断
+#      + Stash 原生零 JS url-rewrite + 内嵌 payload JS(0 外部脚本下载)；MITM 严格零银行/支付/政务域。
+#   6. YouTube 增强 —— Maasea 锁定 commit 65075cd（原生 binary-mode + 第三方 Worker，需真机观察；
 #      若播放卡顿可注释下方 YouTube 脚本 3 条 hook 后重载覆写，主分流与开屏去广告不受影响）。
 
 mode: rule
 tcp-concurrent: true
+
+dns: #!replace
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  follow-rule: false
+  default-nameserver:
+    - 223.5.5.5
+    - 119.29.29.29
+  nameserver:
+    - https://223.5.5.5/dns-query
+    - https://1.12.12.12/dns-query
+  nameserver-policy:
+    '+.lan': system
+    '+.local': system
+    '+.home.arpa': system
+    '+.miwifi.com': system
+    '+.tplogin.cn': system
+    '+.tplinkwifi.net': system
+    '+.tplinklogin.net': system
+    '+.routerlogin.net': system
+    '+.orbilogin.com': system
+    '+.melogin.cn': system
+    '+.falogin.cn': system
+    'router.asus.com': system
+    'router.synology.com': system
+  fake-ip-filter:
+    - '+.lan'
+    - '+.local'
+    - '+.localhost'
+    - '+.home.arpa'
+    - '+.ts.net'
+    - '+.tailscale.com'
+    - '+.tailscale.io'
+    - '+.miwifi.com'
+    - '+.tplogin.cn'
+    - '+.tplinkwifi.net'
+    - '+.tplinklogin.net'
+    - '+.routerlogin.net'
+    - '+.orbilogin.com'
+    - '+.melogin.cn'
+    - '+.falogin.cn'
+    - 'router.asus.com'
+    - 'router.synology.com'
+    - '+.synology.me'
+    - '+.quickconnect.to'
+    - '+.quickconnect.cn'
+    - '+.cmpassport.com'
+    - 'id6.me'
+    - 'open.e.189.cn'
+    - 'mdn.open.wo.cn'
+    - 'opencloud.wostore.cn'
+    - 'auth.wosms.cn'
+    - '+.10099.com.cn'
+    - '+.push.apple.com'
+    - 'time.*.com'
+    - 'time.*.apple.com'
+    - 'ntp.*.com'
+    - '+.msftconnecttest.com'
+    - '+.msftncsi.com'
+    - 'localhost.ptlogin2.qq.com'
+    - '*.stun.*.*'
+    - 'stun.*.*'
+    - 'stun.*.*.*'
 
 proxy-groups: #!replace
   # ---- 业务策略组（12 组）----
@@ -68,15 +135,15 @@ proxy-groups: #!replace
     proxies: [默认代理, DIRECT]
 
   # ---- 节点池（8 组：include-all 同时纳入机场订阅与本地自定义节点）----
-  # 全部 url-test 共用 Google HTTPS 探针、900s、tolerance 200、lazy: true；并排除机场信息条。
+  # 全部 url-test 共用 Google HTTPS 探针、300s、tolerance 100、lazy: true；并排除机场信息条。
   - name: 稳定切换
     type: url-test
     icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Available.png
     include-all: true
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 手动节点
     type: select
@@ -90,8 +157,8 @@ proxy-groups: #!replace
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     filter: '(?i)(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley)(?:$|[^a-z])|美国|美國|美西|美东|美東|美中|沪美|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|🇺🇸'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 日本节点
     type: url-test
@@ -100,8 +167,8 @@ proxy-groups: #!replace
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     filter: '(?i)(?:^|[^a-z])(?:jp|jpn|japan|tokyo|osaka)(?:$|[^a-z])|日本|东京|東京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇯🇵'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 新加坡节点
     type: url-test
@@ -110,8 +177,8 @@ proxy-groups: #!replace
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     filter: '(?i)(?:^|[^a-z])(?:sg|sgp|singapore)(?:$|[^a-z])|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新|🇸🇬'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 台湾节点
     type: url-test
@@ -120,8 +187,8 @@ proxy-groups: #!replace
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     filter: '(?i)(?:^|[^a-z])(?:tw|twn|taiwan|taipei)(?:$|[^a-z])|台湾|台灣|台北|台中|新北|彰化|🇹🇼'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 香港节点
     type: url-test
@@ -130,8 +197,8 @@ proxy-groups: #!replace
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB'
     filter: '(?i)(?:^|[^a-z])(?:hk|hkg|hong[ _-]?kong)(?:$|[^a-z])|香港|深港|沪港|京港|🇭🇰'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
   - name: 其他节点
     type: url-test
@@ -139,8 +206,8 @@ proxy-groups: #!replace
     include-all: true
     exclude-filter: '(?i)剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB|🇺🇸|🇭🇰|🇹🇼|🇯🇵|🇸🇬|美国|美國|美西|美东|美東|美中|沪美|洛杉矶|洛杉磯|圣何塞|西雅图|芝加哥|纽约|凤凰城|硅谷|香港|深港|沪港|京港|台湾|台灣|台北|台中|新北|彰化|日本|东京|東京|大阪|京日|苏日|沪日|上日|川日|深日|广日|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新|(?:^|[^a-z])(?:us|usa|united[ _-]?states|america|los[ _-]?angeles|silicon[ _-]?valley|hk|hkg|hong[ _-]?kong|tw|twn|taiwan|taipei|jp|jpn|japan|tokyo|osaka|sg|sgp|singapore)(?:$|[^a-z])'
     url: https://www.gstatic.com/generate_204
-    interval: 900
-    tolerance: 200
+    interval: 300
+    tolerance: 100
     lazy: true
 
 rule-providers: #!replace
@@ -150,6 +217,12 @@ rule-providers: #!replace
     format: mrs
     url: https://raw.githubusercontent.com/217heidai/adblockfilters/main/rules/adblockmihomo.mrs
     path: ./rules/stash-pro-ads.mrs
+    interval: 86400
+  HTTPDNS:
+    behavior: domain
+    format: mrs
+    url: https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geosite/category-httpdns-cn.mrs
+    path: ./rules/stash-pro-httpdns.mrs
     interval: 86400
   YouTube:
     behavior: domain
@@ -255,9 +328,23 @@ rule-providers: #!replace
     interval: 86400
 
 rules: #!replace
-  # 1. 局域网、本地 DNS 与 Tailscale 家庭组网直连（所有 IP 规则均加 no-resolve）
+  # 1. 局域网、加密 DoH 与 Tailscale 家庭组网路由（所有 IP 规则均加 no-resolve）
   - DOMAIN,dns.alidns.com,DIRECT
   - DOMAIN,doh.pub,DIRECT
+  - IP-CIDR,223.5.5.5/32,DIRECT,no-resolve
+  - IP-CIDR,223.6.6.6/32,DIRECT,no-resolve
+  - IP-CIDR,1.12.12.12/32,DIRECT,no-resolve
+  - IP-CIDR,120.53.53.53/32,DIRECT,no-resolve
+  - DOMAIN,cloudflare-dns.com,默认代理
+  - DOMAIN,dns.google,默认代理
+  - DOMAIN,dns.quad9.net,默认代理
+  - DOMAIN,dns9.quad9.net,默认代理
+  - IP-CIDR,1.1.1.1/32,默认代理,no-resolve
+  - IP-CIDR,1.0.0.1/32,默认代理,no-resolve
+  - IP-CIDR,8.8.8.8/32,默认代理,no-resolve
+  - IP-CIDR,8.8.4.4/32,默认代理,no-resolve
+  - IP-CIDR,9.9.9.9/32,默认代理,no-resolve
+  - IP-CIDR,149.112.112.112/32,默认代理,no-resolve
   - DOMAIN-SUFFIX,lan,DIRECT
   - DOMAIN-SUFFIX,local,DIRECT
   - DOMAIN-SUFFIX,localhost,DIRECT
@@ -307,6 +394,23 @@ rules: #!replace
   - AND,((DOMAIN,amap-aos-info-nogw.amap.com),(NETWORK,udp),(DST-PORT,443)),REJECT
   - AND,((DOMAIN,api.pinduoduo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
   - AND,((DOMAIN,api.yangkeduo.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,zhstatic.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,appcloud2.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,link.zhihu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,ci.xiaohongshu.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,poplayer.template.alibaba.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,optimus-ads.amap.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,dict.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,api-overmind.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,cdke.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,dictvip-business.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,dsp-impr2.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,impservice.dictapp.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,oral.youdao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,adproxy.autohome.com.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,app2.autoimg.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,rp.hpplay.cn),(NETWORK,udp),(DST-PORT,443)),REJECT
+  - AND,((DOMAIN,xyst.yuanfudao.com),(NETWORK,udp),(DST-PORT,443)),REJECT
 
   # 3. 国内关键连通性保护区（严格排在 Ads 之前，防止微信/微博/知乎/运营商一键登录转圈）
   - DOMAIN-SUFFIX,weixin.qq.com,DIRECT
@@ -361,6 +465,31 @@ rules: #!replace
   - DOMAIN-SUFFIX,e.qq.com,REJECT-DROP
   - DOMAIN-SUFFIX,xz.fbcdn.net,REJECT-DROP
   - DOMAIN-SUFFIX,xy.fbcdn.net,REJECT-DROP
+  # 封堵国内 App 私有 HTTPDNS（域名集 + 22 段硬编码 IP，切断持久化缓存纯广告 IP 绕过规则的通道）
+  - DOMAIN,dig.bdurl.net,广告过滤
+  - RULE-SET,HTTPDNS,广告过滤
+  - IP-CIDR,101.124.19.122/32,广告过滤,no-resolve
+  - IP-CIDR,103.224.222.208/32,广告过滤,no-resolve
+  - IP-CIDR,115.236.121.195/32,广告过滤,no-resolve
+  - IP-CIDR,115.236.121.51/32,广告过滤,no-resolve
+  - IP-CIDR,119.29.29.98/31,广告过滤,no-resolve
+  - IP-CIDR,123.151.54.50/32,广告过滤,no-resolve
+  - IP-CIDR,182.254.116.117/32,广告过滤,no-resolve
+  - IP-CIDR,182.254.118.119/32,广告过滤,no-resolve
+  - IP-CIDR,186.76.76.200/32,广告过滤,no-resolve
+  - IP-CIDR,203.107.1.0/24,广告过滤,no-resolve
+  - IP-CIDR,39.97.128.148/32,广告过滤,no-resolve
+  - IP-CIDR,39.97.130.51/32,广告过滤,no-resolve
+  - IP-CIDR,42.187.182.106/32,广告过滤,no-resolve
+  - IP-CIDR,42.187.182.123/32,广告过滤,no-resolve
+  - IP-CIDR,42.187.184.154/32,广告过滤,no-resolve
+  - IP-CIDR,42.81.232.18/32,广告过滤,no-resolve
+  - IP-CIDR,59.111.239.61/32,广告过滤,no-resolve
+  - IP-CIDR,59.111.239.62/32,广告过滤,no-resolve
+  - IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128,广告过滤,no-resolve
+  - IP-CIDR6,2402:4e00:1900:1700:0:9554:1ad9:c3a/128,广告过滤,no-resolve
+  - IP-CIDR6,2402:db40:5100:1011::5/128,广告过滤,no-resolve
+  - IP-CIDR6,240e:928:1400:10::25/128,广告过滤,no-resolve
   # 小红书 / 知乎 / 闲鱼 纯网络层广告拦截（无需 MITM）
   - DOMAIN,ads-img-qc.xhscdn.com,广告过滤
   - DOMAIN,ads-img-al.xhscdn.com,广告过滤
@@ -375,7 +504,6 @@ rules: #!replace
   - DOMAIN,zxid-m.mobileservice.cn,广告过滤
   - IP-CIDR,103.41.167.237/32,广告过滤,no-resolve
   - IP-CIDR,118.89.204.198/32,广告过滤,no-resolve
-  - IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128,广告过滤,no-resolve
   - DOMAIN-KEYWORD,iyes.youku.com,广告过滤
   - RULE-SET,Ads,广告过滤
 

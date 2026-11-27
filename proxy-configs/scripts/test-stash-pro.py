@@ -84,8 +84,21 @@ def merge(a, b):
 def validate(c, is_merged=False):
     assert c['mode'] == 'rule'
     assert c['tcp-concurrent'] is True
+    assert 'sniffer' not in c, 'Mihomo-only sniffer key must not appear in Stash 3.4+ override'
     if not is_merged:
-        assert 'dns' not in c and 'proxy-providers' not in c
+        assert 'proxy-providers' not in c
+
+    dns = c['dns']
+    assert dns['enable'] is True and dns['ipv6'] is False
+    assert dns['enhanced-mode'] == 'fake-ip'
+    assert dns['follow-rule'] is False
+    assert 'proxy-server-nameserver' not in dns, 'requires Stash 3.6+; omit for Stash 3.4+ compatibility'
+    assert dns['nameserver'] == ['https://223.5.5.5/dns-query', 'https://1.12.12.12/dns-query']
+    assert all(ns.startswith('https://') for ns in dns['nameserver']), 'plaintext public DNS forbidden'
+    for lan_key in ('+.lan', '+.local', '+.home.arpa', 'router.asus.com', 'router.synology.com'):
+        assert dns['nameserver-policy'].get(lan_key) == 'system', lan_key
+    for fip_bypass in ('+.lan', '+.local', '+.ts.net', '+.tailscale.com', '+.cmpassport.com', 'id6.me', '+.push.apple.com'):
+        assert fip_bypass in dns['fake-ip-filter'], fip_bypass
 
     groups = {g['name']: g for g in c['proxy-groups']}
     assert len(groups) == len(c['proxy-groups']) == 20
@@ -112,8 +125,8 @@ def validate(c, is_merged=False):
             assert 'filter' not in g and 'exclude-filter' not in g
         if g['type'] == 'url-test':
             assert g.get('url') == 'https://www.gstatic.com/generate_204', f'bad probe url on {name}'
-            assert g.get('interval') == 900
-            assert g.get('tolerance') == 200
+            assert g.get('interval') == 300
+            assert g.get('tolerance') == 100
             assert g.get('lazy') is True
         else:
             assert 'url' not in g and 'benchmark-url' not in g
@@ -145,7 +158,7 @@ def validate(c, is_merged=False):
     assert groups['兜底流量']['proxies'] == ['默认代理', 'DIRECT']
 
     rps = c['rule-providers']
-    assert len(rps) == 18
+    assert len(rps) == 19
     paths = set()
     for name, rp in rps.items():
         assert rp['format'] == 'mrs', name
@@ -176,8 +189,26 @@ def validate(c, is_merged=False):
     for host in ('googlevideo.com', 'youtube.com', 'youtubei.googleapis.com',
                  'youtubei-att.googleapis.com', 'ytimg.com', 'ggpht.com',
                  'api.zhihu.com', 'api.weibo.cn', 'sdkapp.uve.weibo.com',
-                 'edith.xiaohongshu.com', 'api.m.jd.com', 'guide-acs.m.taobao.com'):
+                 'edith.xiaohongshu.com', 'api.m.jd.com', 'guide-acs.m.taobao.com',
+                 'dict.youdao.com', 'poplayer.template.alibaba.com', 'optimus-ads.amap.com'):
         assert any(r.startswith('AND,') and host in r and '(NETWORK,udp),(DST-PORT,443)' in r for r in rules), host
+
+    # 100% MITM-to-QUIC parity: every single MITM host must have UDP 443 blocked
+    for mitm_host in c['http']['mitm']:
+        bare = mitm_host[2:] if mitm_host.startswith('*.') else mitm_host
+        expected_udp = (
+            f'AND,((DOMAIN-SUFFIX,{bare}),(NETWORK,udp),(DST-PORT,443)),REJECT'
+            if mitm_host.startswith('*.')
+            else f'AND,((DOMAIN,{bare}),(NETWORK,udp),(DST-PORT,443)),REJECT'
+        )
+        assert expected_udp in rules, f'MITM host {mitm_host} missing UDP 443 QUIC block: {expected_udp}'
+
+    assert rules.index('DOMAIN,dns.weixin.qq.com,DIRECT') < rules.index('RULE-SET,HTTPDNS,广告过滤')
+    assert rules.index('DOMAIN,dns.weixin.qq.com,DIRECT') < rules.index('DOMAIN,dig.bdurl.net,广告过滤')
+    assert 'IP-CIDR,203.107.1.0/24,广告过滤,no-resolve' in rules
+    assert 'IP-CIDR,119.29.29.98/31,广告过滤,no-resolve' in rules
+    assert 'IP-CIDR,1.1.1.1/32,默认代理,no-resolve' in rules
+    assert 'DOMAIN,dns.google,默认代理' in rules
 
     for req_idx_host in ('DOMAIN,api.weibo.cn,DIRECT', 'DOMAIN,sdkapp.uve.weibo.com,DIRECT',
                          'DOMAIN,api.zhihu.com,DIRECT', 'DOMAIN,edith.xiaohongshu.com,DIRECT',
@@ -280,7 +311,7 @@ def node_fixtures(remote=None):
 class Audit(unittest.TestCase):
     def test_single_override_invariants(self):
         text = (BASE / CFG_NAME).read_text(encoding='utf-8')
-        for key in ('proxy-groups', 'rule-providers', 'rules'):
+        for key in ('dns', 'proxy-groups', 'rule-providers', 'rules'):
             self.assertIn(f'{key}: #!replace', text)
         validate(STASH_PRO)
 
@@ -290,17 +321,17 @@ class Audit(unittest.TestCase):
                 'proxies': [{'name': f'US-{i}', 'type': 'ss'}, {'name': f'HK-{i}', 'type': 'ss'}],
                 'proxy-groups': [{'name': f'机场{i}', 'type': 'select', 'proxies': [f'US-{i}']}],
                 'rules': [f'MATCH,机场{i}'],
-                'dns': {'nameserver': ['9.9.9.9']},
+                'dns': {'nameserver': ['8.8.8.8', '114.114.114.114']},
                 'rule-providers': {'机场旧集': {'url': f'https://airport-{i}.invalid/old'}},
             }
             result = merge(airport, STASH_PRO)
-            for key in ('proxy-groups', 'rule-providers', 'rules'):
+            for key in ('dns', 'proxy-groups', 'rule-providers', 'rules'):
                 result[key] = copy.deepcopy(STASH_PRO[key])
             validate(result, is_merged=True)
             self.assertEqual(result['rules'], STASH_PRO['rules'])
             self.assertEqual(result['proxy-groups'], STASH_PRO['proxy-groups'])
             self.assertEqual(result['proxies'], airport['proxies'])
-            self.assertEqual(result['dns'], airport['dns'])
+            self.assertEqual(result['dns'], STASH_PRO['dns'])
 
     def test_six_region_filters_and_boundaries(self):
         groups = {g['name']: g for g in STASH_PRO['proxy-groups']}
@@ -390,10 +421,13 @@ class Audit(unittest.TestCase):
             alter(['proxy-groups', ai_idx, 'proxies'], ['美国节点', '香港节点']),
             alter(['proxy-groups', pool_idx, 'use'], ['missing']),
             alter(['proxy-groups', pool_idx, 'filter'], 'US'),
-            alter(['proxy-groups', pool_idx, 'interval'], 300),
+            alter(['proxy-groups', pool_idx, 'interval'], 60),
             alter(['proxy-groups', pool_idx, 'lazy'], False),
             alter(['proxy-groups', pool_idx, 'type'], 'fallback'),
             alter(['proxy-groups', pool_idx, 'url'], 'http://cp.cloudflare.com/generate_204'),
+            alter(['dns', 'nameserver'], ['8.8.8.8']),
+            alter(['dns', 'proxy-server-nameserver'], ['223.5.5.5']),
+            alter(['sniffer'], {'enable': True}),
             alter(['rule-providers', 'Ads', 'format'], 'yaml'),
             alter(['rules', -1], 'MATCH,DIRECT'),
             alter(['http', 'mitm'], ['*.icbc.com.cn']),
