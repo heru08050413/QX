@@ -2,7 +2,7 @@
 # Loon Pro Configuration — V26.00
 # (四套配置统一版本号 V26.00; 历史沿革见下方 Revision 2.x 修订日志)
 # Codename: "UDP Safety Net"
-# Updated: 2026-09-19 (v2.3.0 单客户端稳定性与规则修复)
+# Updated: 2026-11-27 (v2.4.0 纯 IP 加密 DoH/DoQ + BlockHttpDNS 防衰减 + 开屏 API QUIC 阻断 + 600s/100ms 测速 + 最新审计插件锁定)
 # 当前修订: 关闭 HTTPDNS 改写插件; 微信关键主机保护; YouTube 专用
 # HTTPS 探针两级池; 稳定池 fallback; Gemini 路由与 US 筛选; MITM 缩面。
 # 以下为历史日志, 其中“完全生效/零副作用/唯一手段”等不是当前验收结论。
@@ -194,16 +194,10 @@ skip-proxy = 192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,127.0.0.0/8,localhost,*.loc
 # > TUN 旁路 (扩展私网段覆盖)
 bypass-tun = 10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.0.2.0/24,192.88.99.0/24,192.168.0.0/16,198.18.0.0/15,198.51.100.0/24,203.0.113.0/24,224.0.0.0/4,239.255.255.250/32,255.255.255.255/32
 
-# > DNS 架构 (v2.0 重构: 国内 DoH 主 + 国内常规 DNS 备用)
-# Loon 官方文档明确: 同时配置加密 DNS 和常规 DNS 时,
-# 默认使用加密 DNS; 当所有加密 DNS 不可用时, 才会用常规 DNS 兜底.
-#
-# 设计原则:
-#   - 主 DoH 用国内双供应商 (阿里 + 腾讯), 不污染海外域名
-#   - 删除 8.8.8.8 (境外 DNS 在国内被间歇 RST, 还可能污染解析)
-#   - 删除 system (system 走 iOS 默认 DNS, 在国内通常是运营商 DNS,
-#     可能存在劫持; 通过 [Host] 段为关键国内域名固定 IP 即可)
-doh-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query
+# > DNS 架构 (v2.4.0 升级: 纯 IP 加密 DoH/DoQ 并发 + Fake-IP 远端解析零泄露)
+# Loon 原生启用 Fake-IP: 走代理的海外域名在本地仅分配合成 IP, 真实域名密文发送至远端节点解析(国内 DNS 零感知);
+# 主 DoH 改用纯 IP 加密双供应商(阿里 + 腾讯), 免除域名自举所需的明文 UDP:53 查询, 配合 DoQ 多路加密并发。
+doh-server = https://223.5.5.5/dns-query, https://1.12.12.12/dns-query, https://223.6.6.6/dns-query, https://120.53.53.53/dns-query
 
 # V26.00 [加固] 新增 DoQ (DNS over QUIC) 并发冗余
 #   核实 Loon 官方 DNS 文档: 无 dot-server 键, 加密 DNS 支持 doh/doq/doh3.
@@ -232,9 +226,8 @@ proxy-test-url = https://www.gstatic.com/generate_204
 internet-test-url = http://connectivitycheck.platform.hicloud.com/generate_204
 test-timeout = 5
 
-# > FakeIP 排除 (Loon 用 FakeIP 但有些域名需要真实 IP)
-# 保留原游戏 STUN 域名, 补充几个常见敏感域
-real-ip = msftconnecttest.com,msftncsi.com,*.msftconnecttest.com,*.msftncsi.com,*.srv.nintendo.net,*.stun.playstation.net,xbox.*.microsoft.com,*.xboxlive.com,*.battlenet.com.cn,*.battlenet.com,*.blzstatic.cn,*.battle.net,*.lan,*.localdomain,*.home
+# > FakeIP 排除 (Loon 用 FakeIP; 内网/Tailscale/路由器/三大运营商一键登录/Apple 推送/游戏 STUN 需拿真实 IP)
+real-ip = msftconnecttest.com,msftncsi.com,*.msftconnecttest.com,*.msftncsi.com,*.srv.nintendo.net,*.stun.playstation.net,xbox.*.microsoft.com,*.xboxlive.com,*.battlenet.com.cn,*.battlenet.com,*.blzstatic.cn,*.battle.net,*.lan,*.local,*.localdomain,*.home,*.home.arpa,*.ts.net,*.tailscale.com,*.tailscale.io,*.miwifi.com,*.tplogin.cn,router.asus.com,router.synology.com,*.cmpassport.com,id6.me,open.e.189.cn,mdn.open.wo.cn,opencloud.wostore.cn,auth.wosms.cn,*.10099.com.cn,*.push.apple.com
 
 # > 拦截 App 自带的 DNS over UDP (v2.0 新增, Loon 3.2.5+)
 # 仅截获列出的传统 DNS 端口; 不等价于 HTTPDNS/DoH 拦截。
@@ -330,15 +323,15 @@ Gemini = select,美国节点,台湾节点,日本节点,狮城节点,自动选择
 流媒体 = select,狮城节点,香港节点,日本节点,美国节点,台湾节点,自动选择,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Netflix.png
 苹果服务 = select,DIRECT,美国节点,香港节点,狮城节点,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/Apple_02.png
 
-# ── 测速(仅以下 8 组) ──
-自动选择 = url-test,香港节点,台湾节点,日本节点,狮城节点,美国节点,韩国节点,其他节点,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
-香港节点 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
-台湾节点 = url-test,TW_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
-日本节点 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
-狮城节点 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
-美国节点 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
-韩国节点 = url-test,KR_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
-其他节点 = url-test,OT_Filter,url = https://www.gstatic.com/generate_204,interval = 900,tolerance = 200,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
+# ── 测速(仅以下 8 组: interval = 600, tolerance = 100, 兼顾蜂窝切网自愈灵敏度与续航) ──
+自动选择 = url-test,香港节点,台湾节点,日本节点,狮城节点,美国节点,韩国节点,其他节点,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
+香港节点 = url-test,HK_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+台湾节点 = url-test,TW_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+日本节点 = url-test,JP_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+狮城节点 = url-test,SG_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+美国节点 = url-test,US_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+韩国节点 = url-test,KR_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
+其他节点 = url-test,OT_Filter,url = https://www.gstatic.com/generate_204,interval = 600,tolerance = 100,img-url = https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
 
 
 # =====================================================================
@@ -373,6 +366,11 @@ SG_Filter = NameRegex, FilterKey = "(?i)(🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?=$|
 # 0. 局域网/私网 → DIRECT (最高优先级, 本地兜底)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DOMAIN-SUFFIX,local,DIRECT
+DOMAIN-SUFFIX,lan,DIRECT
+DOMAIN-SUFFIX,home.arpa,DIRECT
+DOMAIN-SUFFIX,ts.net,DIRECT
+DOMAIN-SUFFIX,tailscale.com,DIRECT
+DOMAIN-SUFFIX,tailscale.io,DIRECT
 DOMAIN-SUFFIX,localhost,DIRECT
 IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
 IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
@@ -380,6 +378,40 @@ IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
 IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
 IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
 IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
+IP-CIDR,223.5.5.5/32,DIRECT,no-resolve
+IP-CIDR,223.6.6.6/32,DIRECT,no-resolve
+IP-CIDR,1.12.12.12/32,DIRECT,no-resolve
+IP-CIDR,120.53.53.53/32,DIRECT,no-resolve
+DOMAIN,cloudflare-dns.com,代理节点
+DOMAIN,dns.google,代理节点
+DOMAIN,dns.quad9.net,代理节点
+IP-CIDR,1.1.1.1/32,代理节点,no-resolve
+IP-CIDR,1.0.0.1/32,代理节点,no-resolve
+IP-CIDR,8.8.8.8/32,代理节点,no-resolve
+IP-CIDR,8.8.4.4/32,代理节点,no-resolve
+IP-CIDR,9.9.9.9/32,代理节点,no-resolve
+IP-CIDR,149.112.112.112/32,代理节点,no-resolve
+
+# 0.5 国内高频开屏/信息流与 YouTube API 精确禁 QUIC (防 Alt-Svc 升级 HTTP/3 绕过插件 MITM)
+AND,((DOMAIN-SUFFIX,googlevideo.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,youtubei.googleapis.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,youtubei-att.googleapis.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,api.weibo.cn),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,mapi.weibo.cn),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,sdkapp.uve.weibo.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,wbapp.uve.weibo.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,api.zhihu.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,edith.xiaohongshu.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,www.xiaohongshu.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,acs.m.taobao.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,guide-acs.m.taobao.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,acs.m.goofish.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,api.m.jd.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,m5.amap.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,amap-aos-info-nogw.amap.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,api.pinduoduo.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,api.yangkeduo.com),(PROTOCOL,QUIC)),REJECT
+AND,((DOMAIN,dict.youdao.com),(PROTOCOL,QUIC)),REJECT
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 1. 微信依赖保护 + 微博精确广告拒绝 + 微博/新浪保护
@@ -389,6 +421,13 @@ IP-CIDR,224.0.0.0/4,DIRECT,no-resolve
 DOMAIN,dns.weixin.qq.com,DIRECT
 DOMAIN,dns.weixin.qq.com.cn,DIRECT
 DOMAIN,apd-pcdnwxlogin.teg.tencent-cloud.net,DIRECT
+DOMAIN-SUFFIX,teg.tencent-cloud.net,DIRECT
+DOMAIN-SUFFIX,id6.me,DIRECT
+DOMAIN-SUFFIX,cmpassport.com,DIRECT
+DOMAIN,opencloud.wostore.cn,DIRECT
+DOMAIN,amdc.alipay.com,DIRECT
+DOMAIN,c-hzgt2.getui.com,DIRECT
+DOMAIN-SUFFIX,browser-intake-datadoghq.com,人工智能
 # 仅拒绝已知广告图片主机; SDK 响应仍交给微博脚本, 不封整个 API。
 DOMAIN,fastimage.uve.weibo.com,REJECT
 DOMAIN,adimg.uve.weibo.com,REJECT
@@ -409,6 +448,7 @@ DOMAIN-SUFFIX,miaopai.com,DIRECT
 # REJECT-DROP 直接丢包, App 等 TCP 超时 (3-15s) 放弃, 不会触发死循环
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DOMAIN,umc.danuoyi.alicdn.com,REJECT-DROP
+DOMAIN,Aisou.ialicdn.com,REJECT-DROP
 DOMAIN-SUFFIX,mum.alibabachengdun.com,REJECT-DROP
 DOMAIN-KEYWORD,pangolin-sdk-toutiao,REJECT-DROP
 DOMAIN-SUFFIX,ctobsnssdk.com,REJECT-DROP
@@ -433,6 +473,18 @@ DOMAIN,cm.biliapi.net,REJECT
 # 微博相关广告域; 三个精确图片主机已移至保护区之前。
 # 删除五条被上方 DIRECT 遮蔽的旧规则, 不将 SDK/业务接口改为整域拒绝。
 DOMAIN-SUFFIX,weibomingzi.com,REJECT
+DOMAIN,dig.bdurl.net,REJECT
+DOMAIN,ads-img-qc.xhscdn.com,REJECT
+DOMAIN,ads-img-al.xhscdn.com,REJECT
+DOMAIN,ads-video-al.xhscdn.com,REJECT
+DOMAIN,ads-video-qc.xhscdn.com,REJECT
+DOMAIN,t-ads.xiaohongshu.com,REJECT
+DOMAIN,appcloud.zhihu.com,REJECT
+DOMAIN,appcloud2.in.zhihu.com,REJECT
+DOMAIN,crash2.zhihu.com,REJECT
+DOMAIN,mqtt.zhihu.com,REJECT
+DOMAIN,sugar.zhihu.com,REJECT
+DOMAIN,zxid-m.mobileservice.cn,REJECT
 
 # 全球追踪 / 数据分析 SDK
 DOMAIN-SUFFIX,adjust.com,REJECT
@@ -625,8 +677,9 @@ FINAL,兜底策略
 #   → 流媒体 → 工具 → 加密货币 → 兜底 GeoIP_CN
 # =====================================================================
 [Remote Rule]
-# 广告拦截 (最高优先级)
+# 广告与 HTTPDNS 拦截 (最高优先级; 微信 dns.weixin.qq.com 与微博保护已在上方 [Rule] 前置放行, 零误伤)
 https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/rejectAd.list, policy=REJECT, tag=广告拦截合集@奶思, enabled=true
+https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Loon/BlockHttpDNS/BlockHttpDNS.list, policy=REJECT, tag=BlockHttpDNS@bm7, enabled=true
 
 # 苹果系统更新屏蔽 (按需开启)
 https://github.com/fmz200/wool_scripts/raw/main/Loon/rule/apple_update.list, policy=REJECT, tag=苹果屏蔽系统更新@奶思, enabled=false
@@ -738,11 +791,11 @@ https://raw.githubusercontent.com/zmqcherish/proxy-script/1d9f51bc9a0077d81998bb
 # 上游默认屏蔽上传=true; 手机需核对实际参数替换与三钩子加载, 勿重复叠包。
 https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/YouTube.Enhance.sgmodule, policy=油管视频, enabled=true
 
-# 国内 App 广告拦截 (730+ App)
-https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Loon/plugin/blockAds.plugin, enabled=true
+# 国内 App 广告拦截 (730+ App, 锁定 2026-11-25 审计 commit)
+https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Loon/plugin/blockAds.plugin, enabled=true
 
-# 微信小程序去广告
-https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Loon/plugin/WeChatMiniAds.plugin, enabled=true
+# 微信小程序去广告 (锁定 2026-11-25 审计 commit)
+https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Loon/plugin/WeChatMiniAds.plugin, enabled=true
 
 # Spotify 去广告 (需 MITM hostname spclient.wg.spotify.com)
 https://raw.githubusercontent.com/001ProMax/Surge/2e3eb28d163d5e5de4d2f2532fe71eba22666634/Loon/Spotify.plugin, img-url=https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/apps/spotify.png, enabled=true

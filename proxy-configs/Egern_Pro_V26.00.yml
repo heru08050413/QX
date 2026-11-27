@@ -1,7 +1,7 @@
 # =====================================================================
-# Egern Pro Master Configuration — V26.00 (v6.5.1 / Egern 2.20.0+)
+# Egern Pro Master Configuration — V26.00 (v6.6.0 / Egern 2.20.0+)
 # (四套配置统一版本号 V26.00; 历史沿革见下方 v6.x 修订日志)
-# Updated: 2026-09-19；基线 6fcf24d，仅修复 Egern，待真机验收。
+# Updated: 2026-11-27；零泄露分流 DoH 加固 + 600s/100ms 测速 + 开屏 API QUIC/HTTPDNS 全覆盖 + 最新审计模块锁定。
 # v6.5.1：YouTube/微博/ScriptHub 去重；微信解析前置保护；修正规则遮蔽；
 # 美国池缩写加字母边界；Gemini 默认美国并补充专用接口；YouTube 专用 smart
 # 使用 HTTPS Google 探针与运行失败反馈，不承诺带宽或既有连接无感迁移。
@@ -247,6 +247,8 @@ dns:
     # 默认 DNS 遵循 forward/分流；proxy DNS 则由下方 proxy_nameservers 强制覆盖。
     Foreign-DoH:
       - https://1.1.1.1/dns-query
+      - https://1.0.0.1/dns-query
+      - https://9.9.9.9/dns-query
       - https://dns.google/dns-query
       - https://cloudflare-dns.com/dns-query
 
@@ -258,6 +260,21 @@ dns:
     - domain_suffix:
         match: local
         value: system
+    - domain_suffix:
+        match: lan
+        value: system
+    - domain_suffix:
+        match: home.arpa
+        value: system
+    - domain_suffix:
+        match: ts.net
+        value: system
+    - domain_suffix:
+        match: tailscale.com
+        value: Domestic-DoH
+    - domain_suffix:
+        match: tailscale.io
+        value: Domestic-DoH
 
     # ── 层 0: 测速/连通性检查域名 → bootstrap(系统 DNS 直解, 切断死锁) ──
     #   仅精确域名, 不用后缀, 避免误伤需走代理的同域资源.
@@ -803,8 +820,8 @@ policy_groups:
         - 新加坡
         - 美国
         - 其他
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/Twoandz9/Auto.png
       hidden: false
@@ -816,8 +833,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?=$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/HK_02.png
       hidden: false
@@ -828,8 +845,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/CN.png
       hidden: false
@@ -840,8 +857,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)🇯🇵|(?:^|[^A-Za-z])JP(?=$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/JP_01.png
       hidden: false
@@ -852,8 +869,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?=$|[^A-Za-z])|Singapore|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/SG_01.png
       hidden: false
@@ -864,8 +881,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://raw.githubusercontent.com/fmz200/wool_scripts/main/icons/flag/US.png
       hidden: false
@@ -876,8 +893,8 @@ policy_groups:
         - 订阅
       flatten: true
       filter: (?i)^(?!.*(?:🇭🇰|(?:^|[^A-Za-z])(?:HK|HKG)(?=$|[^A-Za-z])|Hong ?Kong|香港|深港|沪港|京港|🇹🇼|(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])|Taiwan|Taipei|台湾|台灣|台北|台中|新北|彰化|🇯🇵|(?:^|[^A-Za-z])JP(?=$|[^A-Za-z])|Japan|Tokyo|Osaka|日本|东京|大阪|京日|苏日|沪日|上日|川日|深日|广日|🇸🇬|(?:^|[^A-Za-z])(?:SG|SGP)(?=$|[^A-Za-z])|Singapore|新加坡|狮城|獅城|沪新|京新|深新|杭新|广新|🇺🇸|(?:^|[^A-Za-z])(?:US|USA)(?=$|[^A-Za-z])|America|United States|美国|凤凰城|洛杉矶|西雅图|芝加哥|纽约|沪美|LosAngeles|SiliconValley|剩余|到期|过期|官网|流量|套餐|网站|售后|客服|更新|Expire|Traffic|Reset|GB|MB)).*$
-      interval: 900
-      tolerance: 200
+      interval: 600
+      tolerance: 100
       timeout: 5
       icon: https://gitlab.com/lodepuly/iconlibrary/-/raw/main/Flag_icon/120px/WW.png
       hidden: false
@@ -1070,13 +1087,36 @@ policy_groups:
 # 7  流媒体  8 通讯  9 开发  10 大厂  11 国内服务  12 Final
 # =====================================================================
 rules:
-  # ── 0. 局域网/私网 → 直连 ──
+  # ── 0. 局域网/私网/Tailscale → 直连 ──
   - domain_suffix:
       match: local
       policy: DIRECT
   - domain_suffix:
+      match: lan
+      policy: DIRECT
+  - domain_suffix:
+      match: home.arpa
+      policy: DIRECT
+  - domain_suffix:
+      match: ts.net
+      policy: DIRECT
+  - domain_suffix:
+      match: tailscale.com
+      policy: DIRECT
+  - domain_suffix:
+      match: tailscale.io
+      policy: DIRECT
+  - domain_suffix:
       match: localhost
       policy: DIRECT
+  - ip_cidr:
+      match: 100.64.0.0/10
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr6:
+      match: fd7a:115c:a1e0::/48
+      policy: DIRECT
+      no_resolve: true
   - ip_cidr:
       match: 10.0.0.0/8
       policy: DIRECT
@@ -1140,6 +1180,33 @@ rules:
   - ip_cidr:
       match: 104.16.249.249/32
       policy: Proxy
+      no_resolve: true
+  - domain:
+      match: dns.quad9.net
+      policy: Proxy
+  - ip_cidr:
+      match: 9.9.9.9/32
+      policy: Proxy
+      no_resolve: true
+  - ip_cidr:
+      match: 149.112.112.112/32
+      policy: Proxy
+      no_resolve: true
+  - ip_cidr:
+      match: 223.5.5.5/32
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 223.6.6.6/32
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 1.12.12.12/32
+      policy: DIRECT
+      no_resolve: true
+  - ip_cidr:
+      match: 120.53.53.53/32
+      policy: DIRECT
       no_resolve: true
 
   # ── 0.2: 路由器/NAS 管理后台 → 直连 (v6.4.0, 配合 DNS 层 0.1) ──
@@ -1478,6 +1545,78 @@ rules:
             match: quic
       policy: REJECT
       name: 滴滴 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: youtubei-att.googleapis.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube ATT API 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: ytimg.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube 缩略图 禁 QUIC
+  - and:
+      match:
+        - domain_suffix:
+            match: ggpht.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: YouTube 头像 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: acs.m.taobao.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 手淘开屏 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: guide-acs.m.taobao.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 手淘首页流 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: poplayer.template.alibaba.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 淘宝弹窗 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: acs.m.goofish.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 闲鱼 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: api.yangkeduo.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 拼多多主接口 禁 QUIC
+  - and:
+      match:
+        - domain:
+            match: dict.youdao.com
+        - protocol:
+            match: quic
+      policy: REJECT
+      name: 有道词典 禁 QUIC
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   # 0.7 YouTube 广告流 / 统计信标拦截 (v6.3.0, url_regex 精确匹配)
@@ -1524,7 +1663,7 @@ rules:
       match: googlevideo.com
       policy: YouTube
 
-  # 微信解析/登录入口保护，早于 BlockHttpDNS；不放开整个 qq.com。
+  # 微信解析/登录与三大运营商本机号一键登录保护，早于 Advertising / Hijacking / BlockHttpDNS；不放开整个 qq.com。
   - domain:
       match: dns.weixin.qq.com
       policy: DIRECT
@@ -1533,6 +1672,24 @@ rules:
       policy: DIRECT
   - domain:
       match: apd-pcdnwxlogin.teg.tencent-cloud.net
+      policy: DIRECT
+  - domain_suffix:
+      match: teg.tencent-cloud.net
+      policy: DIRECT
+  - domain_suffix:
+      match: id6.me
+      policy: DIRECT
+  - domain_suffix:
+      match: cmpassport.com
+      policy: DIRECT
+  - domain:
+      match: opencloud.wostore.cn
+      policy: DIRECT
+  - domain:
+      match: amdc.alipay.com
+      policy: DIRECT
+  - domain:
+      match: c-hzgt2.getui.com
       policy: DIRECT
 
   # 微博仅精确拦图片广告；混合 SDK/API 保持可达并交给响应脚本处理。
@@ -1578,6 +1735,9 @@ rules:
   # ── 2. REJECT 风暴熔断(高频重试源 → REJECT-DROP 丢包, 让 App 等超时放弃) ──
   - domain:
       match: umc.danuoyi.alicdn.com
+      policy: REJECT-DROP
+  - domain:
+      match: Aisou.ialicdn.com
       policy: REJECT-DROP
   - domain_suffix:
       match: mum.alibabachengdun.com
@@ -1764,7 +1924,43 @@ rules:
       match: tmead.y.qq.com
       policy: REJECT
 
-  # 防 App 绕过 DNS 规则
+  # 防 App 绕过 DNS 规则 (含字节 HTTPDNS 独立域 + 0-MITM 精准广告主机)
+  - domain:
+      match: dig.bdurl.net
+      policy: REJECT
+  - domain:
+      match: ads-img-qc.xhscdn.com
+      policy: REJECT
+  - domain:
+      match: ads-img-al.xhscdn.com
+      policy: REJECT
+  - domain:
+      match: ads-video-al.xhscdn.com
+      policy: REJECT
+  - domain:
+      match: ads-video-qc.xhscdn.com
+      policy: REJECT
+  - domain:
+      match: t-ads.xiaohongshu.com
+      policy: REJECT
+  - domain:
+      match: appcloud.zhihu.com
+      policy: REJECT
+  - domain:
+      match: appcloud2.in.zhihu.com
+      policy: REJECT
+  - domain:
+      match: crash2.zhihu.com
+      policy: REJECT
+  - domain:
+      match: mqtt.zhihu.com
+      policy: REJECT
+  - domain:
+      match: sugar.zhihu.com
+      policy: REJECT
+  - domain:
+      match: zxid-m.mobileservice.cn
+      policy: REJECT
   - rule_set:
       name: BlockHttpDNS
       match: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/release/rule/Surge/BlockHttpDNS/BlockHttpDNS.list
@@ -2926,8 +3122,8 @@ modules:
   #   上游整库重构消失 (404, 经核验; 上轮去重恰好先把它禁用, 侥幸未成
   #   静默死模块). 国内 App 开屏去广告由 blockAds (fmz200, 仍 200) 承担.
 
-  # fmz200 blockAds(锁定 commit；730+ 国内 App/小程序广告)
-  - url: https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Surge/module/blockAds.module
+  # fmz200 blockAds(锁定 2026-11-25 审计 commit；730+ 国内 App/小程序广告)
+  - url: https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Surge/module/blockAds.module
     enabled: true
 
   # QingRex 小红书去广告(与 blockAds 重叠，默认关闭避免重复解密)

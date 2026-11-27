@@ -12,7 +12,7 @@
 - `Stash_SR_V26.00.stoverride` + `scripts/*.js`(11 个镜像)— **Stash 小火箭同源移植备选覆写**（由 `scripts/sr2stash.py` 从 `shadowrocket_V26.00.lsr` 生成；其中 `scripts/zhihu.js` 同时被小火箭引用，其余 10 个为历史镜像供本文件使用）。与 `Stash_Pro_V26.00.stoverride` 二选一，勿同开。
 
 > 版本号:各端主配置已统一对齐到 **V26.00**(文件名与各文件头一致);各文件内的历史修订日志(2.6.x / 5.1.x / 6.x / 2.x / 4.0)保留作为沿革记录。
-> 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连)。关于 DNS 防泄露与国内直连的权衡:在没有完备本地/Fake-IP 域名的情况下,末尾 `GEOIP,CN` 前的未命中长尾域若触发本地解析,就会让本地 DNS 看见查询(QX 无 Fake-IP 属已知架构限制;Loon/Clash_iso 需保持完整国内域名集 + `no-resolve` 才能兼顾)。
+> 架构与基线 5 按 App 分述:① **Shadowrocket / Egern / Stash_SR** 采用「国内规则 + `Global`/`Global_Domain` 境外规则兜底 + `Final=DIRECT`」取舍(兼顾国内长尾直连速度与境外不漏网);② **Clash_iso / Clash_Hako / Loon / QX / Stash** 采用「国内白名单(`ChinaMax` / `cn.mrs`) + `Final=Proxy`」取舍(避免漏网直连;QX 亦在 `ChinaMax` 前补齐 `Global.list` + `[dns] no-system` + 纯 IP 加密 DoH,使代理流量走远端解析 `resolve-on-remote`,最大限度收敛无 Fake-IP 架构下的本地解析窗口)。全六端均已对齐:海外加密 DoH 显式走代理隧道、封堵 `BlockHttpDNS`/`category-httpdns-cn` 与 `dig.bdurl.net`、核心开屏与信息流接口阻断 QUIC 防 `Alt-Svc` 逃逸、锁定经 187 项敏感域排除审计的上游模块提交。
 
 ---
 

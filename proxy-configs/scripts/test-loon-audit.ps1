@@ -70,7 +70,10 @@ function Check-Config([string]$Source) {
     foreach ($name in $removed) { Assert (!$groups.ContainsKey($name)) "Removed group reintroduced: $name" }
     $probing = @($groups.Keys | Where-Object { $groups[$_][0] -in @('url-test','fallback') })
     Assert ($probing.Count -eq 8) "Expected 8 probe groups, got $($probing.Count)"
-    foreach ($name in $probing) { Assert ('interval = 900' -in $groups[$name]) "Probe group must use 900s: $name" }
+    foreach ($name in $probing) {
+        Assert (('interval = 600' -in $groups[$name]) -and ('tolerance = 100' -in $groups[$name])) "Probe group must use 600s/100ms: $name"
+    }
+    Assert ('doh-server = https://223.5.5.5/dns-query, https://1.12.12.12/dns-query, https://223.6.6.6/dns-query, https://120.53.53.53/dns-query' -in $s['General']) 'doh-server must use pure IP encrypted DoH'
     Assert ($groups['油管视频'][1] -eq '美国节点') 'Wrong YouTube default'
     Assert ($groups['谷歌服务'][1] -eq '自动选择') 'Google default coupled to YouTube'
     Assert (-not ($groups['油管视频'] -contains '谷歌服务')) 'YouTube group must not offer the Google group'
@@ -114,7 +117,7 @@ function Check-Config([string]$Source) {
         Assert ($index -ge 0 -and $index -lt [array]::IndexOf($rules,'DOMAIN-SUFFIX,weibo.com,DIRECT')) "Shadowed Weibo image block: $hostName"
     }
     foreach ($rule in $removed) { Assert ($rule -notin $rules) "Stale harmful/shadowed rule: $rule" }
-    foreach ($needRule in @('DOMAIN-SUFFIX,umeng.com,REJECT-DROP','DOMAIN-SUFFIX,adsdk.com,REJECT-DROP','DOMAIN-SUFFIX,claude.com,人工智能','DOMAIN-SUFFIX,claudeusercontent.com,人工智能','DOMAIN,sydney.bing.com,人工智能','DOMAIN-SUFFIX,grok.com,人工智能','DOMAIN-SUFFIX,wabi.ai,人工智能','DOMAIN-SUFFIX,discord.com,代理节点','DOMAIN-SUFFIX,notion.com,代理节点')) {
+    foreach ($needRule in @('DOMAIN-SUFFIX,umeng.com,REJECT-DROP','DOMAIN-SUFFIX,adsdk.com,REJECT-DROP','DOMAIN,dig.bdurl.net,REJECT','DOMAIN,cloudflare-dns.com,代理节点','IP-CIDR,1.1.1.1/32,代理节点,no-resolve','DOMAIN-SUFFIX,ts.net,DIRECT','DOMAIN-SUFFIX,cmpassport.com,DIRECT','AND,((DOMAIN,edith.xiaohongshu.com),(PROTOCOL,QUIC)),REJECT','AND,((DOMAIN,guide-acs.m.taobao.com),(PROTOCOL,QUIC)),REJECT','AND,((DOMAIN,api.m.jd.com),(PROTOCOL,QUIC)),REJECT','DOMAIN-SUFFIX,claude.com,人工智能','DOMAIN-SUFFIX,claudeusercontent.com,人工智能','DOMAIN,sydney.bing.com,人工智能','DOMAIN-SUFFIX,grok.com,人工智能','DOMAIN-SUFFIX,wabi.ai,人工智能','DOMAIN-SUFFIX,discord.com,代理节点','DOMAIN-SUFFIX,notion.com,代理节点')) {
         Assert ($needRule -in $rules) "Missing required local rule: $needRule"
     }
     foreach ($rule in $ytRules) { Assert ($rule -in $rules) "Missing YouTube route: $rule" }
@@ -122,7 +125,7 @@ function Check-Config([string]$Source) {
     $remoteRules = @($s['Remote Rule'])
     Assert (@($remoteRules | Where-Object { $_ -match 'blackmatrix7/.*/master/' -and $_ -notmatch '/Gemini/Gemini\.list' }).Count -eq 0) 'Non-Gemini bm7 rule still points to master'
     Assert (@($remoteRules | Where-Object { $_ -match 'Gemini/Gemini\.list' }).Count -eq 1) 'Missing Gemini remote rule'
-    foreach ($reqRemote in @('/Discord/Discord\.list, policy=代理节点,.*enabled=true','/Notion/Notion\.list, policy=代理节点,.*enabled=true','/ChinaMax/ChinaMax_Domain\.list, policy=DIRECT,.*enabled=true','/ChinaMax/ChinaMax\.list, policy=DIRECT,.*enabled=true')) {
+    foreach ($reqRemote in @('/BlockHttpDNS/BlockHttpDNS\.list, policy=REJECT,.*enabled=true','/Discord/Discord\.list, policy=代理节点,.*enabled=true','/Notion/Notion\.list, policy=代理节点,.*enabled=true','/ChinaMax/ChinaMax_Domain\.list, policy=DIRECT,.*enabled=true','/ChinaMax/ChinaMax\.list, policy=DIRECT,.*enabled=true')) {
         Assert (@($remoteRules | Where-Object { $_ -match $reqRemote }).Count -eq 1) "Missing/bad remote rule: $reqRemote"
     }
     foreach ($rs in $s['Remote Script']) {
@@ -130,6 +133,8 @@ function Check-Config([string]$Source) {
     }
     Assert ("$httpdns, enabled=false" -in $s['Plugin']) 'HTTPDNS plugin still enabled'
     Assert ("$httpdns, enabled=true" -notin $s['Plugin']) 'Duplicate enabled HTTPDNS plugin'
+    Assert ('https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Loon/plugin/blockAds.plugin, enabled=true' -in $s['Plugin']) 'blockAds.plugin not pinned to latest audited commit'
+    Assert ('https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Loon/plugin/WeChatMiniAds.plugin, enabled=true' -in $s['Plugin']) 'WeChatMiniAds.plugin not pinned to latest audited commit'
     foreach ($pl in $s['Plugin']) {
         if ($pl -match '(boxjs|script-hub)') { Assert ($pl.Contains('enabled=false')) "BoxJS/Script-Hub must be disabled by default: $pl" }
         if ($pl -notmatch 'enabled=false') {
@@ -153,7 +158,10 @@ Check-Config $text
 $mutations = [ordered]@{
     httpdns = @("$httpdns, enabled=false", "$httpdns, enabled=true")
     probe = @('香港节点 = url-test,HK_Filter,url = https://www.gstatic.com', '香港节点 = url-test,HK_Filter,url = http://cp.cloudflare.com')
-    interval = @('HK_Filter,url = https://www.gstatic.com/generate_204,interval = 900', 'HK_Filter,url = https://www.gstatic.com/generate_204,interval = 300')
+    interval = @('HK_Filter,url = https://www.gstatic.com/generate_204,interval = 600', 'HK_Filter,url = https://www.gstatic.com/generate_204,interval = 30')
+    dohDomain = @('doh-server = https://223.5.5.5/dns-query, https://1.12.12.12/dns-query, https://223.6.6.6/dns-query, https://120.53.53.53/dns-query', 'doh-server = https://dns.alidns.com/dns-query')
+    httpdnsRule = @('/BlockHttpDNS/BlockHttpDNS.list, policy=REJECT, tag=BlockHttpDNS@bm7, enabled=true', '/BlockHttpDNS/BlockHttpDNS.list, policy=REJECT, tag=BlockHttpDNS@bm7, enabled=false')
+    dohTunnel = @('IP-CIDR,1.1.1.1/32,代理节点,no-resolve', 'IP-CIDR,1.1.1.1/32,DIRECT,no-resolve')
     ytDefault = @('油管视频 = select,美国节点,', '油管视频 = select,谷歌服务,美国节点,')
     usFilter = @($usPattern, '(?i)(US|美)')
     twFilter = @('(?:^|[^A-Za-z])(?:TW|TWN)(?=$|[^A-Za-z])', 'TW')

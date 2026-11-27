@@ -84,7 +84,7 @@ PINNED_MODULES = {
     YT_URL,
     'https://github.com/BiliUniverse/ADBlock/releases/download/v0.7.5/BiliBili.ADBlock.sgmodule',
     'https://github.com/NSRingo/Maps/releases/download/v4.6.1/iRingo.Maps.sgmodule',
-    'https://raw.githubusercontent.com/fmz200/wool_scripts/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/Surge/module/blockAds.module',
+    'https://raw.githubusercontent.com/fmz200/wool_scripts/f6bcc087e4da7ebef3c596be4a3c0fa406661564/Surge/module/blockAds.module',
 }
 
 
@@ -106,11 +106,12 @@ def validate_overhaul_contracts(cfg):
     auto = body(group(cfg, 'AutoSelect'))
     assert auto['policies'] == ['香港', '台湾', '日本', '新加坡', '美国', '其他']
     assert 'flatten' not in auto and 'filter' not in auto
-    assert auto['interval'] == 900 and auto['timeout'] == 5
+    assert auto['interval'] == 600 and auto['tolerance'] == 100 and auto['timeout'] == 5
     assert '其他' in body(group(cfg, 'Proxy'))['policies']
     for pool in ('香港', '台湾', '日本', '新加坡', '美国', '其他'):
         pg = body(group(cfg, pool))
-        assert pg['interval'] == 900 and pg['timeout'] == 5, pool
+        assert pg['interval'] == 600 and pg['tolerance'] == 100 and pg['timeout'] == 5, pool
+    assert 'https://9.9.9.9/dns-query' in foreign_doh
     for sample in ('Network 01', 'Twitter 解锁', 'Ukraine 01', '🇬🇧 UK 01'):
         assert re.search(body(group(cfg, '其他'))['filter'], sample), f'Missing from 其他: {sample}'
         assert not re.search(body(group(cfg, '台湾'))['filter'], sample), f'False TW match: {sample}'
@@ -118,9 +119,15 @@ def validate_overhaul_contracts(cfg):
     assert re.search(body(group(cfg, '香港'))['filter'], 'HK01')
 
     rules = cfg['rules']
-    for endpoint, kind in (('dns.google', 'domain'), ('cloudflare-dns.com', 'domain'),
-                           ('1.1.1.1/32', 'ip_cidr'), ('8.8.8.8/32', 'ip_cidr')):
+    for endpoint, kind in (('dns.google', 'domain'), ('cloudflare-dns.com', 'domain'), ('dns.quad9.net', 'domain'),
+                           ('1.1.1.1/32', 'ip_cidr'), ('8.8.8.8/32', 'ip_cidr'), ('9.9.9.9/32', 'ip_cidr')):
         assert {kind: {'match': endpoint, 'policy': 'Proxy', **({'no_resolve': True} if kind == 'ip_cidr' else {})}} in rules, endpoint
+    assert {'domain_suffix': {'match': 'ts.net', 'policy': 'DIRECT'}} in rules
+    assert {'ip_cidr': {'match': '100.64.0.0/10', 'policy': 'DIRECT', 'no_resolve': True}} in rules
+    assert domain('dig.bdurl.net', 'REJECT') in rules
+    ad_idx = next(i for i, r in enumerate(rules) if body(r).get('name') == 'Advertising')
+    for login_guard in (domain('id6.me', 'DIRECT', 'domain_suffix'), domain('cmpassport.com', 'DIRECT', 'domain_suffix')):
+        assert login_guard in rules and rules.index(login_guard) < ad_idx, login_guard
     udp_idx = next(i for i, r in enumerate(rules) if body(r).get('name') == '国内 UDP 前置直连 (微信 VOIP 保护)')
     bhdns_idx = next(i for i, r in enumerate(rules) if body(r).get('name') == 'BlockHttpDNS')
     assert udp_idx > bhdns_idx
@@ -267,7 +274,8 @@ class Audit(unittest.TestCase):
             self.assertEqual(route(self.config, host=h), 'DIRECT')
         for h in ['youtubei.googleapis.com', 'init-stream.maasea.workers.dev', 'rr1.googlevideo.com']:
             self.assertEqual(route(self.config, host=h), 'YouTube')
-        for h in ['mp.weixin.qq.com', 'api.zhihu.com', 'youtubei.googleapis.com', 'rr1.googlevideo.com']:
+        for h in ['mp.weixin.qq.com', 'api.zhihu.com', 'youtubei.googleapis.com', 'rr1.googlevideo.com',
+                  'guide-acs.m.taobao.com', 'acs.m.goofish.com', 'api.yangkeduo.com', 'dict.youdao.com']:
             self.assertEqual(route(self.config, host=h, proto='quic', country='CN'), 'REJECT')
         self.assertEqual(route(self.config, proto='udp', country='CN'), 'DIRECT')
         self.assertEqual(route(self.config, host='gateway.12306.cn', proto='quic', country='CN'), 'DIRECT')
@@ -327,6 +335,8 @@ class Audit(unittest.TestCase):
         c = copy.deepcopy(self.config); next(m for m in c['modules'] if 'kelee.one' in m['url'])['enabled'] = True; cases.append(c)
         c = copy.deepcopy(self.config); c['rules'].insert(0, {'domain_suffix': {'match': 'branch.io', 'policy': 'REJECT'}}); cases.append(c)
         c = copy.deepcopy(self.config); b = next(r for r in c['rules'] if body(r).get('name') == 'Global'); c['rules'].remove(b); cases.append(c)
+        c = copy.deepcopy(self.config); body(group(c, 'AutoSelect'))['interval'] = 900; cases.append(c)
+        c = copy.deepcopy(self.config); c['rules'].remove({'ip_cidr': {'match': '9.9.9.9/32', 'policy': 'Proxy', 'no_resolve': True}}); cases.append(c)
         for i, changed in enumerate(cases):
             with self.subTest(mutation=i):
                 with self.assertRaises(AssertionError):

@@ -99,13 +99,32 @@ function Check([string]$Text) {
     }
     $frText = $s['filter_remote'] -join "`n"
     Assert ($frText.Contains('/Discord/Discord.list') -and $frText.Contains('/Notion/Notion.list')) 'Discord/Notion remote lists missing'
+    $globalLine = @($s['filter_remote'] | Where-Object { $_ -like '*/Global/Global.list*force-policy=兜底策略*enabled=true' })
+    $chinaLine = @($s['filter_remote'] | Where-Object { $_ -like '*/ChinaMax/ChinaMax.list*force-policy=direct*enabled=true' })
+    Assert ($globalLine.Count -eq 1 -and $chinaLine.Count -eq 1) 'Global or ChinaMax remote list missing'
+    Assert ($s['filter_remote'].IndexOf($globalLine[0]) -lt $s['filter_remote'].IndexOf($chinaLine[0])) 'Global.list must precede ChinaMax.list to prevent local DNS leak'
+
+    # 2026-11-27 zero-plaintext DNS, 其他节点 pool, HTTPDNS & DoH tunnel invariants
+    Assert ('no-system' -in $s['dns']) 'no-system must be enabled in [dns] to prevent plaintext ISP UDP:53 fallback'
+    Assert ('doh-server=https://223.5.5.5/dns-query, https://1.12.12.12/dns-query, https://223.6.6.6/dns-query, https://120.53.53.53/dns-query' -in $s['dns']) 'Encrypted IP-DoH server list drifted'
+    Assert (@($s['dns'] | Where-Object { $_ -match '119\.29\.29\.29|taobao\.com/system|weixin\.qq\.com/system' }).Count -eq 0) 'Plaintext public DNS / domestic system override returned in [dns]'
+    Assert ($groups.ContainsKey('其他节点') -and ($groups['兜底策略'].Members -contains '其他节点')) '其他节点 pool missing or not wired into 兜底策略'
+    $otRx = ($groups['其他节点'].Members | Where-Object { $_.StartsWith('server-tag-regex=') }).Substring(17)
+    Assert ([regex]::IsMatch('🇬🇧 UK 01', $otRx) -and [regex]::IsMatch('Network 01', $otRx) -and ![regex]::IsMatch('US01', $otRx) -and ![regex]::IsMatch('剩余流量 10GB', $otRx)) '其他节点 regex boundary broken'
+    foreach ($pool in @('自动选择','香港节点','台湾节点','美国节点','日本节点','韩国节点','狮城节点','其他节点')) {
+        Assert (($groups[$pool].Members -contains 'check-interval=600') -and ($groups[$pool].Members -contains 'tolerance=100')) "Pool $pool must use check-interval=600, tolerance=100"
+    }
+    foreach ($secRule in @('host, cloudflare-dns.com, 兜底策略','host, dns.google, 兜底策略','ip-cidr, 1.1.1.1/32, 兜底策略, no-resolve','host, dig.bdurl.net, reject','host-suffix, ts.net, direct','host-suffix, cmpassport.com, direct')) {
+        Assert ($secRule -in $rules) "Missing security/anti-decay local rule: $secRule"
+    }
+
     $rrText = $s['rewrite_remote'] -join "`n"
     Assert ($rrText.Contains('boxjs.rewrite.quanx.conf') -and ($s['rewrite_remote'] | Where-Object { $_ -like '*boxjs*' -and $_ -match 'enabled=false' })) 'BoxJS must be disabled'
     Assert ($rrText.Contains('/863858b49220edddd6a4a445298ea846b50e8670/modules/script-hub.qx.conf') -and ($s['rewrite_remote'] | Where-Object { $_ -like '*script-hub*' -and $_ -match 'enabled=false' })) 'Script-Hub must be disabled and pinned'
     Assert ($rrText.Contains('/b90aab7775f9c20a6ac61985a7c18d846d172745/config/QX.snippet')) 'Sub-Store QX snippet must be pinned'
     Assert ($rrText.Contains('/df6366a7024e0b3f0aa3510c5b791eea6f3cba89/module/spotify.conf')) 'Spotify conf must be pinned'
     $tlText = $s['task_local'] -join "`n"
-    Assert ($tlText.Contains('/58f6cce6dbd5c5fe50c2998938f9c2ba631a7c18/QuantumultX/scripts/server_info.js')) 'server_info.js must be pinned'
+    Assert ($tlText.Contains('/f6bcc087e4da7ebef3c596be4a3c0fa406661564/QuantumultX/scripts/server_info.js')) 'server_info.js must be pinned to latest audited commit'
     $hostsLine = @($s['mitm'] | Where-Object { $_ -like 'hostname = *' })
     Assert ($hostsLine.Count -eq 1) 'Expected single MITM hostname line'
     $mitmExcludes = @($hostsLine[0].Substring(11) -split ',\s*' | Where-Object { $_.StartsWith('-') })
@@ -142,6 +161,10 @@ $mutations=[ordered]@{
     boxjs=@('tag=BoxJs, update-interval=259200, opt-parser=false, enabled=false','tag=BoxJs, update-interval=259200, opt-parser=false, enabled=true')
     subStorePin=@('/b90aab7775f9c20a6ac61985a7c18d846d172745/config/QX.snippet','/master/config/QX.snippet')
     mitmNew=@(', -*.95508.com','')
+    noSystem=@('no-system',';no-system')
+    plainDns=@('server=/amplifi.lan/system','server=/dl.google.com/119.29.29.29')
+    globalDrop=@('tag=全球加速, force-policy=兜底策略, update-interval=604800, opt-parser=false, enabled=true','tag=全球加速, force-policy=兜底策略, update-interval=604800, opt-parser=false, enabled=false')
+    poolTol=@('check-interval=600, tolerance=100','check-interval=900, tolerance=200')
 }
 foreach ($name in $mutations.Keys) {
     $bad=$source.Replace($mutations[$name][0],$mutations[$name][1]); Assert ($bad -cne $source) "Mutation did not apply: $name"
